@@ -157,8 +157,8 @@ const StudentsPage: React.FC<{ user: UserSession }> = ({ user }) => {
         await db.updateStudent(editingStudent.id, {
           fullName: formData.fullName.toUpperCase(),
           birthday: formData.birthday,
-          guardianName: formData.guardianName.trim() ? formData.guardianName.toUpperCase() : null as any,
-          guardianPhone: formData.guardianPhone.trim() ? formData.guardianPhone : null as any,
+          guardianName: formData.guardianName.trim() ? formData.guardianName.toUpperCase() : "",
+          guardianPhone: formData.guardianPhone.trim() ? formData.guardianPhone : "",
           notes: formData.notes,
           photoUrl: formData.photoUrl,
           ageGroup: ageData.group!,
@@ -168,8 +168,8 @@ const StudentsPage: React.FC<{ user: UserSession }> = ({ user }) => {
         await db.addStudent({
           fullName: formData.fullName.toUpperCase(),
           birthday: formData.birthday,
-          guardianName: formData.guardianName.trim() ? formData.guardianName.toUpperCase() : null as any,
-          guardianPhone: formData.guardianPhone.trim() ? formData.guardianPhone : null as any,
+          guardianName: formData.guardianName.trim() ? formData.guardianName.toUpperCase() : "",
+          guardianPhone: formData.guardianPhone.trim() ? formData.guardianPhone : "",
           notes: formData.notes,
           photoUrl: formData.photoUrl,
           ageGroup: ageData.group!
