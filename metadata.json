@@ -1,0 +1,7 @@
+{
+  "name": "KINGDOM KIDS",
+  "description": "A production-ready kids church management system featuring facial recognition check-in, automated checkout, and Sunday points ledger.",
+  "requestFramePermissions": [
+    "camera"
+  ]
+}
