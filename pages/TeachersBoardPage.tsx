@@ -117,81 +117,61 @@ const TeachersBoardPage: React.FC = () => {
          </div>
 
          {/* Main Table Container */}
-         {!loading && (() => {
-            const today = new Date();
-            const year = today.getFullYear();
-            const month = today.getMonth();
-            const daysInMonth = new Date(year, month + 1, 0).getDate();
-            let sundayCount = 0;
-            for (let d = 1; d <= daysInMonth; d++) {
-               if (new Date(year, month, d).getDay() === 0) sundayCount++;
-            }
-            return sundayCount === 5;
-         })() ? (
-            <div className="bg-white rounded-[2.5rem] shadow-sm border border-pink-50 overflow-hidden relative">
-               {loading && (
-                  <div className="absolute inset-0 bg-white/80 z-10 flex items-center justify-center backdrop-blur-sm">
-                     <Loader2 className="animate-spin text-pink-500" size={32} />
-                  </div>
-               )}
+         <div className="bg-white rounded-[2.5rem] shadow-sm border border-pink-50 overflow-hidden relative">
+            {loading && (
+               <div className="absolute inset-0 bg-white/80 z-10 flex items-center justify-center backdrop-blur-sm">
+                  <Loader2 className="animate-spin text-pink-500" size={32} />
+               </div>
+            )}
 
-               <div className="overflow-x-auto">
-                  <table className="w-full text-left border-collapse min-w-[1000px]">
-                     <thead>
-                        <tr className="text-[10px] font-bold uppercase tracking-widest">
-                           <th className="px-6 py-6 bg-gray-50 text-gray-400 w-48">Date</th>
+            <div className="overflow-x-auto">
+               <table className="w-full text-left border-collapse min-w-[1000px]">
+                  <thead>
+                     <tr className="text-[10px] font-bold uppercase tracking-widest">
+                        <th className="px-6 py-6 bg-gray-50 text-gray-400 w-48">Date</th>
+                        {COLUMNS.map(col => (
+                           <th key={col.key} className={`px-6 py-6 ${col.bg} ${col.text} text-center`}>
+                              {col.label}
+                           </th>
+                        ))}
+                     </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-100 font-medium text-sm text-gray-600">
+                     {boardData.map((row) => (
+                        <tr key={row.id} className="hover:bg-pink-50/10 transition-colors group cursor-pointer" onClick={() => handleEdit(row)}>
+                           {/* Date Column */}
+                           <td className="px-6 py-6 bg-gray-50/30">
+                              <div className="flex flex-col">
+                                 <span className="font-black text-gray-800 text-xs">{getShortDate(row.activity_date)}</span>
+                                 <span className="text-[9px] font-bold text-gray-400 uppercase tracking-widest mt-1">
+                                    {row.activity_type || 'Sunday Service'}
+                                 </span>
+                              </div>
+                           </td>
+
+                           {/* Assignment Columns */}
                            {COLUMNS.map(col => (
-                              <th key={col.key} className={`px-6 py-6 ${col.bg} ${col.text} text-center`}>
-                                 {col.label}
-                              </th>
+                              // @ts-ignore
+                              <td key={col.key} className="px-6 py-6 text-center relative border-l border-gray-50/50">
+                                 <span className="font-bold text-gray-700 uppercase text-[11px]">
+                                    {/* @ts-ignore */}
+                                    {row[col.key] || '-'}
+                                 </span>
+                              </td>
                            ))}
                         </tr>
-                     </thead>
-                     <tbody className="divide-y divide-gray-100 font-medium text-sm text-gray-600">
-                        {boardData.map((row) => (
-                           <tr key={row.id} className="hover:bg-pink-50/10 transition-colors group cursor-pointer" onClick={() => handleEdit(row)}>
-                              {/* Date Column */}
-                              <td className="px-6 py-6 bg-gray-50/30">
-                                 <div className="flex flex-col">
-                                    <span className="font-black text-gray-800 text-xs">{getShortDate(row.activity_date)}</span>
-                                    <span className="text-[9px] font-bold text-gray-400 uppercase tracking-widest mt-1">
-                                       {row.activity_type || 'Sunday Service'}
-                                    </span>
-                                 </div>
-                              </td>
-
-                              {/* Assignment Columns */}
-                              {COLUMNS.map(col => (
-                                 // @ts-ignore
-                                 <td key={col.key} className="px-6 py-6 text-center relative border-l border-gray-50/50">
-                                    <span className="font-bold text-gray-700 uppercase text-[11px]">
-                                       {/* @ts-ignore */}
-                                       {row[col.key] || '-'}
-                                    </span>
-                                 </td>
-                              ))}
-                           </tr>
-                        ))}
-                        {boardData.length === 0 && !loading && (
-                           <tr>
-                              <td colSpan={COLUMNS.length + 1} className="px-8 py-20 text-center text-gray-300 font-black uppercase tracking-widest text-xs">
-                                 No schedule found. Use SQL Editor to generate.
-                              </td>
-                           </tr>
-                        )}
-                     </tbody>
-                  </table>
-               </div>
+                     ))}
+                     {boardData.length === 0 && !loading && (
+                        <tr>
+                           <td colSpan={COLUMNS.length + 1} className="px-8 py-20 text-center text-gray-300 font-black uppercase tracking-widest text-xs">
+                              No schedule found. Use SQL Editor to generate.
+                           </td>
+                        </tr>
+                     )}
+                  </tbody>
+               </table>
             </div>
-         ) : (
-            <div className="bg-gray-50 p-20 rounded-[2.5rem] border border-gray-100 text-center">
-               <div className="w-24 h-24 bg-white rounded-full flex items-center justify-center text-4xl mx-auto mb-6 shadow-sm">📅</div>
-               <h3 className="text-xl font-black text-gray-400 uppercase tracking-widest">Teachers Board Hidden</h3>
-               <p className="text-gray-300 font-bold text-xs mt-2 uppercase tracking-wide max-w-md mx-auto">
-                  This content is only available during months with a 5th Sunday.
-               </p>
-            </div>
-         )}
+         </div>
 
          {/* Edit Modal */}
          {editingItem && (
