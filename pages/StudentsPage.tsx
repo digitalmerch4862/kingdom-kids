@@ -72,16 +72,17 @@ const StudentsPage: React.FC<{ user: UserSession }> = ({ user }) => {
     );
   }, [students, search]);
 
-  const ageData = useMemo(() => {
-    if (!formData.birthday) return { age: 0, group: null, error: '' };
+  // Helper helper to calculate age group
+  const calculateAgeGroup = (birthday: string | undefined | null): { age: number, group: AgeGroup, error: string } => {
+    if (!birthday) return { age: 0, group: "General" as AgeGroup, error: '' };
 
-    const yearParts = formData.birthday.split('-');
+    const yearParts = birthday.split('-');
     if (yearParts[0].length !== 4) {
-      return { age: 0, group: null, error: 'Year must be exactly 4 digits (YYYY).' };
+      return { age: 0, group: "General" as AgeGroup, error: 'Year must be exactly 4 digits (YYYY).' };
     }
 
-    const birthDate = new Date(formData.birthday);
-    if (isNaN(birthDate.getTime())) return { age: 0, group: null, error: 'Invalid Date.' };
+    const birthDate = new Date(birthday);
+    if (isNaN(birthDate.getTime())) return { age: 0, group: "General" as AgeGroup, error: 'Invalid Date.' };
 
     const today = new Date();
     let age = today.getFullYear() - birthDate.getFullYear();
@@ -90,15 +91,16 @@ const StudentsPage: React.FC<{ user: UserSession }> = ({ user }) => {
       age--;
     }
 
-    if (age < 3 || age > 12) {
-      return { age, group: null, error: 'Student must be between 3 and 12 years old.' };
-    }
-
-    let group: AgeGroup = "3-6";
-    if (age >= 7 && age <= 9) group = "7-9";
+    let group: AgeGroup = "General";
+    if (age >= 3 && age <= 6) group = "3-6";
+    else if (age >= 7 && age <= 9) group = "7-9";
     else if (age >= 10 && age <= 12) group = "10-12";
 
     return { age, group, error: '' };
+  };
+
+  const ageData = useMemo(() => {
+    return calculateAgeGroup(formData.birthday);
   }, [formData.birthday]);
 
   const handlePhoneChange = (val: string) => {
@@ -279,7 +281,7 @@ const StudentsPage: React.FC<{ user: UserSession }> = ({ user }) => {
     const headers = ["Full Name", "Age Group", "Access Key", "Guardian Name", "Contact No"];
     const rows = students.map(s => [
       s.fullName,
-      s.ageGroup,
+      calculateAgeGroup(s.birthday).group,
       s.accessKey,
       s.guardianName || 'N/A',
       s.guardianPhone || 'N/A'
@@ -428,7 +430,14 @@ const StudentsPage: React.FC<{ user: UserSession }> = ({ user }) => {
             </div>
 
             <h3 className="text-[18px] font-black text-gray-800 uppercase tracking-tighter mb-1 truncate">{s.fullName}</h3>
-            <span className="inline-block px-3 py-1 bg-gray-50 text-gray-400 rounded-lg text-[12px] font-black uppercase tracking-widest mb-6 border border-gray-100/50">{s.ageGroup} Group</span>
+            {(() => {
+              const { group } = calculateAgeGroup(s.birthday);
+              return (
+                <span className="inline-block px-3 py-1 bg-gray-50 text-gray-400 rounded-lg text-[12px] font-black uppercase tracking-widest mb-6 border border-gray-100/50">
+                  {group === "General" ? "-" : `${group} Group`}
+                </span>
+              );
+            })()}
 
             <button
               onClick={() => generateAndDownloadBadge(s)}

@@ -65,7 +65,7 @@ export class MinistryService {
   static async checkIn(studentId: string, actor: string) {
     const today = new Date().toISOString().split('T')[0];
     const sessions = await db.getAttendance();
-    
+
     const existing = sessions.find(s => s.studentId === studentId && s.sessionDate === today && s.status === 'OPEN');
     if (existing) {
       throw new Error(`Student already checked in at ${new Date(existing.checkInTime).toLocaleTimeString()}`);
@@ -78,7 +78,7 @@ export class MinistryService {
       checkedInBy: actor,
       status: 'OPEN'
     });
-    
+
     // RESET ABSENCES ON CHECK-IN
     await db.resetStudentAbsences(studentId);
 
@@ -91,10 +91,10 @@ export class MinistryService {
 
     try {
       await this.addPoints(
-        studentId, 
-        'Attendance', 
-        5, 
-        actor, 
+        studentId,
+        'Attendance',
+        5,
+        actor,
         'Automated points awarded for Sunday check-in'
       );
     } catch (pointErr: any) {
@@ -109,7 +109,7 @@ export class MinistryService {
     const today = new Date().toISOString().split('T')[0];
     const students = await db.getStudents();
     const sessions = await db.getAttendance();
-    
+
     const presentStudentIds = new Set(
       sessions
         .filter(s => s.sessionDate === today)
@@ -128,7 +128,7 @@ export class MinistryService {
       absentCount++;
       const newAbsences = (student.consecutiveAbsences || 0) + 1;
       const newStatus = newAbsences >= 4 ? 'frozen' : 'active';
-      
+
       if (newStatus === 'frozen') frozenCount++;
 
       await db.updateStudent(student.id, {
@@ -151,7 +151,7 @@ export class MinistryService {
     const sessions = await db.getAttendance();
     // Only auto-checkout those who actually have an OPEN session (meaning they were present)
     const openSessions = sessions.filter(s => s.sessionDate === today && s.status === 'OPEN');
-    
+
     for (const sess of openSessions) {
       await db.updateSession(sess.id, {
         checkOutTime: `${today}T13:00:00Z`,
@@ -159,7 +159,7 @@ export class MinistryService {
         status: 'CLOSED',
         checkedOutBy: 'SYSTEM_AUTO'
       });
-      
+
       await db.log({
         eventType: 'CHECKOUT_AUTO',
         actor: 'SYSTEM',
@@ -183,7 +183,7 @@ export class MinistryService {
     return students.map(student => {
       const session = dailySessions.find(s => s.studentId === student.id);
       const pointEntry = dailyPoints.find(p => p.studentId === student.id);
-      
+
       // If no points awarded, they are tagged as ABSENT
       const isPresent = !!pointEntry || !!session;
 
@@ -214,7 +214,7 @@ export class MinistryService {
       const dailyTotal = ledger
         .filter(l => l.studentId === studentId && l.entryDate === today && !l.voided)
         .reduce((sum, entry) => sum + entry.points, 0);
-      
+
       const newTotal = dailyTotal + points;
       const DAILY_LIMIT = 50;
 
@@ -225,10 +225,10 @@ export class MinistryService {
 
     // 2. Check Duplicate Rule
     if (!settings.allowDuplicatePoints && !isCorrection && !isManual) {
-      const existing = ledger.find(l => 
-        l.studentId === studentId && 
-        l.entryDate === today && 
-        l.category === category && 
+      const existing = ledger.find(l =>
+        l.studentId === studentId &&
+        l.entryDate === today &&
+        l.category === category &&
         !l.voided
       );
       if (existing) throw new Error(`Points already awarded for ${category} today.`);
@@ -256,7 +256,7 @@ export class MinistryService {
   static async getLeaderboard(ageGroup?: AgeGroup, filterDate?: (date: string) => boolean): Promise<LeaderboardEntry[]> {
     const students = await db.getStudents();
     const ledger = await db.getPointsLedger();
-    
+
     let filteredStudents = students;
     if (ageGroup) {
       filteredStudents = students.filter(s => s.ageGroup === ageGroup);
@@ -264,13 +264,13 @@ export class MinistryService {
 
     return filteredStudents.map(s => {
       let studentPoints = ledger.filter(l => l.studentId === s.id && !l.voided);
-      
+
       if (filterDate) {
         studentPoints = studentPoints.filter(l => filterDate(l.entryDate));
       }
 
       const totalPoints = studentPoints.reduce((sum, curr) => sum + curr.points, 0);
-      const lastPoint = studentPoints.length > 0 
+      const lastPoint = studentPoints.length > 0
         ? studentPoints.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())[0].createdAt
         : '1970-01-01T00:00:00Z';
 
@@ -296,13 +296,13 @@ export class MinistryService {
     const today = new Date().toISOString().split('T')[0];
     const openSessions = sessions.filter(s => s.sessionDate === today && s.status === 'OPEN');
 
-    const groups: AgeGroup[] = ['3-6', '7-9', '10-12'];
-    
+    const groups: AgeGroup[] = ['3-6', '7-9', '10-12', 'General'];
+
     return groups.map(group => {
       const groupStudents = students.filter(s => s.ageGroup === group);
       const presentIds = new Set(openSessions.map(os => os.studentId));
       const presentCount = groupStudents.filter(s => presentIds.has(s.id)).length;
-      
+
       return {
         group,
         total: groupStudents.length,

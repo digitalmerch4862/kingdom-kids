@@ -33,13 +33,13 @@ const LeaderboardPage: React.FC = () => {
     try {
       const ov = await MinistryService.getLeaderboard(ageFilter === 'ALL' ? undefined : ageFilter);
       const mon = await MinistryService.getMonthlyLeaderboard(selectedMonth, selectedYear, ageFilter === 'ALL' ? undefined : ageFilter);
-      
+
       setOverall(ov.filter(k => k.totalPoints > 0).slice(0, 10));
       setMonthly(mon.filter(k => k.totalPoints > 0).slice(0, 5));
     } catch (e) {
       console.error("Supabase connection failed, using mock data:", e);
       setUsingMockData(true);
-      
+
       // MOCK DATA FALLBACK (Prevents Crash)
       const mockStudents: any[] = [
         { id: '1', fullName: 'ALEXA G.', ageGroup: '10-12', totalPoints: 1250 },
@@ -58,7 +58,7 @@ const LeaderboardPage: React.FC = () => {
   const handleResetMonthly = async () => {
     if (!isAdmin) return;
     audio.playClick();
-    
+
     const confirmMsg = `⚠️ ADMIN: Reset monthly points for ${months[selectedMonth]} ${selectedYear}?\n\nThis will DELETE all stars earned in this month for ALL students.`;
     if (!window.confirm(confirmMsg)) return;
 
@@ -66,12 +66,12 @@ const LeaderboardPage: React.FC = () => {
       setLoading(true);
       const start = new Date(selectedYear, selectedMonth, 1);
       const end = new Date(selectedYear, selectedMonth + 1, 0);
-      
+
       const startStr = start.toISOString().split('T')[0];
       const endStr = end.toISOString().split('T')[0];
 
       await db.runRawSql(`DELETE FROM point_ledger WHERE entry_date >= '${startStr}' AND entry_date <= '${endStr}'`);
-      
+
       await db.log({
         eventType: 'AUDIT_WIPE',
         actor: user?.username || 'ADMIN',
@@ -92,7 +92,7 @@ const LeaderboardPage: React.FC = () => {
 
   return (
     <div className="space-y-6 md:space-y-10 animate-in fade-in duration-500 pb-20">
-      
+
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
         <div>
@@ -106,9 +106,9 @@ const LeaderboardPage: React.FC = () => {
           </div>
           <p className="text-gray-400 font-medium uppercase tracking-widest text-[10px]">Friendly Competition & Rewards</p>
         </div>
-        
+
         <div className="flex gap-4">
-          <select 
+          <select
             value={ageFilter}
             onChange={(e) => setAgeFilter(e.target.value as any)}
             className="flex-1 md:flex-none px-6 py-3 bg-white border border-pink-50 rounded-2xl outline-none focus:ring-2 focus:ring-pink-200 text-xs font-black tracking-widest uppercase shadow-sm cursor-pointer"
@@ -117,6 +117,7 @@ const LeaderboardPage: React.FC = () => {
             <option value="3-6">3-6 Years</option>
             <option value="7-9">7-9 Years</option>
             <option value="10-12">10-12 Years</option>
+            <option value="General">General Group</option>
           </select>
         </div>
       </div>
@@ -151,7 +152,7 @@ const LeaderboardPage: React.FC = () => {
                   </span>
                 </div>
                 <div className="w-full bg-gray-50 h-3 rounded-full overflow-hidden border border-gray-100 shadow-inner">
-                  <div 
+                  <div
                     className="h-full bg-gradient-to-r from-pink-400 to-pink-600 transition-all duration-1000 ease-out relative"
                     style={{ width: `${(kid.totalPoints / maxPointsOverall) * 100}%` }}
                   >
@@ -175,7 +176,7 @@ const LeaderboardPage: React.FC = () => {
               <span className="text-xl">📅</span> Top 5 This Month
             </h3>
             <div className="flex gap-2">
-              <select 
+              <select
                 value={selectedMonth}
                 onChange={(e) => setSelectedMonth(Number(e.target.value))}
                 className="bg-gray-50 border-none outline-none text-[10px] font-black text-pink-500 uppercase tracking-widest px-3 py-1 rounded-full cursor-pointer hover:bg-pink-50"
@@ -199,12 +200,11 @@ const LeaderboardPage: React.FC = () => {
                   {monthly.map((kid, i) => (
                     <tr key={kid.id} className="hover:bg-pink-50/20 transition-all group">
                       <td className="px-6 md:px-8 py-6">
-                        <span className={`w-8 h-8 rounded-xl flex items-center justify-center font-black text-xs border-2 ${
-                          i === 0 ? 'bg-amber-400 border-amber-300 text-white shadow-lg shadow-amber-100' :
-                          i === 1 ? 'bg-gray-300 border-gray-200 text-white shadow-lg' :
-                          i === 2 ? 'bg-orange-300 border-orange-200 text-white shadow-lg' :
-                          'bg-white border-pink-50 text-pink-500'
-                        }`}>
+                        <span className={`w-8 h-8 rounded-xl flex items-center justify-center font-black text-xs border-2 ${i === 0 ? 'bg-amber-400 border-amber-300 text-white shadow-lg shadow-amber-100' :
+                            i === 1 ? 'bg-gray-300 border-gray-200 text-white shadow-lg' :
+                              i === 2 ? 'bg-orange-300 border-orange-200 text-white shadow-lg' :
+                                'bg-white border-pink-50 text-pink-500'
+                          }`}>
                           {i + 1}
                         </span>
                       </td>
@@ -233,14 +233,14 @@ const LeaderboardPage: React.FC = () => {
 
           {/* Monthly Achievement Banner */}
           <div className="bg-gradient-to-br from-pink-500 to-rose-400 rounded-[2rem] md:rounded-[2.5rem] p-6 md:p-8 text-white relative overflow-hidden shadow-xl shadow-pink-100">
-             <div className="relative z-10 flex flex-col items-center text-center">
-                <span className="text-3xl md:text-4xl mb-4">🎖️</span>
-                <h4 className="text-base md:text-lg font-black uppercase tracking-widest mb-2">Monthly Achievement</h4>
-                <p className="text-[10px] md:text-xs text-pink-100 font-bold uppercase tracking-widest leading-relaxed">
-                  The top student of {months[selectedMonth]} will receive a special Kingdom Kids badge!
-                </p>
-             </div>
-             <div className="absolute -bottom-10 -right-10 text-9xl text-white/10 font-black rotate-12 pointer-events-none">BADGE</div>
+            <div className="relative z-10 flex flex-col items-center text-center">
+              <span className="text-3xl md:text-4xl mb-4">🎖️</span>
+              <h4 className="text-base md:text-lg font-black uppercase tracking-widest mb-2">Monthly Achievement</h4>
+              <p className="text-[10px] md:text-xs text-pink-100 font-bold uppercase tracking-widest leading-relaxed">
+                The top student of {months[selectedMonth]} will receive a special Kingdom Kids badge!
+              </p>
+            </div>
+            <div className="absolute -bottom-10 -right-10 text-9xl text-white/10 font-black rotate-12 pointer-events-none">BADGE</div>
           </div>
         </div>
       </div>
@@ -248,13 +248,13 @@ const LeaderboardPage: React.FC = () => {
       {/* Admin Reset Button */}
       {isAdmin && (
         <div className="mt-12 text-center border-t border-pink-50 pt-8">
-           <p className="text-[9px] text-gray-300 font-black uppercase tracking-widest mb-4">Admin Controls</p>
-           <button 
-             onClick={handleResetMonthly} 
-             className="text-[9px] bg-white border border-gray-200 text-gray-400 hover:text-red-500 hover:border-red-200 px-4 py-2 rounded-full font-bold uppercase tracking-widest transition-all"
-           >
-             ⚠️ Reset Monthly Stats for {months[selectedMonth]}
-           </button>
+          <p className="text-[9px] text-gray-300 font-black uppercase tracking-widest mb-4">Admin Controls</p>
+          <button
+            onClick={handleResetMonthly}
+            className="text-[9px] bg-white border border-gray-200 text-gray-400 hover:text-red-500 hover:border-red-200 px-4 py-2 rounded-full font-bold uppercase tracking-widest transition-all"
+          >
+            ⚠️ Reset Monthly Stats for {months[selectedMonth]}
+          </button>
         </div>
       )}
     </div>

@@ -7,7 +7,7 @@ import { audio } from '../services/audio.service';
 const TeacherFairnessPage: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  
+
   // Filters
   const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth());
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
@@ -29,7 +29,7 @@ const TeacherFairnessPage: React.FC = () => {
   const loadData = async () => {
     setLoading(true);
     setError('');
-    
+
     try {
       // 1. Calculate Date Range
       const startDate = new Date(selectedYear, selectedMonth, 1).toISOString().split('T')[0];
@@ -63,7 +63,7 @@ const TeacherFairnessPage: React.FC = () => {
   // --- Feature 2: Teacher Activity Report ---
   const teacherStats = useMemo(() => {
     const stats: Record<string, { totalPoints: number; uniqueStudents: Set<string> }> = {};
-    
+
     ledgerData.forEach((entry: any) => {
       const teacher = entry.recordedBy || 'Unknown';
       if (!stats[teacher]) {
@@ -102,7 +102,7 @@ const TeacherFairnessPage: React.FC = () => {
     // If average is 0, nobody is weak.
     if (average === 0) return { average: 0, weakLinks: [] };
 
-    const threshold = average * 0.5; 
+    const threshold = average * 0.5;
     const weakLinks = scores
       .filter(s => s.total <= threshold)
       .sort((a, b) => a.total - b.total); // Lowest first
@@ -117,17 +117,17 @@ const TeacherFairnessPage: React.FC = () => {
           <h2 className="text-3xl font-black text-gray-800 uppercase tracking-tighter">Fairness Monitor</h2>
           <p className="text-gray-400 font-medium uppercase tracking-widest text-[10px]">Teacher Engagement & Student Support</p>
         </div>
-        
+
         <div className="flex flex-wrap gap-3">
-          <select 
+          <select
             value={selectedMonth}
             onChange={(e) => { audio.playClick(); setSelectedMonth(Number(e.target.value)); }}
             className="px-4 py-3 bg-white border border-pink-50 rounded-2xl outline-none focus:ring-2 focus:ring-pink-200 text-[10px] font-black tracking-widest uppercase shadow-sm cursor-pointer"
           >
             {months.map((m, i) => <option key={m} value={i}>{m}</option>)}
           </select>
-          
-          <select 
+
+          <select
             value={selectedYear}
             onChange={(e) => { audio.playClick(); setSelectedYear(Number(e.target.value)); }}
             className="px-4 py-3 bg-white border border-pink-50 rounded-2xl outline-none focus:ring-2 focus:ring-pink-200 text-[10px] font-black tracking-widest uppercase shadow-sm cursor-pointer"
@@ -137,7 +137,7 @@ const TeacherFairnessPage: React.FC = () => {
             <option value={2026}>2026</option>
           </select>
 
-          <select 
+          <select
             value={selectedGroup}
             onChange={(e) => { audio.playClick(); setSelectedGroup(e.target.value as any); }}
             className="px-4 py-3 bg-white border border-pink-50 rounded-2xl outline-none focus:ring-2 focus:ring-pink-200 text-[10px] font-black tracking-widest uppercase shadow-sm cursor-pointer"
@@ -146,6 +146,7 @@ const TeacherFairnessPage: React.FC = () => {
             <option value="3-6">3-6 Years</option>
             <option value="7-9">7-9 Years</option>
             <option value="10-12">10-12 Years</option>
+            <option value="General">General Group</option>
           </select>
         </div>
       </div>
@@ -160,12 +161,12 @@ const TeacherFairnessPage: React.FC = () => {
         </div>
       ) : (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-          
+
           {/* Section 1: Teacher Activity */}
           <div className="space-y-4">
             <h3 className="text-sm font-black text-gray-800 uppercase tracking-widest ml-1">Teacher Activity Report</h3>
             <div className="bg-white rounded-[2.5rem] shadow-sm border border-pink-50 overflow-hidden">
-               <div className="overflow-x-auto">
+              <div className="overflow-x-auto">
                 <table className="w-full text-left">
                   <thead>
                     <tr className="bg-gray-50/50 text-[9px] font-bold text-gray-400 uppercase tracking-widest border-b border-pink-50">
@@ -210,46 +211,46 @@ const TeacherFairnessPage: React.FC = () => {
 
           {/* Section 2: Weakest Link Detector */}
           <div className="space-y-4">
-             <div className="flex justify-between items-center px-1">
-                <h3 className="text-sm font-black text-gray-800 uppercase tracking-widest">Students Needing Attention</h3>
-                <div className="flex items-center gap-2">
-                   <span className="text-[9px] font-bold text-gray-400 uppercase tracking-widest">Class Avg:</span>
-                   <span className="text-[10px] font-black text-gray-800 bg-gray-100 px-2 py-0.5 rounded">{studentStats.average.toFixed(1)}</span>
-                </div>
-             </div>
-             
-             <div className="bg-white rounded-[2.5rem] shadow-sm border border-pink-50 overflow-hidden min-h-[200px]">
-                {studentStats.weakLinks.length > 0 ? (
-                  <div className="divide-y divide-pink-50/50">
-                    {studentStats.weakLinks.map((s) => (
-                      <div key={s.id} className="p-4 flex items-center justify-between hover:bg-yellow-50/50 transition-colors group">
-                        <div className="flex items-center gap-3">
-                           <span className="text-lg animate-pulse" title="Below Average Alert">⚠️</span>
-                           <div>
-                              <p className="text-xs font-black text-gray-800 uppercase tracking-tight">{s.fullName}</p>
-                              <p className="text-[9px] font-bold text-gray-400 uppercase tracking-widest">{s.ageGroup} Group</p>
-                           </div>
-                        </div>
-                        <div className="flex flex-col items-end">
-                           <span className={`text-sm font-black ${s.total === 0 ? 'text-red-500' : 'text-orange-400'}`}>
-                             {s.total} pts
-                           </span>
-                           <span className="text-[8px] font-bold text-gray-300 uppercase tracking-tighter">
-                             {studentStats.average > 0 ? Math.round((s.total / studentStats.average) * 100) : 0}% of Avg
-                           </span>
+            <div className="flex justify-between items-center px-1">
+              <h3 className="text-sm font-black text-gray-800 uppercase tracking-widest">Students Needing Attention</h3>
+              <div className="flex items-center gap-2">
+                <span className="text-[9px] font-bold text-gray-400 uppercase tracking-widest">Class Avg:</span>
+                <span className="text-[10px] font-black text-gray-800 bg-gray-100 px-2 py-0.5 rounded">{studentStats.average.toFixed(1)}</span>
+              </div>
+            </div>
+
+            <div className="bg-white rounded-[2.5rem] shadow-sm border border-pink-50 overflow-hidden min-h-[200px]">
+              {studentStats.weakLinks.length > 0 ? (
+                <div className="divide-y divide-pink-50/50">
+                  {studentStats.weakLinks.map((s) => (
+                    <div key={s.id} className="p-4 flex items-center justify-between hover:bg-yellow-50/50 transition-colors group">
+                      <div className="flex items-center gap-3">
+                        <span className="text-lg animate-pulse" title="Below Average Alert">⚠️</span>
+                        <div>
+                          <p className="text-xs font-black text-gray-800 uppercase tracking-tight">{s.fullName}</p>
+                          <p className="text-[9px] font-bold text-gray-400 uppercase tracking-widest">{s.ageGroup} Group</p>
                         </div>
                       </div>
-                    ))}
-                  </div>
-                ) : (
-                  <div className="flex flex-col items-center justify-center h-[200px] text-center p-6">
-                     <span className="text-4xl mb-2 opacity-30">✨</span>
-                     <p className="text-gray-300 font-black text-[10px] uppercase tracking-widest">
-                       All students are doing well! <br/>No significant gaps detected.
-                     </p>
-                  </div>
-                )}
-             </div>
+                      <div className="flex flex-col items-end">
+                        <span className={`text-sm font-black ${s.total === 0 ? 'text-red-500' : 'text-orange-400'}`}>
+                          {s.total} pts
+                        </span>
+                        <span className="text-[8px] font-bold text-gray-300 uppercase tracking-tighter">
+                          {studentStats.average > 0 ? Math.round((s.total / studentStats.average) * 100) : 0}% of Avg
+                        </span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="flex flex-col items-center justify-center h-[200px] text-center p-6">
+                  <span className="text-4xl mb-2 opacity-30">✨</span>
+                  <p className="text-gray-300 font-black text-[10px] uppercase tracking-widest">
+                    All students are doing well! <br />No significant gaps detected.
+                  </p>
+                </div>
+              )}
+            </div>
           </div>
 
         </div>

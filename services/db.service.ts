@@ -45,7 +45,7 @@ class DatabaseService {
       .from('students')
       .select('*')
       .order('full_name', { ascending: true });
-    
+
     if (error) throw new Error(formatError(error));
 
     return (data || []).map(s => ({
@@ -77,7 +77,7 @@ class DatabaseService {
       .select('*')
       .eq('id', id)
       .single();
-    
+
     if (error || !data) return null;
     return {
       id: data.id,
@@ -111,12 +111,15 @@ class DatabaseService {
       .ilike('access_key', cleanKey)
       .limit(1)
       .maybeSingle();
-    
+
     if (!data && !error) {
       const normalizedKey = cleanKey.replace(/[^A-Z0-9]/g, '');
       try {
         const rawResults = await this.runRawSql(
-          `SELECT * FROM students WHERE UPPER(REPLACE(REPLACE(access_key, '-', ''), ' ', '')) = '${normalizedKey}' LIMIT 1`
+          `SELECT * FROM students 
+           WHERE UPPER(REPLACE(REPLACE(access_key, '-', ''), ' ', '')) = '${normalizedKey}' 
+           OR UPPER(REPLACE(REPLACE(access_key, '-', ''), ' ', '')) = 'KK' || '${normalizedKey}'
+           LIMIT 1`
         );
         if (rawResults && rawResults.length > 0) data = rawResults[0];
       } catch (e) { console.warn(e); }
@@ -235,9 +238,9 @@ class DatabaseService {
       full_name: data.fullName,
       birthday: data.birthday || null,
       age_group: data.ageGroup,
-      guardian_name: data.guardian_name || null,
-      guardian_phone: data.guardian_phone || null,
-      photo_url: data.photo_url || null,
+      guardian_name: data.guardianName || null,
+      guardian_phone: data.guardianPhone || null,
+      photo_url: data.photoUrl || null,
       notes: data.notes || '',
       is_enrolled: false,
       consecutive_absences: 0,
@@ -293,15 +296,15 @@ class DatabaseService {
     const { data, error } = await supabase.from('attendance_sessions').select('*').order('check_in_time', { ascending: false });
     if (error) throw new Error(formatError(error));
     return (data || []).map(s => ({
-      id: s.id, 
-      studentId: s.student_id, 
-      sessionDate: s.session_date, 
-      checkInTime: s.check_in_time, 
-      checkOutTime: s.check_out_time, 
-      checkoutMode: s.checkout_mode, 
-      checkedInBy: s.checked_in_by, 
-      checkedOutBy: s.checked_out_by, 
-      status: s.status, 
+      id: s.id,
+      studentId: s.student_id,
+      sessionDate: s.session_date,
+      checkInTime: s.check_in_time,
+      checkOutTime: s.check_out_time,
+      checkoutMode: s.checkout_mode,
+      checkedInBy: s.checked_in_by,
+      checkedOutBy: s.checked_out_by,
+      status: s.status,
       createdAt: s.created_at
     }));
   }
@@ -311,10 +314,10 @@ class DatabaseService {
   // Fix: changed data.session_date to data.sessionDate to match Omit<AttendanceSession, 'id' | 'createdAt'>
   async addSession(data: Omit<AttendanceSession, 'id' | 'createdAt'>) {
     const { data: result, error } = await supabase.from('attendance_sessions').insert([{
-      student_id: data.studentId, 
-      session_date: data.sessionDate, 
-      check_in_time: data.checkInTime, 
-      checked_in_by: data.checkedInBy, 
+      student_id: data.studentId,
+      session_date: data.sessionDate,
+      check_in_time: data.checkInTime,
+      checked_in_by: data.checkedInBy,
       status: data.status
     }]).select().single();
     if (error) throw new Error(formatError(error));
@@ -357,7 +360,7 @@ class DatabaseService {
 
   async addPointEntry(data: Omit<PointLedger, 'id' | 'createdAt' | 'voided'>) {
     const { data: result, error } = await supabase.from('point_ledger').insert([{
-      student_id: data.studentId, entry_date: data.entryDate, category: data.category, points: data.points, notes: data.notes, recorded_by: data.recorded_by, voided: false
+      student_id: data.studentId, entry_date: data.entryDate, category: data.category, points: data.points, notes: data.notes, recorded_by: data.recordedBy, voided: false
     }]).select().single();
     if (error) throw new Error(formatError(error));
     return result;
@@ -386,11 +389,11 @@ class DatabaseService {
   async getSettings(): Promise<AppSettings> {
     const { data, error } = await supabase.from('app_settings').select('*').single();
     if (error) return { id: 'default', matchThreshold: 0.78, autoCheckoutTime: '13:00', allowDuplicatePoints: false };
-    return { 
-      id: data.id, 
-      matchThreshold: data.match_threshold, 
-      autoCheckoutTime: data.auto_checkout_time, 
-      allowDuplicatePoints: data.allow_duplicate_points 
+    return {
+      id: data.id,
+      matchThreshold: data.match_threshold,
+      autoCheckoutTime: data.auto_checkout_time,
+      allowDuplicatePoints: data.allow_duplicate_points
     };
   }
 
@@ -439,12 +442,12 @@ class DatabaseService {
       .from('teacher_assignments')
       .select('*')
       .order('activity_date', { ascending: true });
-    
+
     if (error) {
-       if (error.code === '42P01' || error.message?.includes('does not exist') || error.message?.includes('not find')) {
-          console.warn("Table teacher_assignments missing. Attempting auto-creation...");
-          try {
-             await this.runRawSql(`
+      if (error.code === '42P01' || error.message?.includes('does not exist') || error.message?.includes('not find')) {
+        console.warn("Table teacher_assignments missing. Attempting auto-creation...");
+        try {
+          await this.runRawSql(`
                 CREATE TABLE IF NOT EXISTS teacher_assignments (
                   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
                   activity_date date NOT NULL,
@@ -457,14 +460,14 @@ class DatabaseService {
                   created_at timestamptz DEFAULT now()
                 );
              `);
-             return [];
-          } catch (e) {
-             throw new Error("Table 'teacher_assignments' missing. Please run the fix script in SQL Terminal.");
-          }
-       }
-       throw new Error(formatError(error));
+          return [];
+        } catch (e) {
+          throw new Error("Table 'teacher_assignments' missing. Please run the fix script in SQL Terminal.");
+        }
+      }
+      throw new Error(formatError(error));
     }
-    
+
     return (data || []).map(r => ({
       id: r.id,
       activity_date: r.activity_date,
@@ -485,6 +488,33 @@ class DatabaseService {
     if (error) throw new Error(formatError(error));
   }
 
+  async addTeacherBoardEntry(data: Partial<TeacherAssignmentRecord>) {
+    const { data: result, error } = await supabase
+      .from('teacher_assignments')
+      .insert([{
+        activity_date: data.activity_date,
+        activity_type: data.activity_type,
+        age_group_3_6: data.age_group_3_6,
+        age_group_7_9: data.age_group_7_9,
+        teens: data.teens,
+        security: data.security,
+        facilitators: data.facilitators
+      }])
+      .select()
+      .single();
+
+    if (error) throw new Error(formatError(error));
+    return result;
+  }
+
+  async deleteTeacherBoardEntry(id: string) {
+    const { error } = await supabase
+      .from('teacher_assignments')
+      .delete()
+      .eq('id', id);
+    if (error) throw new Error(formatError(error));
+  }
+
   async getTodayAssignment(): Promise<{ activity_type: string } | null> {
     const today = new Date().toISOString().split('T')[0];
     const { data, error } = await supabase
@@ -492,7 +522,7 @@ class DatabaseService {
       .select('activity_type')
       .eq('activity_date', today)
       .maybeSingle();
-    
+
     if (error) return null;
     return data;
   }
@@ -505,60 +535,60 @@ class DatabaseService {
       .or(`access_key.eq.KK-TEACHER-${cleanName},full_name.ilike.${cleanName}`)
       .limit(1)
       .maybeSingle();
-    
+
     return data;
   }
 
   async recordTeacherAttendance(username: string, status: 'PRESENT' | 'ABSENT') {
     const cleanName = username.trim().toUpperCase();
     let teacher = await this.getTeacherProfile(cleanName);
-    
+
     if (!teacher) {
       const { data, error } = await supabase.from('students').insert([{
-         full_name: cleanName,
-         age_group: 'Adult',
-         access_key: `KK-TEACHER-${cleanName}`,
-         student_status: 'active',
-         current_role: 'TEACHER',
-         is_enrolled: true
+        full_name: cleanName,
+        age_group: 'Adult',
+        access_key: `KK-TEACHER-${cleanName}`,
+        student_status: 'active',
+        current_role: 'TEACHER',
+        is_enrolled: true
       }]).select().single();
-      
+
       if (error) throw new Error(formatError(error));
       teacher = data;
     }
 
     const today = new Date().toISOString().split('T')[0];
-    
+
     if (status === 'ABSENT') {
-        const { error } = await supabase
-           .from('attendance_sessions')
-           .delete()
-           .eq('student_id', teacher.id)
-           .eq('session_date', today);
-        
-        if (error) throw new Error(formatError(error));
-        return;
+      const { error } = await supabase
+        .from('attendance_sessions')
+        .delete()
+        .eq('student_id', teacher.id)
+        .eq('session_date', today);
+
+      if (error) throw new Error(formatError(error));
+      return;
     }
 
     const { data: existing } = await supabase
-       .from('attendance_sessions')
-       .select('*')
-       .eq('student_id', teacher.id)
-       .eq('session_date', today)
-       .maybeSingle();
+      .from('attendance_sessions')
+      .select('*')
+      .eq('student_id', teacher.id)
+      .eq('session_date', today)
+      .maybeSingle();
 
     if (existing) {
-       if (status === 'PRESENT') throw new Error("Teacher already checked in today.");
+      if (status === 'PRESENT') throw new Error("Teacher already checked in today.");
     }
 
     if (status === 'PRESENT') {
-        await this.addSession({
-          studentId: teacher.id,
-          sessionDate: today,
-          checkInTime: new Date().toISOString(),
-          checkedInBy: 'SYSTEM',
-          status: 'OPEN'
-        });
+      await this.addSession({
+        studentId: teacher.id,
+        sessionDate: today,
+        checkInTime: new Date().toISOString(),
+        checkedInBy: 'SYSTEM',
+        status: 'OPEN'
+      });
     }
   }
 }

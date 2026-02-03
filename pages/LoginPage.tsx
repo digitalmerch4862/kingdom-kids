@@ -21,7 +21,7 @@ interface LoginPageProps {
 const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
-  const [accessKey, setAccessKey] = useState('KK-');
+  const [accessKey, setAccessKey] = useState('');
   const [role, setRole] = useState<'TEACHER' | 'PARENTS'>('PARENTS');
   const [error, setError] = useState('');
   const [isVerifying, setIsVerifying] = useState(false);
@@ -55,11 +55,11 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
   const performAccessKeyLogin = async (key: string) => {
     // Normalization: Ensure key is clean and trimmed
     const cleanKey = key.trim().toUpperCase();
-    if (!cleanKey || cleanKey === 'KK-') return;
+    if (!cleanKey) return;
 
     setIsVerifying(true);
     setError('');
-    
+
     try {
       const student = await db.getStudentByNo(cleanKey);
       if (student) {
@@ -116,42 +116,24 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
   const handleAccessKeyChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (error) setError('');
     let val = e.target.value.toUpperCase();
-    
-    // Auto-masking: only apply if the input looks like a date pattern
-    const digitsOnly = val.replace(/[^0-9]/g, '');
-    
-    if (val.startsWith('KK-') && digitsOnly.length > 0) {
-      // It's likely a standard key, format it nicely
-      const raw = digitsOnly.substring(0, 10);
-      let formatted = 'KK-';
-      if (raw.length > 0) formatted += raw.substring(0, 8);
-      if (raw.length > 8) formatted += '-' + raw.substring(8);
-      
-      // Update state
-      setAccessKey(formatted);
-      
-      // Auto-trigger only on exactly 14 characters (the standard length)
-      if (formatted.length === 14) {
-        performAccessKeyLogin(formatted);
-      }
-    } else if (val === '' || val === 'K' || val === 'KK') {
-      setAccessKey('KK-');
-    } else {
-      // Allow free typing for non-standard or custom keys (e.g., KK-DEMO-01)
-      setAccessKey(val);
+    setAccessKey(val);
+
+    // Auto-trigger if it looks like a full key (optional, keeping it flexible)
+    if (val.length >= 10 && !val.includes(' ')) {
+      // Maybe check if it's a standard length if desired
     }
   };
 
   const handleParentLoginSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     audio.playClick();
-    
+
     const cleanInput = accessKey.trim();
-    if (!cleanInput || cleanInput === 'KK-') {
+    if (!cleanInput) {
       setError('PLEASE ENTER YOUR ACCESS KEY');
       return;
     }
-    
+
     performAccessKeyLogin(cleanInput);
   };
 
@@ -206,7 +188,7 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
     <div className="min-h-screen w-full flex items-center justify-center p-4 bg-[#fdf2f8] relative">
       {showSplash && (
         <div className={`fixed inset-0 z-[9999] bg-white flex flex-col items-center justify-center transition-opacity duration-500 ease-in-out ${isFading ? 'opacity-0' : 'opacity-100'}`}>
-          <h1 className="text-4xl md:text-6xl font-black text-pink-500 uppercase tracking-tighter mb-8 animate-in zoom-in duration-700">Kingdom Kids</h1>
+          <img src="/apple-touch-icon.png" alt="Kingdom Kids" className="w-64 md:w-80 mb-8 animate-in zoom-in duration-700 object-contain" />
           <div className="flex gap-2 items-center">
             <div className="w-2.5 h-2.5 bg-pink-500 rounded-full animate-bounce"></div>
             <div className="w-2.5 h-2.5 bg-pink-500 rounded-full animate-bounce [animation-delay:0.1s]"></div>
@@ -217,9 +199,9 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
 
       <div className="max-w-md w-full">
         <div className="bg-white p-10 rounded-[3rem] shadow-2xl shadow-pink-200/50 border border-pink-50 text-center animate-in fade-in zoom-in-95 duration-500">
-          <h2 className="text-3xl font-black text-pink-500 mb-2 uppercase tracking-tighter">Kingdom Kids</h2>
+          <img src="/apple-touch-icon.png" alt="Kingdom Kids" className="w-48 mx-auto mb-4 object-contain" />
           <p className="text-gray-400 font-bold uppercase tracking-widest text-[10px] mb-8">Access Portal</p>
-          
+
           <div className="flex bg-gray-50 p-1 rounded-2xl mb-8 border border-gray-100">
             <button type="button" className={`flex-1 py-3 rounded-xl text-xs font-black transition-all tracking-widest uppercase ${role === 'PARENTS' ? 'bg-pink-500 text-white shadow-lg' : 'text-gray-400 hover:text-pink-400'}`} onClick={() => setRole('PARENTS')}>Parents/Student</button>
             <button type="button" className={`flex-1 py-3 rounded-xl text-xs font-black transition-all tracking-widest uppercase ${role === 'TEACHER' ? 'bg-pink-500 text-white shadow-lg' : 'text-gray-400 hover:text-pink-400'}`} onClick={() => setRole('TEACHER')}>Teacher</button>
@@ -229,8 +211,8 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
             <form onSubmit={handleSubmit} className="space-y-5 text-left animate-in fade-in duration-300">
               <div className="space-y-1">
                 <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Username</label>
-                <input 
-                  type="text" 
+                <input
+                  type="text"
                   className="w-full px-6 py-4 bg-gray-50 border border-gray-100 rounded-2xl outline-none focus:ring-2 focus:ring-pink-300 transition-all uppercase font-bold text-gray-700 placeholder:text-gray-300"
                   value={username}
                   onChange={e => setUsername(e.target.value.toUpperCase())}
@@ -239,8 +221,8 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
               </div>
               <div className="space-y-1">
                 <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Password</label>
-                <input 
-                  type="password" 
+                <input
+                  type="password"
                   className="w-full px-6 py-4 bg-gray-50 border border-gray-100 rounded-2xl outline-none focus:ring-2 focus:ring-pink-300 transition-all font-bold text-gray-700"
                   value={password}
                   onChange={handlePasswordChange}
@@ -255,14 +237,14 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
               <form onSubmit={handleParentLoginSubmit} className="space-y-5 animate-in fade-in duration-300">
                 <div className="space-y-2">
                   <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest block text-center">Your Access Key</label>
-                  <input 
-                    type="text" 
-                    required 
-                    disabled={isVerifying} 
-                    className="w-full px-6 py-4 bg-gray-50 border border-gray-100 rounded-2xl outline-none focus:ring-2 focus:ring-pink-300 transition-all uppercase font-black text-gray-700 placeholder:text-gray-300 text-center tracking-[0.25em] text-lg disabled:opacity-50" 
-                    value={accessKey} 
-                    onChange={handleAccessKeyChange} 
-                    placeholder="KK-########-##" 
+                  <input
+                    type="text"
+                    required
+                    disabled={isVerifying}
+                    className="w-full px-6 py-4 bg-gray-50 border border-gray-100 rounded-2xl outline-none focus:ring-2 focus:ring-pink-300 transition-all uppercase font-black text-gray-700 placeholder:text-gray-300 text-center tracking-[0.25em] text-lg disabled:opacity-50"
+                    value={accessKey}
+                    onChange={handleAccessKeyChange}
+                    placeholder="########-##"
                   />
                   <p className="text-[9px] text-gray-300 font-bold uppercase tracking-widest text-center">{isVerifying ? 'VERIFYING KEY...' : 'ENTER YOUR UNIQUE ACCESS KEY'}</p>
                 </div>
@@ -271,9 +253,9 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
                     <p className="text-red-500 text-[9px] font-black uppercase tracking-widest text-center leading-relaxed">{error}</p>
                   </div>
                 )}
-                <button 
-                  type="submit" 
-                  disabled={isVerifying || accessKey.length < 5} 
+                <button
+                  type="submit"
+                  disabled={isVerifying || accessKey.length < 3}
                   className="w-full bg-pink-500 hover:bg-pink-600 text-white font-black py-5 rounded-2xl transition-all shadow-xl shadow-pink-100 uppercase tracking-widest text-xs mt-4 active:scale-[0.98] disabled:opacity-50 disabled:bg-gray-300 disabled:shadow-none"
                 >
                   {isVerifying ? 'CONNECTING...' : 'ENTER KINGDOM DASHBOARD'}

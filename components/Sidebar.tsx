@@ -129,13 +129,25 @@ const Sidebar: React.FC<SidebarProps> = ({ user, onLogout, isOpen, isDesktopOpen
   const isRad = user.username.toLowerCase() === 'rad';
   const isGuest = user.username.toUpperCase() === 'GUEST';
 
+  const hasFifthSunday = useMemo(() => {
+    const date = new Date();
+    const year = date.getFullYear();
+    const month = date.getMonth();
+    const daysInMonth = new Date(year, month + 1, 0).getDate();
+    let sundays = 0;
+    for (let d = 1; d <= daysInMonth; d++) {
+      if (new Date(year, month, d).getDay() === 0) sundays++;
+    }
+    return sundays === 5;
+  }, []);
+
   const teacherItems: SidebarItem[] = [
     { label: 'DASHBOARD', icon: LayoutDashboard, path: '/admin' },
     { label: "TEACHER'S BOARD", icon: Calendar, path: '/admin/teachers-board' },
     { label: 'FOLLOW-UP', icon: MessageSquare, path: '/admin/follow-up', badge: followUpCount > 0 ? followUpCount : null },
     { label: 'QR CHECK-IN', icon: Camera, path: '/admin/qr-scan' },
     { label: 'STUDENTS', icon: Users, path: '/admin/students' },
-    { label: user.role === 'TEACHER' ? 'MY CLASSROOM' : 'POINTS LEDGER', icon: Star, path: '/admin/points' },
+    { label: 'MY CLASSROOM', icon: Star, path: '/admin/points' },
     { label: 'FAIRNESS MONITOR', icon: Scale, path: '/admin/fairness' },
     { label: 'LEADERBOARD', icon: Trophy, path: '/leaderboard' },
     { label: 'FAITH PATHWAY', icon: BookOpen, path: '/admin/faith-pathway' },
@@ -173,20 +185,20 @@ const Sidebar: React.FC<SidebarProps> = ({ user, onLogout, isOpen, isDesktopOpen
         `}
       >
         <div className="p-6 pb-4 shrink-0 bg-white border-b border-gray-50/50">
-          <div className="flex items-center justify-between mb-8">
+          <div className="flex flex-col items-center mb-8 relative">
             <Link
               to={getHomePath()}
               onClick={() => { audio.playClick(); if (onClose) onClose(); }}
-              className="flex items-center gap-2 group"
+              className="flex flex-col items-center group"
             >
-              <div className="relative flex items-center gap-2">
-                <h1 className="text-2xl font-black text-pink-500 uppercase tracking-tighter transition-all group-hover:scale-105">
-                  Kingdom Kids
-                </h1>
-                <NetworkStatusDot />
+              <div className="relative">
+                <img src="/apple-touch-icon.png" alt="Kingdom Kids" className="h-32 w-auto transition-all group-hover:scale-105 object-contain" />
+                <div className="absolute -top-1 -right-1">
+                  <NetworkStatusDot />
+                </div>
               </div>
             </Link>
-            <button className="md:hidden text-gray-400 p-2 hover:bg-gray-50 rounded-lg" onClick={onClose}>
+            <button className="md:hidden absolute top-0 right-0 text-gray-400 p-2 hover:bg-gray-50 rounded-lg" onClick={onClose}>
               <X size={20} />
             </button>
           </div>
@@ -269,7 +281,11 @@ const Sidebar: React.FC<SidebarProps> = ({ user, onLogout, isOpen, isDesktopOpen
             </div>
             <button
               onMouseEnter={() => audio.playHover()}
-              onClick={() => { audio.playClick(); onLogout(); }}
+              onClick={() => {
+                audio.playClick();
+                onLogout();
+                navigate('/login');
+              }}
               className="w-full flex items-center gap-3 px-4 py-3 text-[9px] font-black text-gray-400 hover:text-pink-600 transition-colors uppercase tracking-widest group"
             >
               <LogOut className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
@@ -311,8 +327,8 @@ const Sidebar: React.FC<SidebarProps> = ({ user, onLogout, isOpen, isDesktopOpen
                     key={cat.name}
                     onClick={() => { audio.playClick(); setActiveCategory(cat.name); }}
                     className={`w-full flex items-center gap-3 px-6 py-3.5 text-left transition-all border-l-4 ${activeCategory === cat.name
-                        ? 'bg-pink-50 text-pink-600 border-pink-500'
-                        : 'text-gray-500 hover:bg-gray-50 border-transparent'
+                      ? 'bg-pink-50 text-pink-600 border-pink-500'
+                      : 'text-gray-500 hover:bg-gray-50 border-transparent'
                       }`}
                   >
                     <cat.icon size={18} className={activeCategory === cat.name ? 'text-pink-600' : 'text-gray-400'} />

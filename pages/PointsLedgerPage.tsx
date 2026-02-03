@@ -16,7 +16,16 @@ const PointsLedgerPage: React.FC<{ user: UserSession }> = ({ user }) => {
   const [assignedClass, setAssignedClass] = useState<{ name: string, students: Student[], date: string } | null>(null);
   const [dailyScores, setDailyScores] = useState<Record<string, number>>({});
   const [totalScores, setTotalScores] = useState<Record<string, number>>({});
-  const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
+  /* New State for 2-Step Workflow */
+  const [selectedAction, setSelectedAction] = useState<{ label: string, pts: number } | null>(null);
+
+  const ACTIONS = [
+    { label: 'ATTENDANCE', pts: 5 },
+    { label: 'WORKSHEET / ACTIVITIES', pts: 5 },
+    { label: 'MEMORY VERSE', pts: 10 },
+    { label: 'RECITATION', pts: 5 },
+    { label: 'PRESENTATION', pts: 20 },
+  ];
 
   const [loading, setLoading] = useState(true);
   const isAdmin = user.role === 'ADMIN';
@@ -129,30 +138,35 @@ const PointsLedgerPage: React.FC<{ user: UserSession }> = ({ user }) => {
     }
   };
 
-  const handleGivePoints = async (category: string, points: number) => {
-    if (!selectedStudent || !assignedClass) return;
+  /* Replaced handleGivePoints with handleQuickAward */
+  const handleQuickAward = async (student: Student) => {
+    if (!assignedClass) return;
+
+    if (!selectedAction) {
+      alert("Please select an action from the top bar first!");
+      return;
+    }
 
     // Check Daily Limit (50)
-    const currentDaily = dailyScores[selectedStudent.id] || 0;
-    if (currentDaily + points > 50) {
+    const currentDaily = dailyScores[student.id] || 0;
+    if (currentDaily + selectedAction.pts > 50) {
       alert(`Daily limit reached! Student has ${currentDaily}/50 points today.`);
       return;
     }
 
     try {
-      audio.playClick();
+      audio.playYehey(); // Play sound immediately for better feedback
       await db.addPointEntry({
-        studentId: selectedStudent.id,
+        studentId: student.id,
         entryDate: assignedClass.date,
-        category: category,
-        points: points,
+        category: selectedAction.label,
+        points: selectedAction.pts,
         notes: `Classroom Award: ${assignedClass.name}`,
         recordedBy: user.username
       });
 
-      audio.playYehey();
-      setSelectedStudent(null);
-      loadClassroom(); // Reload to update scores and sorting
+      // Optimistic Update or Reload
+      loadClassroom();
     } catch (err) {
       alert(formatError(err));
     }
@@ -184,6 +198,45 @@ const PointsLedgerPage: React.FC<{ user: UserSession }> = ({ user }) => {
 
     return (
       <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
+
+        {/* Sticky Action Bar */}
+        <div className="sticky top-0 z-20 bg-white/95 backdrop-blur-md py-4 mb-6 border-b border-pink-50 -mx-4 px-4 md:px-0">
+          <div className="flex items-center gap-2 overflow-x-auto pb-2 md:pb-0 custom-scrollbar">
+            <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest mr-2 shrink-0">I-STAR POINTS:</span>
+            {ACTIONS.map(action => (
+              <button
+                key={action.label}
+                onClick={() => {
+                  audio.playClick();
+                  setSelectedAction(prev => prev?.label === action.label ? null : action);
+                }}
+                className={`
+                       relative px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all shrink-0 border
+                       ${selectedAction?.label === action.label
+                    ? 'bg-pink-500 text-white border-pink-500 shadow-lg shadow-pink-200 scale-105'
+                    : 'bg-white text-gray-500 border-gray-100 hover:bg-gray-50 hover:border-pink-200'}
+                    `}
+              >
+                {action.label} <span className="opacity-60 ml-1">+{action.pts}</span>
+                {selectedAction?.label === action.label && (
+                  <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-1 h-1 bg-white rounded-full"></div>
+                )}
+              </button>
+            ))}
+          </div>
+          {selectedAction ? (
+            <div className="text-center mt-2 animate-in fade-in slide-in-from-top-1">
+              <p className="text-[10px] font-bold text-pink-500 uppercase tracking-widest">
+                Select a student below to award <span className="font-black">{selectedAction.pts} points</span> for {selectedAction.label}
+              </p>
+            </div>
+          ) : (
+            <div className="text-center mt-2">
+              <p className="text-[10px] font-bold text-gray-300 uppercase tracking-widest">Select an activity above first</p>
+            </div>
+          )}
+        </div>
+
         <div className="flex items-center gap-4 mb-8">
           <div className="w-16 h-16 bg-pink-500 rounded-2xl flex items-center justify-center text-white shadow-lg shadow-pink-200">
             <Users size={32} />
@@ -202,8 +255,12 @@ const PointsLedgerPage: React.FC<{ user: UserSession }> = ({ user }) => {
             return (
               <button
                 key={student.id}
-                onClick={() => { setSelectedStudent(student); audio.playClick(); }}
-                className="bg-white p-6 rounded-[2rem] border border-pink-50 shadow-sm hover:shadow-xl hover:scale-105 hover:border-pink-200 transition-all group flex flex-col items-center text-center relative overflow-hidden"
+                onClick={() => handleQuickAward(student)}
+                disabled={!selectedAction}
+                className={`
+                  bg-white p-6 rounded-[2rem] border shadow-sm transition-all group flex flex-col items-center text-center relative overflow-hidden
+                  ${!selectedAction ? 'opacity-70 grayscale cursor-not-allowed border-gray-100' : 'hover:shadow-xl hover:scale-105 border-pink-50 hover:border-pink-200 cursor-pointer'}
+                `}
               >
                 <div className="absolute top-3 right-3 text-[10px] font-black text-gray-300 group-hover:text-pink-400">
                   #{index + 1}
@@ -417,38 +474,7 @@ const PointsLedgerPage: React.FC<{ user: UserSession }> = ({ user }) => {
         </>
       )}
 
-      {/* Give Points Modal */}
-      {selectedStudent && (
-        <div className="fixed inset-0 z[100] bg-black/40 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-white rounded-[2.5rem] shadow-2xl w-full max-w-sm overflow-hidden animate-in fade-in zoom-in-95 duration-200">
-            <div className="bg-pink-500 p-8 text-center relative">
-              <button onClick={() => setSelectedStudent(null)} className="absolute top-6 right-6 text-white/50 hover:text-white text-2xl font-black">&times;</button>
-              <h3 className="text-xl font-black text-white uppercase tracking-tighter">Award Points</h3>
-              <p className="text-pink-100 font-bold uppercase text-xs mt-1">{selectedStudent.fullName}</p>
-            </div>
-            <div className="p-6 grid grid-cols-2 gap-3">
-              {[
-                { label: 'Attendance', pts: 5 },
-                { label: 'Worksheet', pts: 5 },
-                { label: 'Activity', pts: 5 }, // "Activities" in prompt
-                { label: 'Recitation', pts: 5 },
-                { label: 'Memory Verse', pts: 10 },
-                { label: 'Presentation', pts: 20 },
-              ].map(action => (
-                <button
-                  key={action.label}
-                  onClick={() => handleGivePoints(action.label.toUpperCase(), action.pts)}
-                  className="p-4 bg-gray-50 border border-gray-100 rounded-2xl hover:bg-pink-50 hover:border-pink-200 hover:text-pink-500 transition-all group flex flex-col items-center gap-1 active:scale-95"
-                >
-                  <span className="text-2xl block group-hover:scale-110 transition-transform">⭐</span>
-                  <span className="text-[10px] font-black uppercase tracking-widest">{action.label}</span>
-                  <span className="text-xs font-black text-gray-400 group-hover:text-pink-400">+{action.pts}</span>
-                </button>
-              ))}
-            </div>
-          </div>
-        </div>
-      )}
+
 
     </div>
   );

@@ -47,7 +47,7 @@ const AdminDashboard: React.FC<{ activity: ActivitySchedule | null }> = ({ activ
   const [classrooms, setClassrooms] = useState<any[]>([]);
   const [birthdays, setBirthdays] = useState<Student[]>([]);
   const [error, setError] = useState('');
-  
+
   const [showManualModal, setShowManualModal] = useState(false);
   const [manualSearch, setManualSearch] = useState('');
   const [allStudents, setAllStudents] = useState<Student[]>([]);
@@ -94,10 +94,10 @@ const AdminDashboard: React.FC<{ activity: ActivitySchedule | null }> = ({ activ
       const ledger = await db.getPointsLedger();
       const todayDate = new Date();
       const todayStr = todayDate.toISOString().split('T')[0];
-      
+
       const currentSessions = sessions.filter(s => s.sessionDate === todayStr && s.status === 'OPEN');
       const todayPoints = ledger.filter(l => l.entryDate === todayStr && !l.voided).reduce((sum, curr) => sum + curr.points, 0);
-      
+
       const actualRate = students.length > 0 ? Math.round((currentSessions.length / students.length) * 100) : 0;
 
       const sessionsWithDetails = currentSessions.map(sess => ({
@@ -124,8 +124,8 @@ const AdminDashboard: React.FC<{ activity: ActivitySchedule | null }> = ({ activ
         const weekSessions = sessions.filter(s => s.sessionDate === dateStr);
         const uniquePresent = new Set(weekSessions.map(s => s.studentId)).size;
         const weekPoints = ledger.filter(l => l.entryDate === dateStr && !l.voided)
-                                .reduce((sum, curr) => sum + curr.points, 0);
-        
+          .reduce((sum, curr) => sum + curr.points, 0);
+
         const weekRate = students.length > 0 ? Math.round((uniquePresent / students.length) * 100) : 0;
 
         return {
@@ -148,7 +148,7 @@ const AdminDashboard: React.FC<{ activity: ActivitySchedule | null }> = ({ activ
       });
       setActiveSessions(sessionsWithDetails);
       setBirthdays(bdays);
-      
+
       const classroomStats = await MinistryService.getClassroomStats();
       setClassrooms(classroomStats);
       setAllStudents(students);
@@ -194,7 +194,7 @@ const AdminDashboard: React.FC<{ activity: ActivitySchedule | null }> = ({ activ
           <p className="opacity-90 font-medium uppercase tracking-widest text-xs mt-1">
             {now.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}
           </p>
-          
+
           {activity && (
             <div className="mt-6 bg-white/20 p-4 rounded-2xl border border-white/20 backdrop-blur-md inline-block">
               <span className="text-[10px] uppercase font-black tracking-widest opacity-75 block mb-1">Current Activity</span>
@@ -203,6 +203,29 @@ const AdminDashboard: React.FC<{ activity: ActivitySchedule | null }> = ({ activ
           )}
         </div>
         <div className="absolute top-0 right-0 p-10 opacity-10 font-black text-9xl italic select-none">KINGDOMKIDS</div>
+      </div>
+
+      {/* Quick Actions Row */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        {[
+          { label: 'Check-In', path: '/admin/qr-scan', icon: '📸' },
+          { label: 'Register', path: '/admin/students', icon: '👤' },
+          { label: 'Points', path: '/admin/points', icon: '⭐' },
+          { label: 'Manual', onClick: () => { audio.playClick(); setShowManualModal(true); }, icon: '⌨️' }
+        ].map((a, i) => (
+          <button
+            key={i}
+            onClick={() => a.onClick ? a.onClick() : navigate(a.path!)}
+            className="flex items-center gap-4 bg-white p-4 rounded-[1.5rem] border border-pink-50 shadow-sm hover:bg-pink-50 hover:border-pink-100 transition-all group"
+          >
+            <div className="w-12 h-12 bg-gray-50 rounded-xl flex items-center justify-center text-2xl group-hover:scale-110 transition-transform shadow-inner">
+              {a.icon}
+            </div>
+            <div className="text-left">
+              <span className="text-xs font-black text-gray-800 uppercase group-hover:text-pink-600">{a.label}</span>
+            </div>
+          </button>
+        ))}
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
@@ -229,14 +252,14 @@ const AdminDashboard: React.FC<{ activity: ActivitySchedule | null }> = ({ activ
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               {classrooms.map((c, i) => (
                 <div key={i} className="bg-gray-50 p-6 rounded-[2rem] border border-gray-100 group hover:border-pink-200 transition-all cursor-pointer" onClick={() => navigate(`/classrooms/${c.group}`)}>
-                   <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2">{c.group} Years</p>
-                   <div className="flex items-end justify-between">
-                     <p className="text-2xl font-black text-gray-800">{c.present}</p>
-                     <p className="text-[10px] font-bold text-gray-400">OF {c.total}</p>
-                   </div>
-                   <div className="mt-4 h-1.5 w-full bg-gray-200 rounded-full overflow-hidden">
-                     <div className="h-full bg-pink-500" style={{ width: `${(c.present / (c.total || 1)) * 100}%` }}></div>
-                   </div>
+                  <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2">{c.group} Years</p>
+                  <div className="flex items-end justify-between">
+                    <p className="text-2xl font-black text-gray-800">{c.present}</p>
+                    <p className="text-[10px] font-bold text-gray-400">OF {c.total}</p>
+                  </div>
+                  <div className="mt-4 h-1.5 w-full bg-gray-200 rounded-full overflow-hidden">
+                    <div className="h-full bg-pink-500" style={{ width: `${(c.present / (c.total || 1)) * 100}%` }}></div>
+                  </div>
                 </div>
               ))}
             </div>
@@ -275,30 +298,10 @@ const AdminDashboard: React.FC<{ activity: ActivitySchedule | null }> = ({ activ
         </div>
 
         <div className="space-y-6">
-          <div className="bg-white p-8 rounded-[2.5rem] border border-pink-50 shadow-sm">
-            <h3 className="font-black text-gray-800 uppercase tracking-widest text-sm mb-6">Quick Actions</h3>
-            <div className="grid grid-cols-2 gap-3">
-               {[
-                 { label: 'Check-In', path: '/admin/qr-scan', icon: '📸' },
-                 { label: 'Register', path: '/admin/students', icon: '👤' },
-                 { label: 'Points', path: '/admin/points', icon: '⭐' },
-                 { label: 'Manual', onClick: () => { audio.playClick(); setShowManualModal(true); }, icon: '⌨️' }
-               ].map((a, i) => (
-                 <button 
-                  key={i}
-                  onClick={() => a.onClick ? a.onClick() : navigate(a.path!)}
-                  className="p-4 bg-gray-50 rounded-2xl border border-gray-100 flex flex-col items-center gap-2 hover:bg-pink-50 hover:border-pink-100 transition-all group"
-                 >
-                   <span className="text-2xl group-hover:scale-110 transition-transform">{a.icon}</span>
-                   <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest group-hover:text-pink-600">{a.label}</span>
-                 </button>
-               ))}
-            </div>
-          </div>
 
           <div className="bg-pink-50 p-8 rounded-[2.5rem] border border-pink-100 shadow-sm">
             <h3 className="font-black text-pink-600 uppercase tracking-widest text-sm mb-6 flex items-center gap-2">
-               🎂 Birthdays <span className="text-[10px] bg-white px-2 py-0.5 rounded-full">{birthdays.length}</span>
+              🎂 Birthdays <span className="text-[10px] bg-white px-2 py-0.5 rounded-full">{birthdays.length}</span>
             </h3>
             <div className="space-y-3">
               {birthdays.map((s) => (
@@ -334,42 +337,42 @@ const AdminDashboard: React.FC<{ activity: ActivitySchedule | null }> = ({ activ
               <button onClick={() => setShowManualModal(false)} className="absolute top-8 right-8 text-white/50 hover:text-white transition-colors text-2xl">&times;</button>
             </div>
             <div className="p-8 space-y-6">
-               <div className="relative">
-                 <input 
-                  type="text" 
+              <div className="relative">
+                <input
+                  type="text"
                   autoFocus
-                  placeholder="SEARCH NAME OR KEY..." 
+                  placeholder="SEARCH NAME OR KEY..."
                   className="w-full px-6 py-4 bg-gray-50 border border-gray-100 rounded-2xl outline-none focus:ring-2 focus:ring-pink-300 font-bold text-gray-700 uppercase"
                   value={manualSearch}
                   onChange={(e) => setManualSearch(e.target.value)}
-                 />
-               </div>
-               <div className="space-y-2 max-h-[300px] overflow-y-auto custom-scrollbar pr-2">
-                 {filteredManualStudents.map(s => (
-                   <div key={s.id} className="flex items-center justify-between p-4 bg-gray-50 rounded-2xl border border-gray-100 hover:border-pink-200 transition-all">
-                      <div className="flex-1 min-w-0 pr-4">
-                        <p className="text-xs font-black text-gray-800 uppercase tracking-tight truncate">{s.fullName}</p>
-                        <p className="text-[9px] font-bold text-gray-400 uppercase tracking-widest">{s.accessKey}</p>
-                      </div>
-                      <button 
-                        onClick={() => handleManualCheckIn(s.id)}
-                        disabled={isCheckingIn === s.id}
-                        className="bg-pink-500 text-white px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest shadow-lg shadow-pink-100 disabled:opacity-50 flex items-center gap-2"
-                      >
-                        {isCheckingIn === s.id ? <Loader2 className="animate-spin" size={12} /> : 'IN'}
-                      </button>
-                   </div>
-                 ))}
-                 {manualSearch.length > 0 && filteredManualStudents.length === 0 && (
-                   <div className="py-8 text-center text-gray-300 font-black uppercase text-[10px]">No results found</div>
-                 )}
-                 {manualSearch.length === 0 && (
-                   <div className="flex flex-col items-center gap-2 py-8 opacity-40">
-                      <Search size={32} className="text-gray-300" />
-                      <p className="text-center text-[9px] text-gray-400 font-bold uppercase">Type to search for students</p>
-                   </div>
-                 )}
-               </div>
+                />
+              </div>
+              <div className="space-y-2 max-h-[300px] overflow-y-auto custom-scrollbar pr-2">
+                {filteredManualStudents.map(s => (
+                  <div key={s.id} className="flex items-center justify-between p-4 bg-gray-50 rounded-2xl border border-gray-100 hover:border-pink-200 transition-all">
+                    <div className="flex-1 min-w-0 pr-4">
+                      <p className="text-xs font-black text-gray-800 uppercase tracking-tight truncate">{s.fullName}</p>
+                      <p className="text-[9px] font-bold text-gray-400 uppercase tracking-widest">{s.accessKey}</p>
+                    </div>
+                    <button
+                      onClick={() => handleManualCheckIn(s.id)}
+                      disabled={isCheckingIn === s.id}
+                      className="bg-pink-500 text-white px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest shadow-lg shadow-pink-100 disabled:opacity-50 flex items-center gap-2"
+                    >
+                      {isCheckingIn === s.id ? <Loader2 className="animate-spin" size={12} /> : 'IN'}
+                    </button>
+                  </div>
+                ))}
+                {manualSearch.length > 0 && filteredManualStudents.length === 0 && (
+                  <div className="py-8 text-center text-gray-300 font-black uppercase text-[10px]">No results found</div>
+                )}
+                {manualSearch.length === 0 && (
+                  <div className="flex flex-col items-center gap-2 py-8 opacity-40">
+                    <Search size={32} className="text-gray-300" />
+                    <p className="text-center text-[9px] text-gray-400 font-bold uppercase">Type to search for students</p>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         </div>
@@ -377,9 +380,9 @@ const AdminDashboard: React.FC<{ activity: ActivitySchedule | null }> = ({ activ
 
       {showManualEntryModal && (
         <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-[110] flex items-center justify-center p-4">
-          <ManualEntryForm 
-            initialType={manualEntryType} 
-            onClose={closeManualEntry} 
+          <ManualEntryForm
+            initialType={manualEntryType}
+            onClose={closeManualEntry}
             onSuccess={loadDashboard}
           />
         </div>
