@@ -3,7 +3,7 @@ import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { db, formatError } from '../services/db.service';
 import { Student, AgeGroup, UserSession } from '../types';
 import { audio } from '../services/audio.service';
-import { Wrench, Loader2 } from 'lucide-react';
+import { Wrench, Loader2, Edit2 } from 'lucide-react';
 
 const StudentsPage: React.FC<{ user: UserSession }> = ({ user }) => {
   const [students, setStudents] = useState<Student[]>([]);
@@ -14,7 +14,8 @@ const StudentsPage: React.FC<{ user: UserSession }> = ({ user }) => {
   const isSavingRef = useRef(false);
   const [errorMsg, setErrorMsg] = useState('');
   const [isRepairing, setIsRepairing] = useState(false);
-  
+  const [editingAccessKey, setEditingAccessKey] = useState<string | null>(null);
+
   const [formData, setFormData] = useState({
     fullName: '',
     birthday: '',
@@ -64,8 +65,8 @@ const StudentsPage: React.FC<{ user: UserSession }> = ({ user }) => {
   };
 
   const filteredStudents = useMemo(() => {
-    return students.filter(s => 
-      (s.fullName || "").toLowerCase().includes(search.toLowerCase()) || 
+    return students.filter(s =>
+      (s.fullName || "").toLowerCase().includes(search.toLowerCase()) ||
       (s.guardianName || "").toLowerCase().includes(search.toLowerCase()) ||
       (s.accessKey || "").toLowerCase().includes(search.toLowerCase())
     );
@@ -73,7 +74,7 @@ const StudentsPage: React.FC<{ user: UserSession }> = ({ user }) => {
 
   const ageData = useMemo(() => {
     if (!formData.birthday) return { age: 0, group: null, error: '' };
-    
+
     const yearParts = formData.birthday.split('-');
     if (yearParts[0].length !== 4) {
       return { age: 0, group: null, error: 'Year must be exactly 4 digits (YYYY).' };
@@ -81,7 +82,7 @@ const StudentsPage: React.FC<{ user: UserSession }> = ({ user }) => {
 
     const birthDate = new Date(formData.birthday);
     if (isNaN(birthDate.getTime())) return { age: 0, group: null, error: 'Invalid Date.' };
-    
+
     const today = new Date();
     let age = today.getFullYear() - birthDate.getFullYear();
     const m = today.getMonth() - birthDate.getMonth();
@@ -128,7 +129,7 @@ const StudentsPage: React.FC<{ user: UserSession }> = ({ user }) => {
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
     if (isSaving || isSavingRef.current) return;
-    
+
     setIsSaving(true);
     isSavingRef.current = true;
     setErrorMsg('');
@@ -226,7 +227,7 @@ const StudentsPage: React.FC<{ user: UserSession }> = ({ user }) => {
     audio.playClick();
     try {
       const canvas = document.createElement('canvas');
-      canvas.width = 626; 
+      canvas.width = 626;
       canvas.height = 626;
       const ctx = canvas.getContext('2d');
       if (!ctx) return alert("Canvas not supported");
@@ -237,7 +238,7 @@ const StudentsPage: React.FC<{ user: UserSession }> = ({ user }) => {
       const img = new Image();
       img.crossOrigin = "Anonymous";
       img.src = `https://api.qrserver.com/v1/create-qr-code/?size=450x450&data=${student.accessKey}&format=png`;
-      
+
       await new Promise((resolve, reject) => {
         img.onload = resolve;
         img.onerror = reject;
@@ -248,7 +249,7 @@ const StudentsPage: React.FC<{ user: UserSession }> = ({ user }) => {
       const nickname = (student.fullName || 'STUDENT').split(' ')[0].toUpperCase();
       let fontSize = 60;
       ctx.font = `900 ${fontSize}px Inter, sans-serif`;
-      
+
       while (ctx.measureText(nickname).width > 550 && fontSize > 20) {
         fontSize -= 5;
         ctx.font = `900 ${fontSize}px Inter, sans-serif`;
@@ -314,9 +315,9 @@ const StudentsPage: React.FC<{ user: UserSession }> = ({ user }) => {
         <div className="flex flex-wrap gap-4">
           <div className="relative">
             <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400">🔍</span>
-            <input 
-              type="text" 
-              placeholder="NAME OR ACCESS KEY..." 
+            <input
+              type="text"
+              placeholder="NAME OR ACCESS KEY..."
               className="pl-12 pr-6 py-3.5 bg-white border border-pink-50 rounded-[1.25rem] outline-none focus:ring-2 focus:ring-pink-200 text-[12px] font-black tracking-tight uppercase w-64 shadow-sm"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
@@ -324,13 +325,13 @@ const StudentsPage: React.FC<{ user: UserSession }> = ({ user }) => {
           </div>
           {isTeacherOrAdmin && (
             <div className="flex gap-2">
-              <button 
+              <button
                 onClick={downloadAccessKeysCsv}
                 className="bg-white text-pink-500 border border-pink-100 px-6 py-3.5 rounded-[1.25rem] font-black transition-all shadow-sm hover:bg-pink-50 uppercase tracking-widest text-[10px] flex items-center gap-2"
               >
                 📥 Download List
               </button>
-              <button 
+              <button
                 onClick={() => { resetForm(); setShowAddModal(true); audio.playClick(); }}
                 className="bg-pink-500 text-white px-8 py-3.5 rounded-[1.25rem] font-black transition-all shadow-xl shadow-pink-100 uppercase tracking-widest text-[12px]"
               >
@@ -350,7 +351,7 @@ const StudentsPage: React.FC<{ user: UserSession }> = ({ user }) => {
             )}
           </div>
           {errorMsg.includes('consecutive_absences') && (
-            <button 
+            <button
               onClick={handleRepairDatabase}
               disabled={isRepairing}
               className="bg-red-600 text-white px-8 py-3 rounded-2xl font-black uppercase tracking-widest text-[10px] shadow-xl shadow-red-200 hover:bg-red-700 transition-all flex items-center gap-2 disabled:opacity-50"
@@ -367,7 +368,7 @@ const StudentsPage: React.FC<{ user: UserSession }> = ({ user }) => {
           <div key={s.id} className="bg-white p-7 rounded-[2.5rem] border border-pink-50 shadow-sm hover:shadow-xl hover:shadow-pink-100/30 transition-all group relative overflow-hidden">
             {isTeacherOrAdmin && (
               <div className="absolute top-6 right-6 flex gap-2 z-10">
-                <button 
+                <button
                   onClick={() => handleEditClick(s)}
                   className="w-12 h-12 bg-white border border-pink-100 text-pink-500 rounded-2xl flex items-center justify-center hover:bg-pink-500 hover:text-white transition-all shadow-md text-xl"
                   title="View Profile"
@@ -375,7 +376,7 @@ const StudentsPage: React.FC<{ user: UserSession }> = ({ user }) => {
                   👤
                 </button>
                 {isAdmin && (
-                  <button 
+                  <button
                     onClick={(e) => { e.preventDefault(); handleDelete(s.id); }}
                     className="w-12 h-12 bg-white border border-red-100 text-red-500 rounded-2xl flex items-center justify-center hover:bg-red-500 hover:text-white transition-all shadow-md text-xl"
                     title="Delete Student"
@@ -387,21 +388,54 @@ const StudentsPage: React.FC<{ user: UserSession }> = ({ user }) => {
             )}
 
             <div className="flex justify-between items-start mb-6">
-              <div className="text-left">
+              <div className="text-left w-full">
                 <p className="text-[10px] font-black text-pink-500 uppercase tracking-widest leading-none mb-1">Access Key</p>
-                <p className="text-xs font-black text-gray-800 uppercase tracking-tight">{s.accessKey || '---'}</p>
+                {editingAccessKey === s.id ? (
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="text"
+                      autoFocus
+                      className="w-full bg-pink-50 border border-pink-200 rounded px-2 py-1 text-xs font-black text-gray-800 uppercase"
+                      defaultValue={s.accessKey}
+                      onBlur={() => setEditingAccessKey(null)}
+                      onKeyDown={async (e) => {
+                        if (e.key === 'Enter') {
+                          const val = e.currentTarget.value.trim().toUpperCase();
+                          if (val) {
+                            await db.updateStudent(s.id, { accessKey: val });
+                            loadStudents();
+                            setEditingAccessKey(null);
+                          }
+                        }
+                        if (e.key === 'Escape') setEditingAccessKey(null);
+                      }}
+                    />
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-2 group/key">
+                    <p className="text-xs font-black text-gray-800 uppercase tracking-tight">{s.accessKey || '---'}</p>
+                    {isAdmin && (
+                      <button
+                        onClick={() => setEditingAccessKey(s.id)}
+                        className="opacity-0 group-hover/key:opacity-100 transition-opacity text-gray-400 hover:text-pink-500"
+                      >
+                        <Edit2 size={12} />
+                      </button>
+                    )}
+                  </div>
+                )}
               </div>
             </div>
-            
+
             <h3 className="text-[18px] font-black text-gray-800 uppercase tracking-tighter mb-1 truncate">{s.fullName}</h3>
             <span className="inline-block px-3 py-1 bg-gray-50 text-gray-400 rounded-lg text-[12px] font-black uppercase tracking-widest mb-6 border border-gray-100/50">{s.ageGroup} Group</span>
-            
-            <button 
-               onClick={() => generateAndDownloadBadge(s)}
-               className="flex items-center justify-center gap-2 p-4 bg-pink-500 text-white rounded-[1.25rem] shadow-lg shadow-pink-100 mb-6 w-full hover:bg-pink-600 transition-all font-black uppercase tracking-widest text-[10px] active:scale-95"
+
+            <button
+              onClick={() => generateAndDownloadBadge(s)}
+              className="flex items-center justify-center gap-2 p-4 bg-pink-500 text-white rounded-[1.25rem] shadow-lg shadow-pink-100 mb-6 w-full hover:bg-pink-600 transition-all font-black uppercase tracking-widest text-[10px] active:scale-95"
             >
-               <span className="text-lg">🪪</span>
-               <span>DL ID Badge</span>
+              <span className="text-lg">🪪</span>
+              <span>DL ID Badge</span>
             </button>
 
             <div className="space-y-4 pt-5 border-t border-pink-50/50">
@@ -418,14 +452,14 @@ const StudentsPage: React.FC<{ user: UserSession }> = ({ user }) => {
             <div className="mt-8 flex gap-3">
               {isTeacherOrAdmin && (
                 <>
-                  <a 
-                    href={s.guardianPhone ? `tel:${s.guardianPhone}` : '#'} 
+                  <a
+                    href={s.guardianPhone ? `tel:${s.guardianPhone}` : '#'}
                     className={`flex-1 h-14 bg-pink-50 hover:bg-pink-100 text-pink-500 rounded-[1.25rem] flex items-center justify-center transition-all font-black text-xs uppercase tracking-widest gap-2 ${!s.guardianPhone ? 'opacity-30 cursor-not-allowed' : ''}`}
                   >
                     <span>📞</span> Call
                   </a>
-                  <a 
-                    href={s.guardianPhone ? `sms:${s.guardianPhone}` : '#'} 
+                  <a
+                    href={s.guardianPhone ? `sms:${s.guardianPhone}` : '#'}
                     className={`flex-1 h-14 bg-pink-500 hover:bg-pink-600 text-white rounded-[1.25rem] flex items-center justify-center transition-all shadow-lg shadow-pink-100 font-black text-xs uppercase tracking-widest gap-2 ${!s.guardianPhone ? 'opacity-30 cursor-not-allowed' : ''}`}
                   >
                     <span>📩</span> SMS
@@ -453,12 +487,12 @@ const StudentsPage: React.FC<{ user: UserSession }> = ({ user }) => {
               </p>
               <button onClick={() => { setShowAddModal(false); audio.playClick(); }} className="absolute top-10 right-10 text-white/50 hover:text-white transition-colors text-3xl font-black leading-none">&times;</button>
             </div>
-            
+
             <form onSubmit={handleSave} className="p-10 space-y-6 max-h-[70vh] overflow-y-auto custom-scrollbar">
               <div className="space-y-1">
                 <label className="text-[12px] font-black text-gray-400 uppercase tracking-widest ml-1">Nickname</label>
-                <input 
-                  type="text" 
+                <input
+                  type="text"
                   required
                   placeholder="ENTER NICKNAME"
                   className="w-full px-6 py-4 bg-gray-50 border border-gray-100 rounded-2xl outline-none focus:ring-2 focus:ring-pink-300 transition-all uppercase font-bold text-gray-700 text-[12px]"
@@ -470,8 +504,8 @@ const StudentsPage: React.FC<{ user: UserSession }> = ({ user }) => {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-1">
                   <label className="text-[12px] font-black text-gray-400 uppercase tracking-widest ml-1">Birthday</label>
-                  <input 
-                    type="date" 
+                  <input
+                    type="date"
                     required
                     max="9999-12-31"
                     className={`w-full px-6 py-4 bg-gray-50 border rounded-2xl outline-none focus:ring-2 focus:ring-pink-300 transition-all font-bold text-gray-700 text-[12px] ${ageData.error ? 'border-red-300' : 'border-gray-100'}`}
@@ -490,8 +524,8 @@ const StudentsPage: React.FC<{ user: UserSession }> = ({ user }) => {
 
               <div className="space-y-1">
                 <label className="text-[12px] font-black text-gray-400 uppercase tracking-widest ml-1">Guardian Nickname (Optional)</label>
-                <input 
-                  type="text" 
+                <input
+                  type="text"
                   placeholder="GUARDIAN NICKNAME"
                   className="w-full px-6 py-4 bg-gray-50 border border-gray-100 rounded-2xl outline-none focus:ring-2 focus:ring-pink-300 transition-all uppercase font-bold text-gray-700 text-[12px]"
                   value={formData.guardianName}
@@ -501,8 +535,8 @@ const StudentsPage: React.FC<{ user: UserSession }> = ({ user }) => {
 
               <div className="space-y-1">
                 <label className="text-[12px] font-black text-gray-400 uppercase tracking-widest ml-1">Contact No. (Optional)</label>
-                <input 
-                  type="tel" 
+                <input
+                  type="tel"
                   maxLength={11}
                   placeholder="09XXXXXXXXX"
                   className="w-full px-6 py-4 bg-gray-50 border border-gray-100 rounded-2xl outline-none focus:ring-2 focus:ring-pink-300 transition-all font-bold text-gray-700 text-[12px]"
@@ -512,7 +546,7 @@ const StudentsPage: React.FC<{ user: UserSession }> = ({ user }) => {
               </div>
 
               <div className="pt-6 flex gap-4">
-                <button 
+                <button
                   type="button"
                   disabled={isSaving}
                   onClick={() => { setShowAddModal(false); audio.playClick(); }}
@@ -520,7 +554,7 @@ const StudentsPage: React.FC<{ user: UserSession }> = ({ user }) => {
                 >
                   Cancel
                 </button>
-                <button 
+                <button
                   type="submit"
                   disabled={isSaving || !!ageData.error}
                   className="flex-1 py-5 bg-pink-500 hover:bg-pink-600 text-white font-black rounded-2xl shadow-xl shadow-pink-100 transition-all uppercase tracking-widest text-[12px] disabled:opacity-50"

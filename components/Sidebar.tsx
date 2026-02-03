@@ -5,15 +5,15 @@ import { UserSession, Student } from '../types';
 import { audio } from '../services/audio.service';
 import { db } from '../services/db.service';
 import NetworkStatusDot from './NetworkStatusDot';
-import { 
-  LayoutDashboard, 
+import {
+  LayoutDashboard,
   BookOpen,
-  Camera, 
-  Users, 
-  Star, 
-  Scale, 
-  Trophy, 
-  LogOut, 
+  Camera,
+  Users,
+  Star,
+  Scale,
+  Trophy,
+  LogOut,
   X,
   MessageSquare,
   Settings,
@@ -104,10 +104,10 @@ const Sidebar: React.FC<SidebarProps> = ({ user, onLogout, isOpen, isDesktopOpen
   // Search Results Filtering
   const results = useMemo(() => {
     if (!searchQuery.trim()) return [];
-    
+
     const query = searchQuery.toLowerCase();
-    const filteredStudents = students.filter(s => 
-      s.fullName.toLowerCase().includes(query) || 
+    const filteredStudents = students.filter(s =>
+      s.fullName.toLowerCase().includes(query) ||
       s.accessKey.toLowerCase().includes(query)
     );
     const filteredPages = appPages.filter(p => p.name.toLowerCase().includes(query));
@@ -135,7 +135,7 @@ const Sidebar: React.FC<SidebarProps> = ({ user, onLogout, isOpen, isDesktopOpen
     { label: 'FOLLOW-UP', icon: MessageSquare, path: '/admin/follow-up', badge: followUpCount > 0 ? followUpCount : null },
     { label: 'QR CHECK-IN', icon: Camera, path: '/admin/qr-scan' },
     { label: 'STUDENTS', icon: Users, path: '/admin/students' },
-    { label: 'POINTS LEDGER', icon: Star, path: '/admin/points' },
+    { label: user.role === 'TEACHER' ? 'MY CLASSROOM' : 'POINTS LEDGER', icon: Star, path: '/admin/points' },
     { label: 'FAIRNESS MONITOR', icon: Scale, path: '/admin/fairness' },
     { label: 'LEADERBOARD', icon: Trophy, path: '/leaderboard' },
     { label: 'FAITH PATHWAY', icon: BookOpen, path: '/admin/faith-pathway' },
@@ -145,7 +145,7 @@ const Sidebar: React.FC<SidebarProps> = ({ user, onLogout, isOpen, isDesktopOpen
     { label: 'MY PORTAL', icon: LayoutDashboard, path: '/portal' },
     { label: 'LEADERBOARD', icon: Trophy, path: '/leaderboard' },
     { label: 'KIDSFLIX', icon: PlayCircle, path: '/kidsflix' },
-    { label: 'FB FEED', icon: Facebook, path: '/facebook' }, 
+    { label: 'FB FEED', icon: Facebook, path: '/facebook' },
   ];
 
   const menuItems = isTeacherOrAdmin ? teacherItems : parentItems.filter(item => !(isGuest && item.path === '/portal'));
@@ -165,7 +165,7 @@ const Sidebar: React.FC<SidebarProps> = ({ user, onLogout, isOpen, isDesktopOpen
 
   return (
     <>
-      <aside 
+      <aside
         className={`
           w-64 bg-white flex flex-col fixed inset-y-0 left-0 z-[56] transition-transform duration-300 ease-in-out border-r border-gray-100 shadow-xl
           ${isOpen ? 'translate-x-0' : '-translate-x-full'}
@@ -174,9 +174,9 @@ const Sidebar: React.FC<SidebarProps> = ({ user, onLogout, isOpen, isDesktopOpen
       >
         <div className="p-6 pb-4 shrink-0 bg-white border-b border-gray-50/50">
           <div className="flex items-center justify-between mb-8">
-            <Link 
-              to={getHomePath()} 
-              onClick={() => { audio.playClick(); if(onClose) onClose(); }}
+            <Link
+              to={getHomePath()}
+              onClick={() => { audio.playClick(); if (onClose) onClose(); }}
               className="flex items-center gap-2 group"
             >
               <div className="relative flex items-center gap-2">
@@ -191,7 +191,7 @@ const Sidebar: React.FC<SidebarProps> = ({ user, onLogout, isOpen, isDesktopOpen
             </button>
           </div>
 
-          <button 
+          <button
             onClick={() => { audio.playClick(); setIsSearchOpen(true); }}
             className="w-full flex items-center justify-between px-4 py-2.5 bg-gray-50 hover:bg-gray-100 rounded-xl transition-all border border-gray-200 group text-left shadow-sm"
           >
@@ -219,10 +219,9 @@ const Sidebar: React.FC<SidebarProps> = ({ user, onLogout, isOpen, isDesktopOpen
                   if (onClose) onClose();
                 }}
                 className={({ isActive }) =>
-                  `flex items-center justify-between px-4 py-3 rounded-xl font-black transition-all uppercase tracking-widest text-[9px] ${
-                    isActive
-                      ? 'bg-pink-500 text-white shadow-lg shadow-pink-100'
-                      : 'text-gray-500 hover:bg-pink-50 hover:text-pink-600'
+                  `flex items-center justify-between px-4 py-3 rounded-xl font-black transition-all uppercase tracking-widest text-[9px] ${isActive
+                    ? 'bg-pink-500 text-white shadow-lg shadow-pink-100'
+                    : 'text-gray-500 hover:bg-pink-50 hover:text-pink-600'
                   }`
                 }
               >
@@ -244,10 +243,9 @@ const Sidebar: React.FC<SidebarProps> = ({ user, onLogout, isOpen, isDesktopOpen
                 onMouseEnter={() => audio.playHover()}
                 onClick={() => { audio.playClick(); if (onClose) onClose(); }}
                 className={({ isActive }) =>
-                  `flex items-center gap-3 px-4 py-3 rounded-xl font-black transition-all uppercase tracking-widest text-[9px] mt-4 ${
-                    isActive
-                      ? 'bg-pink-500 text-white shadow-lg shadow-pink-100'
-                      : 'text-gray-500 hover:bg-pink-50 hover:text-pink-600'
+                  `flex items-center gap-3 px-4 py-3 rounded-xl font-black transition-all uppercase tracking-widest text-[9px] mt-4 ${isActive
+                    ? 'bg-pink-500 text-white shadow-lg shadow-pink-100'
+                    : 'text-gray-500 hover:bg-pink-50 hover:text-pink-600'
                   }`
                 }
               >
@@ -284,17 +282,17 @@ const Sidebar: React.FC<SidebarProps> = ({ user, onLogout, isOpen, isDesktopOpen
       {/* Global GHL-Style Search Modal */}
       {isSearchOpen && (
         <div className="fixed inset-0 z-[100] flex items-start justify-center p-4 pt-[10vh] bg-black/40 backdrop-blur-sm animate-in fade-in duration-300">
-          <div 
+          <div
             className="w-full max-w-3xl bg-white rounded-xl shadow-2xl overflow-hidden animate-in zoom-in-95 duration-300 border border-gray-100"
             onClick={(e) => e.stopPropagation()}
           >
             {/* Modal Input Area */}
             <div className="flex items-center px-6 py-5 border-b border-gray-100 bg-white">
               <Search size={20} className="text-gray-400 shrink-0" />
-              <input 
+              <input
                 ref={searchInputRef}
-                type="text" 
-                placeholder="Search for anything..." 
+                type="text"
+                placeholder="Search for anything..."
                 className="w-full bg-transparent border-none outline-none px-4 text-base font-medium text-gray-800 placeholder:text-gray-300"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
@@ -312,11 +310,10 @@ const Sidebar: React.FC<SidebarProps> = ({ user, onLogout, isOpen, isDesktopOpen
                   <button
                     key={cat.name}
                     onClick={() => { audio.playClick(); setActiveCategory(cat.name); }}
-                    className={`w-full flex items-center gap-3 px-6 py-3.5 text-left transition-all border-l-4 ${
-                      activeCategory === cat.name 
-                        ? 'bg-pink-50 text-pink-600 border-pink-500' 
+                    className={`w-full flex items-center gap-3 px-6 py-3.5 text-left transition-all border-l-4 ${activeCategory === cat.name
+                        ? 'bg-pink-50 text-pink-600 border-pink-500'
                         : 'text-gray-500 hover:bg-gray-50 border-transparent'
-                    }`}
+                      }`}
                   >
                     <cat.icon size={18} className={activeCategory === cat.name ? 'text-pink-600' : 'text-gray-400'} />
                     <span className="text-xs font-bold uppercase tracking-tight">{cat.name}</span>
@@ -334,7 +331,7 @@ const Sidebar: React.FC<SidebarProps> = ({ user, onLogout, isOpen, isDesktopOpen
                     </div>
                     <div className="space-y-2">
                       {appPages.slice(0, 3).map((page) => (
-                        <button 
+                        <button
                           key={page.name}
                           onClick={() => handleSearchNav(page.path)}
                           className="w-full flex items-center justify-between p-4 rounded-xl border border-gray-50 hover:border-pink-100 hover:bg-pink-50/30 transition-all group text-left shadow-sm"
@@ -355,47 +352,47 @@ const Sidebar: React.FC<SidebarProps> = ({ user, onLogout, isOpen, isDesktopOpen
                   </div>
                 ) : results.length > 0 ? (
                   <div className="space-y-4">
-                     <div className="flex items-center gap-2">
-                        <span className="text-[11px] font-black text-gray-400 uppercase tracking-widest">Results found</span>
-                     </div>
-                     <div className="space-y-2">
-                        {results.map((item: any, idx: number) => (
-                          <button 
-                            key={`${item.id}-${idx}`}
-                            onClick={() => handleSearchNav(item.path)}
-                            className="w-full flex items-center justify-between p-4 rounded-xl border border-gray-50 hover:border-pink-100 hover:bg-pink-50/30 transition-all group text-left"
-                          >
-                             <div className="flex items-center gap-4">
-                                <div className="w-10 h-10 bg-gray-50 rounded-lg flex items-center justify-center text-gray-400 group-hover:text-pink-500 group-hover:bg-white transition-all">
-                                   {item.type === 'Student' ? <Users size={20} /> : <BookOpen size={20} />}
-                                </div>
-                                <div>
-                                   <p className="text-sm font-black text-gray-800 uppercase tracking-tight">{item.name}</p>
-                                   <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">
-                                     {item.type} {item.accessKey ? `• ${item.accessKey}` : ''}
-                                   </p>
-                                </div>
-                             </div>
-                             <ArrowRight size={16} className="text-gray-200 group-hover:text-pink-300 transition-all" />
-                          </button>
-                        ))}
-                     </div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-[11px] font-black text-gray-400 uppercase tracking-widest">Results found</span>
+                    </div>
+                    <div className="space-y-2">
+                      {results.map((item: any, idx: number) => (
+                        <button
+                          key={`${item.id}-${idx}`}
+                          onClick={() => handleSearchNav(item.path)}
+                          className="w-full flex items-center justify-between p-4 rounded-xl border border-gray-50 hover:border-pink-100 hover:bg-pink-50/30 transition-all group text-left"
+                        >
+                          <div className="flex items-center gap-4">
+                            <div className="w-10 h-10 bg-gray-50 rounded-lg flex items-center justify-center text-gray-400 group-hover:text-pink-500 group-hover:bg-white transition-all">
+                              {item.type === 'Student' ? <Users size={20} /> : <BookOpen size={20} />}
+                            </div>
+                            <div>
+                              <p className="text-sm font-black text-gray-800 uppercase tracking-tight">{item.name}</p>
+                              <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">
+                                {item.type} {item.accessKey ? `• ${item.accessKey}` : ''}
+                              </p>
+                            </div>
+                          </div>
+                          <ArrowRight size={16} className="text-gray-200 group-hover:text-pink-300 transition-all" />
+                        </button>
+                      ))}
+                    </div>
                   </div>
                 ) : (
                   <div className="flex flex-col items-start justify-center h-full pt-10 px-4">
                     <div className="text-left space-y-6 w-full">
-                       <div className="space-y-1">
-                          <p className="text-sm text-gray-500">No matching result for <span className="font-black text-gray-800">"{searchQuery}"</span></p>
-                       </div>
-                       
-                       { (activeCategory === 'All Categories' || activeCategory === 'Students') && (
-                         <button 
+                      <div className="space-y-1">
+                        <p className="text-sm text-gray-500">No matching result for <span className="font-black text-gray-800">"{searchQuery}"</span></p>
+                      </div>
+
+                      {(activeCategory === 'All Categories' || activeCategory === 'Students') && (
+                        <button
                           onClick={() => handleSearchNav('/admin/students')}
                           className="flex items-center gap-2 text-pink-500 font-bold text-sm hover:underline"
                         >
-                           <UserPlus size={18} /> Add contact "{searchQuery}"
-                         </button>
-                       )}
+                          <UserPlus size={18} /> Add contact "{searchQuery}"
+                        </button>
+                      )}
                     </div>
                   </div>
                 )}
@@ -420,7 +417,7 @@ const Sidebar: React.FC<SidebarProps> = ({ user, onLogout, isOpen, isDesktopOpen
               <p className="text-[9px] font-black text-gray-300 uppercase tracking-[0.2em]">Powered by Kingdom Kids AI</p>
             </div>
           </div>
-          
+
           <div className="absolute inset-0 -z-10" onClick={() => setIsSearchOpen(false)} />
         </div>
       )}
