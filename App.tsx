@@ -26,6 +26,7 @@ import ControlCenterPage from './pages/ControlCenterPage';
 import FacebookPage from './pages/FacebookPage';
 import FaithPathwayPage from './pages/FaithPathwayPage';
 import TeachersBoardPage from './pages/TeachersBoardPage';
+import DailyQuestPage from './pages/DailyQuestPage';
 
 const App: React.FC = () => {
   const [user, setUser] = useState<UserSession | null>(null);
@@ -140,6 +141,11 @@ const App: React.FC = () => {
 
           <Route path="/teacher/scan" element={
              !user ? <Navigate to="/login" replace /> : (isTeacherOrAdmin ? <FaceScanPage user={user!} /> : <Navigate to="/portal" replace />)
+          } />
+
+          {/* Daily Quest - Public Access */}
+          <Route path="/daily-quest" element={
+            <DailyQuestPage user={user || { role: 'PARENTS', username: 'Guest', studentId: 'GUEST_DEMO' }} />
           } />
         </Route>
 

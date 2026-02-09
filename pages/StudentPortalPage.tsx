@@ -5,6 +5,8 @@ import { MinistryService } from '../services/ministry.service';
 import { GeminiService } from '../services/gemini.service';
 import { Student, UserSession, PointLedger } from '../types';
 import { audio } from '../services/audio.service';
+import { Link } from 'react-router-dom';
+import { Sparkles, BookOpen } from 'lucide-react';
 
 const getFirstName = (fullName: string) => {
   if (!fullName) return "Student";
@@ -153,6 +155,28 @@ const StudentPortalPage: React.FC<{ user: UserSession }> = ({ user }) => {
             </div>
             <div className="absolute top-0 right-0 p-4 text-5xl opacity-20">⭐</div>
           </div>
+
+          {/* Daily Quest Card */}
+          <Link to="/daily-quest" onClick={() => audio.playClick()}>
+            <div className="bg-gradient-to-br from-purple-500 to-pink-500 p-6 md:p-8 rounded-[2rem] md:rounded-[2.5rem] shadow-xl shadow-purple-100 text-white cursor-pointer transform hover:scale-105 hover:shadow-2xl transition-all group">
+              <div className="flex items-center gap-4 mb-4">
+                <div className="w-12 h-12 bg-white/20 rounded-2xl flex items-center justify-center group-hover:rotate-12 transition-transform">
+                  <Sparkles className="text-white" size={24} />
+                </div>
+                <div>
+                  <h3 className="text-sm font-black uppercase tracking-widest">Daily Quest</h3>
+                  <p className="text-[10px] font-black opacity-80 uppercase tracking-widest">Play & Earn Stars!</p>
+                </div>
+              </div>
+              <p className="text-xs font-medium opacity-90 mb-4">
+                Read Bible stories and answer fun questions to grow your faith plant!
+              </p>
+              <div className="flex items-center gap-2 bg-white/20 px-4 py-2 rounded-xl">
+                <BookOpen size={16} />
+                <span className="text-[10px] font-black uppercase">Start Quest →</span>
+              </div>
+            </div>
+          </Link>
 
           <div className="bg-white p-6 md:p-8 rounded-[2rem] md:rounded-[2.5rem] border border-pink-50 shadow-sm">
             <h3 className="text-sm font-black text-gray-800 uppercase tracking-widest mb-6">Recent Activity</h3>
