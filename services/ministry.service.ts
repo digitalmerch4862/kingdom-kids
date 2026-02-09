@@ -200,17 +200,16 @@ export class MinistryService {
     });
   }
 
-  static async addPoints(studentId: string, category: string, points: number, actor: string, notes?: string) {
+  static async addPoints(studentId: string, category: string, points: number, actor: string, notes?: string, auditTag?: string) {
     const today = new Date().toISOString().split('T')[0];
     const settings = await db.getSettings();
     const ledger = await db.getPointsLedger();
 
     const isCorrection = points < 0;
     const isManual = category.includes('Manual');
+    const isGlobalAward = auditTag === 'GLOBAL_AWARD';
 
-    // 1. Check Daily Limit (Max 50 points per Sunday)
-    // Only enforce limit if we are adding positive points
-    if (points > 0) {
+    if (points > 0 && !isGlobalAward) {
       const dailyTotal = ledger
         .filter(l => l.studentId === studentId && l.entryDate === today && !l.voided)
         .reduce((sum, entry) => sum + entry.points, 0);
@@ -223,8 +222,7 @@ export class MinistryService {
       }
     }
 
-    // 2. Check Duplicate Rule
-    if (!settings.allowDuplicatePoints && !isCorrection && !isManual) {
+    if (!settings.allowDuplicatePoints && !isCorrection && !isManual && !isGlobalAward) {
       const existing = ledger.find(l =>
         l.studentId === studentId &&
         l.entryDate === today &&
@@ -247,7 +245,7 @@ export class MinistryService {
       eventType: 'POINT_ADD',
       actor,
       entityId: entry.id,
-      payload: { studentId, category, points }
+      payload: { studentId, category, points, auditTag: auditTag || 'STANDARD' }
     });
 
     return entry;

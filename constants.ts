@@ -26,6 +26,14 @@ export const DEFAULT_APP_SETTINGS: AppSettings = {
 
 export const AUTH_PASSWORDS = {
   ADMIN: '6244',
+  ADMIN_READONLY: 'pro226',
   TEACHER: 'pro226',
+  FACILITATOR: 'fam205',
   PARENTS: '123'
 };
+
+export const FACILITATOR_USERNAMES = [
+];
+
+export const ADMIN_READONLY_USERS = [
+];

@@ -3,12 +3,13 @@ import { db, formatError } from '../services/db.service';
 import { PointLedger, Student, UserSession, TeacherAssignmentRecord } from '../types';
 import { audio } from '../services/audio.service';
 import { AlertTriangle, Star, Users, ArrowLeft, Trophy } from 'lucide-react';
+import GlobalAwardModal from '../components/GlobalAwardModal';
 
 const PointsLedgerPage: React.FC<{ user: UserSession }> = ({ user }) => {
-  const [viewMode, setViewMode] = useState<'LEDGER' | 'CLASSROOM'>(user.role === 'TEACHER' ? 'CLASSROOM' : 'LEDGER');
+  const [viewMode, setViewMode] = useState<'LEDGER' | 'CLASSROOM' | 'GLOBAL_AWARD'>(user.role === 'TEACHER' ? 'CLASSROOM' : 'LEDGER');
 
   // Ledger State
-  const [ledger, setLedger] = useState<(PointLedger & { student?: Student })[]>([]);
+  const [ledger, setLedger] = useState<(PointLedger & { student?: Student; facilitatorProfile?: any })[]>([]);
   const [search, setSearch] = useState('');
   const [mobileTab, setMobileTab] = useState<'DATE' | 'STUDENT' | 'CATEGORY'>('DATE');
 
@@ -16,11 +17,11 @@ const PointsLedgerPage: React.FC<{ user: UserSession }> = ({ user }) => {
   const [assignedClass, setAssignedClass] = useState<{ name: string, students: Student[], date: string } | null>(null);
   const [dailyScores, setDailyScores] = useState<Record<string, number>>({});
   const [totalScores, setTotalScores] = useState<Record<string, number>>({});
+  const [classroomSearch, setClassroomSearch] = useState('');
   /* New State for 2-Step Workflow */
   const [selectedAction, setSelectedAction] = useState<{ label: string, pts: number } | null>(null);
 
   const ACTIONS = [
-    { label: 'ATTENDANCE', pts: 5 },
     { label: 'WORKSHEET / ACTIVITIES', pts: 5 },
     { label: 'MEMORY VERSE', pts: 10 },
     { label: 'RECITATION', pts: 5 },
@@ -33,7 +34,7 @@ const PointsLedgerPage: React.FC<{ user: UserSession }> = ({ user }) => {
   useEffect(() => {
     if (viewMode === 'LEDGER') {
       loadLedger();
-    } else {
+    } else if (viewMode === 'CLASSROOM') {
       loadClassroom();
     }
   }, [viewMode]);
@@ -43,9 +44,27 @@ const PointsLedgerPage: React.FC<{ user: UserSession }> = ({ user }) => {
     try {
       const allEntries = await db.getPointsLedger();
       const students = await db.getStudents();
+      
+      const facilitatorUsernames = new Set(
+        allEntries
+          .filter(e => e.recordedBy && !students.find(s => s.id === e.studentId)?.fullName?.toUpperCase().includes(e.recordedBy.toUpperCase()))
+          .map(e => e.recordedBy)
+      );
+      
+      const facilitatorProfiles: Record<string, any> = {};
+      for (const username of facilitatorUsernames) {
+        if (username && username !== 'SYSTEM' && username !== 'SYSTEM_AUTO') {
+          const profile = await db.getTeacherProfile(username);
+          if (profile) {
+            facilitatorProfiles[username] = profile;
+          }
+        }
+      }
+      
       const enriched = allEntries.map(entry => ({
         ...entry,
-        student: students.find(s => s.id === entry.studentId)
+        student: students.find(s => s.id === entry.studentId),
+        facilitatorProfile: facilitatorProfiles[entry.recordedBy] || null
       }));
       setLedger(enriched);
     } catch (err) {
@@ -82,9 +101,10 @@ const PointsLedgerPage: React.FC<{ user: UserSession }> = ({ user }) => {
       }
 
       // Admin Override (5th Sunday Logic / Universal Access)
-      if (!targetAgeGroup && isAdmin) {
+      const universalAccessUsers = ['CHING', 'BETH', 'GIDEON', 'LEE', 'MAGI', 'MARGE'];
+      if (!targetAgeGroup && (isAdmin || universalAccessUsers.includes(userName))) {
         targetAgeGroup = 'ALL';
-        className = '5th Sunday / Admin Mode';
+        className = 'ALL CLASSES';
       }
 
       if (!targetAgeGroup) {
@@ -183,6 +203,14 @@ const PointsLedgerPage: React.FC<{ user: UserSession }> = ({ user }) => {
     }
   };
 
+  const filteredStudents = useMemo(() => {
+    if (!assignedClass) return [];
+    if (!classroomSearch.trim()) return assignedClass.students;
+    return assignedClass.students.filter(s => 
+      s.fullName.toLowerCase().includes(classroomSearch.toLowerCase())
+    );
+  }, [assignedClass, classroomSearch]);
+
   const renderClassroom = () => {
     if (!assignedClass) {
       return (
@@ -198,6 +226,17 @@ const PointsLedgerPage: React.FC<{ user: UserSession }> = ({ user }) => {
 
     return (
       <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
+
+        {/* Search Bar */}
+        <div className="mb-6">
+          <input
+            type="text"
+            placeholder="SEARCH STUDENTS..."
+            className="w-full px-6 py-3 bg-white border border-pink-50 rounded-[1.25rem] outline-none focus:ring-2 focus:ring-pink-200 text-[10px] font-black tracking-tight uppercase shadow-sm"
+            value={classroomSearch}
+            onChange={(e) => setClassroomSearch(e.target.value)}
+          />
+        </div>
 
         {/* Sticky Action Bar */}
         <div className="sticky top-0 z-20 bg-white/95 backdrop-blur-md py-4 mb-6 border-b border-pink-50 -mx-4 px-4 md:px-0">
@@ -248,7 +287,7 @@ const PointsLedgerPage: React.FC<{ user: UserSession }> = ({ user }) => {
         </div>
 
         <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-4">
-          {assignedClass.students.map((student, index) => {
+          {filteredStudents.map((student, index) => {
             const total = totalScores[student.id] || 0;
             const daily = dailyScores[student.id] || 0;
 
@@ -285,6 +324,11 @@ const PointsLedgerPage: React.FC<{ user: UserSession }> = ({ user }) => {
               </button>
             )
           })}
+          {filteredStudents.length === 0 && (
+            <div className="col-span-full p-10 text-center text-gray-400 font-bold text-xs uppercase">
+              No students found matching "{classroomSearch}"
+            </div>
+          )}
         </div>
       </div>
     );
@@ -321,6 +365,14 @@ const PointsLedgerPage: React.FC<{ user: UserSession }> = ({ user }) => {
         </div>
 
         <div className="flex flex-wrap items-center gap-4">
+          {(isAdmin || user.role === 'FACILITATOR' || user.role === 'TEACHER') && viewMode === 'LEDGER' && (
+            <button
+              onClick={() => setViewMode('GLOBAL_AWARD')}
+              className="bg-gradient-to-r from-pink-500 to-purple-500 px-6 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest text-white shadow-lg shadow-pink-200 hover:scale-105 transition-transform"
+            >
+              + Global Award
+            </button>
+          )}
           {isAdmin && (
             <button
               onClick={() => setViewMode(v => v === 'LEDGER' ? 'CLASSROOM' : 'LEDGER')}
@@ -347,6 +399,15 @@ const PointsLedgerPage: React.FC<{ user: UserSession }> = ({ user }) => {
         </div>
       ) : (
         <>
+          {viewMode === 'GLOBAL_AWARD' && (
+            <GlobalAwardModal
+              user={user}
+              onClose={() => setViewMode('LEDGER')}
+              onSuccess={() => {
+                loadLedger();
+              }}
+            />
+          )}
           {viewMode === 'CLASSROOM' ? renderClassroom() : (
             <>
               {/* Mobile Tabs */}
@@ -442,7 +503,23 @@ const PointsLedgerPage: React.FC<{ user: UserSession }> = ({ user }) => {
                                 {Math.abs(entry.points)}
                               </span>
                             </td>
-                            <td className="px-8 py-6 text-[10px] text-gray-400 font-black uppercase tracking-wider">{entry.recordedBy}</td>
+                            <td className="px-8 py-6">
+                              <div className="flex flex-col">
+                                <span className="text-[10px] text-gray-400 font-black uppercase tracking-wider">
+                                  {entry.recordedBy}
+                                </span>
+                                {entry.facilitatorProfile && (
+                                  <span className="text-[9px] text-purple-400 font-bold uppercase tracking-widest mt-0.5">
+                                    {entry.facilitatorProfile.age_group || 'STAFF'}
+                                  </span>
+                                )}
+                                {!entry.facilitatorProfile && entry.recordedBy !== 'SYSTEM' && entry.recordedBy !== 'SYSTEM_AUTO' && (
+                                  <span className="text-[9px] text-gray-300 font-bold uppercase tracking-widest mt-0.5">
+                                    Facilitator
+                                  </span>
+                                )}
+                              </div>
+                            </td>
                             <td className="px-8 py-6 text-right">
                               {entry.voided ? (
                                 <span className="text-gray-300 text-[9px] font-black uppercase tracking-widest border border-gray-100 px-2 py-1 rounded">[ VOID ]</span>

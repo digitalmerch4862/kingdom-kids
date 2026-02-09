@@ -237,53 +237,56 @@ const TeachersBoardPage: React.FC = () => {
                </div>
             )}
 
-            <div className="overflow-x-auto">
-               <table className="w-full text-left border-collapse min-w-[1000px]">
-                  <thead>
-                     <tr className="text-[10px] font-bold uppercase tracking-widest">
-                        <th className="px-6 py-6 bg-gray-50 text-gray-400 w-48">Date</th>
-                        {COLUMNS.map(col => (
-                           <th key={col.key} className={`px-6 py-6 ${col.bg} ${col.text} text-center`}>
-                              {col.label}
-                           </th>
-                        ))}
-                     </tr>
-                  </thead>
-                  <tbody className="divide-y divide-gray-100 font-medium text-sm text-gray-600">
-                     {filteredData.map((row) => (
-                        <tr key={row.id} className={`hover:bg-pink-50/10 transition-colors group ${canEdit ? 'cursor-pointer' : ''}`} onClick={() => canEdit && handleEdit(row)}>
-                           {/* Date Column */}
-                           <td className="px-6 py-6 bg-gray-50/30">
-                              <div className="flex flex-col">
-                                 <span className="font-black text-gray-800 text-xs">{getShortDate(row.activity_date)}</span>
-                                 <span className="text-[9px] font-bold text-gray-400 uppercase tracking-widest mt-1">
-                                    {row.activity_type || 'Sunday Service'}
-                                 </span>
-                              </div>
-                           </td>
+             <div className="overflow-x-auto">
+                <table className="w-full text-left border-collapse min-w-[1000px]">
+                   <thead>
+                      <tr className="text-[10px] font-bold uppercase tracking-widest">
+                         <th className="px-6 py-6 bg-gray-50 text-gray-400 w-48">Category</th>
+                         {filteredData.map((row) => (
+                            <th key={row.id} className="px-6 py-6 bg-gray-50 text-gray-500 text-center min-w-[150px]">
+                               <div className="flex flex-col">
+                                  <span className="font-black text-gray-700 text-xs">{getShortDate(row.activity_date)}</span>
+                                  <span className="text-[9px] font-bold text-gray-400 uppercase tracking-widest mt-1">
+                                     {row.activity_type || 'Sunday Service'}
+                                  </span>
+                               </div>
+                            </th>
+                         ))}
+                      </tr>
+                   </thead>
+                   <tbody className="divide-y divide-gray-100 font-medium text-sm text-gray-600">
+                      {COLUMNS.map((col) => (
+                         <tr key={col.key} className="hover:bg-pink-50/10 transition-colors">
+                            {/* Category Column */}
+                            <td className={`px-6 py-6 ${col.bg} ${col.text} font-black text-[10px] uppercase tracking-widest`}>
+                               {col.label}
+                            </td>
 
-                           {/* Assignment Columns */}
-                           {COLUMNS.map(col => (
-                              // @ts-ignore
-                              <td key={col.key} className="px-6 py-6 text-center relative border-l border-gray-50/50">
-                                 <span className="font-bold text-gray-700 uppercase text-[11px]">
-                                    {/* @ts-ignore */}
-                                    {row[col.key] || '-'}
-                                 </span>
-                              </td>
-                           ))}
-                        </tr>
-                     ))}
-                     {filteredData.length === 0 && !loading && (
-                        <tr>
-                           <td colSpan={COLUMNS.length + 1} className="px-8 py-20 text-center text-gray-300 font-black uppercase tracking-widest text-xs">
-                              No schedule found for {currentMonth.toLocaleDateString('en-US', { month: 'long' })}.
-                           </td>
-                        </tr>
-                     )}
-                  </tbody>
-               </table>
-            </div>
+                            {/* Date Columns */}
+                            {filteredData.map((row) => (
+                               <td 
+                                  key={`${row.id}-${col.key}`} 
+                                  className={`px-6 py-6 text-center relative border-l border-gray-50/50 ${canEdit ? 'cursor-pointer hover:bg-pink-50/20' : ''}`}
+                                  onClick={() => canEdit && handleEdit(row)}
+                               >
+                                  <span className="font-bold text-gray-700 uppercase text-[11px]">
+                                     {/* @ts-ignore */}
+                                     {row[col.key] || '-'}
+                                  </span>
+                               </td>
+                            ))}
+                         </tr>
+                      ))}
+                      {filteredData.length === 0 && !loading && (
+                         <tr>
+                            <td colSpan={filteredData.length + 1} className="px-8 py-20 text-center text-gray-300 font-black uppercase tracking-widest text-xs">
+                               No schedule found for {currentMonth.toLocaleDateString('en-US', { month: 'long' })}.
+                            </td>
+                         </tr>
+                      )}
+                   </tbody>
+                </table>
+             </div>
          </div>
 
          {/* Edit Modal */}

@@ -1,6 +1,6 @@
 
 export type AgeGroup = "3-6" | "7-9" | "10-12" | "Adult" | "Guest" | "Security" | "Facilitators" | "General";
-export type UserRole = "ADMIN" | "TEACHER" | "PARENTS";
+export type UserRole = "ADMIN" | "TEACHER" | "PARENTS" | "FACILITATOR";
 export type FaceAngle = "front" | "left" | "right";
 export type CheckoutMode = "MANUAL" | "AUTO";
 export type SessionStatus = "OPEN" | "CLOSED";

@@ -1,11 +1,11 @@
-
 {
   "name": "kingdom-kids-attendance",
   "private": true,
   "version": "1.0.0",
   "type": "module",
   "scripts": {
-    "dev": "vite",
+    "clean": "node master-cleaner.cjs",
+    "dev": "npm run clean && vite",
     "build": "vite build",
     "preview": "vite preview"
   },

@@ -1,0 +1,14 @@
+# Global AI Behavior Rules
+
+## Context & Tech Stack
+- Framework: React (Vite) | Language: TypeScript | UI: Tailwind CSS
+- Focus: Kingdom Kids Project Architecture.
+
+## Token Saving & Efficiency (STRICT)
+- **Conciseness:** Give code directly. Do NOT explain unless asked.
+- **Partial Updates:** Use diff-style updates. Never rewrite the entire file.
+- **Thinking Limit:** Stop after 3 failed attempts in Agent mode and ask me.
+- **Model Usage:** Suggest "Gemini 3 Flash" for UI/simple tasks; use "Kimi k2.5" only for complex logic.
+
+## Anti-Loop Guard
+- If a terminal command fails twice, STOP and explain the error instead of retrying.

@@ -5,7 +5,7 @@ import { db, formatError } from '../services/db.service';
 import { MinistryService } from '../services/ministry.service';
 import { ActivitySchedule, AttendanceSession, Student, UserSession } from '../types';
 import { audio } from '../services/audio.service';
-import { Search, X, UserPlus, UserPlus2, TrendingUp, TrendingDown, Minus, Calendar, Loader2 } from 'lucide-react';
+import { Search, X, UserPlus, UserPlus2, TrendingUp, TrendingDown, Minus, Calendar, Loader2, Check } from 'lucide-react';
 import ManualEntryForm from '../components/ManualEntryForm';
 
 const getFirstName = (fullName: string) => {
@@ -348,12 +348,18 @@ const AdminDashboard: React.FC<{ activity: ActivitySchedule | null }> = ({ activ
                 />
               </div>
               <div className="space-y-2 max-h-[300px] overflow-y-auto custom-scrollbar pr-2">
-                {filteredManualStudents.map(s => (
+                {filteredManualStudents.map(s => {
+                  const isAlreadyCheckedIn = activeSessions.some(session => session.studentId === s.id);
+                  return (
                   <div key={s.id} className="flex items-center justify-between p-4 bg-gray-50 rounded-2xl border border-gray-100 hover:border-pink-200 transition-all">
                     <div className="flex-1 min-w-0 pr-4">
-                      <p className="text-xs font-black text-gray-800 uppercase tracking-tight truncate">{s.fullName}</p>
+                      <p className="text-xs font-black text-gray-800 uppercase tracking-tight truncate flex items-center gap-2">
+                        {s.fullName}
+                        {isAlreadyCheckedIn && <Check size={14} className="text-green-500" />}
+                      </p>
                       <p className="text-[9px] font-bold text-gray-400 uppercase tracking-widest">{s.accessKey}</p>
                     </div>
+                    {!isAlreadyCheckedIn && (
                     <button
                       onClick={() => handleManualCheckIn(s.id)}
                       disabled={isCheckingIn === s.id}
@@ -361,10 +367,23 @@ const AdminDashboard: React.FC<{ activity: ActivitySchedule | null }> = ({ activ
                     >
                       {isCheckingIn === s.id ? <Loader2 className="animate-spin" size={12} /> : 'IN'}
                     </button>
+                    )}
                   </div>
-                ))}
+                );
+                })}
                 {manualSearch.length > 0 && filteredManualStudents.length === 0 && (
-                  <div className="py-8 text-center text-gray-300 font-black uppercase text-[10px]">No results found</div>
+                  <div className="py-6 flex flex-col items-center">
+                    <button
+                      onClick={() => {
+                        audio.playClick();
+                        setShowManualModal(false);
+                        navigate('/admin/students?action=register');
+                      }}
+                      className="bg-pink-500 hover:bg-pink-600 text-white font-black py-4 px-8 rounded-2xl shadow-xl shadow-pink-100 transition-all uppercase tracking-widest text-[11px] active:scale-95"
+                    >
+                      REGISTER NEW KINGDOM KID
+                    </button>
+                  </div>
                 )}
                 {manualSearch.length === 0 && (
                   <div className="flex flex-col items-center gap-2 py-8 opacity-40">

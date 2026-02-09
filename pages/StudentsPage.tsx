@@ -1,11 +1,13 @@
 
 import React, { useState, useEffect, useMemo, useRef } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { db, formatError } from '../services/db.service';
 import { Student, AgeGroup, UserSession } from '../types';
 import { audio } from '../services/audio.service';
 import { Wrench, Loader2, Edit2 } from 'lucide-react';
 
 const StudentsPage: React.FC<{ user: UserSession }> = ({ user }) => {
+  const [searchParams, setSearchParams] = useSearchParams();
   const [students, setStudents] = useState<Student[]>([]);
   const [showAddModal, setShowAddModal] = useState(false);
   const [editingStudent, setEditingStudent] = useState<Student | null>(null);
@@ -28,6 +30,7 @@ const StudentsPage: React.FC<{ user: UserSession }> = ({ user }) => {
 
   const isTeacherOrAdmin = user.role === 'TEACHER' || user.role === 'ADMIN';
   const isAdmin = user.role === 'ADMIN';
+  const canDelete = user.role === 'ADMIN';
   const isRad = user.username.toUpperCase() === 'RAD';
 
   useEffect(() => {
@@ -127,6 +130,17 @@ const StudentsPage: React.FC<{ user: UserSession }> = ({ user }) => {
     isSavingRef.current = false;
     setErrorMsg('');
   };
+
+  // Handle URL parameter to auto-open registration modal
+  useEffect(() => {
+    const action = searchParams.get('action');
+    if (action === 'register') {
+      resetForm();
+      setShowAddModal(true);
+      // Clear the parameter after opening
+      setSearchParams({}, { replace: true });
+    }
+  }, [searchParams]);
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -416,7 +430,7 @@ const StudentsPage: React.FC<{ user: UserSession }> = ({ user }) => {
                 ) : (
                   <div className="flex items-center gap-2 group/key">
                     <p className="text-xs font-black text-gray-800 uppercase tracking-tight">{s.accessKey || '---'}</p>
-                    {isAdmin && (
+                {canDelete && (
                       <button
                         onClick={() => setEditingAccessKey(s.id)}
                         className="opacity-0 group-hover/key:opacity-100 transition-opacity text-gray-400 hover:text-pink-500"

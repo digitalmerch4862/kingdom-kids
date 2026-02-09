@@ -76,6 +76,7 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
     }
   };
 
+  const SPECIAL_TEACHERS = ['CHING', 'LEE', 'BETH', 'MARGE', 'MAGI'];
   const checkTeacherAutoLogin = (inputPass: string, inputUser: string) => {
     const normalizedUser = inputUser.trim().toUpperCase();
     if (!normalizedUser) return;
@@ -83,6 +84,10 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
     if (normalizedUser === 'RAD' && inputPass === AUTH_PASSWORDS.ADMIN) {
       audio.playYehey();
       onLogin('ADMIN', normalizedUser);
+      return true;
+    } else if (SPECIAL_TEACHERS.includes(normalizedUser) && inputPass === AUTH_PASSWORDS.TEACHER) {
+      audio.playYehey();
+      onLogin('TEACHER', normalizedUser);
       return true;
     } else if (inputPass === AUTH_PASSWORDS.TEACHER) {
       audio.playYehey();
