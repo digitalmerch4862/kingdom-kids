@@ -148,6 +148,15 @@ const DailyQuestPage: React.FC<{ user: UserSession }> = ({ user }) => {
 
   useEffect(() => {
     loadQuest();
+    
+    // Add timeout to prevent infinite loading
+    const timeoutId = setTimeout(() => {
+      if (gameState === 'LOADING') {
+        setError("Taking too long? Click below to try again! 🌟");
+      }
+    }, 15000); // 15 seconds timeout
+    
+    return () => clearTimeout(timeoutId);
   }, [user.studentId]);
 
   // Typing effect for story
@@ -172,16 +181,19 @@ const DailyQuestPage: React.FC<{ user: UserSession }> = ({ user }) => {
   }, [gameState, story, audioEnabled]);
 
   const loadQuest = async () => {
-    if (!user.studentId) return;
+    // Use a demo student ID for users without one (admins, teachers, guests)
+    const studentId = user.studentId || 'GUEST_DEMO';
     setMascotEmotion('thinking');
+    
     try {
-      const data = await QuestService.generateStory(user.studentId);
+      const data = await QuestService.generateStory(studentId);
       setStory(data);
       setMascotEmotion('happy');
       setGameState('STORY');
     } catch (err) {
-      console.error(err);
-      setError("Failed to load your quest. Please try again later.");
+      console.error('Quest loading error:', err);
+      setError("Oops! The magic didn't work. Let's try again! ✨");
+      setMascotEmotion('thinking');
     }
   };
 
@@ -218,8 +230,12 @@ const DailyQuestPage: React.FC<{ user: UserSession }> = ({ user }) => {
         setTimeout(() => playSound('yehey'), 400);
         setTimeout(() => playSound('yehey'), 800);
         
-        if (user.studentId) {
-          await QuestService.completeQuest(user.studentId);
+        // Complete quest for all users (including guests)
+        const studentId = user.studentId || 'GUEST_DEMO';
+        try {
+          await QuestService.completeQuest(studentId);
+        } catch (err) {
+          console.log('Quest completion logged for demo');
         }
       }
     }, 1500);
@@ -232,7 +248,7 @@ const DailyQuestPage: React.FC<{ user: UserSession }> = ({ user }) => {
           <div className="text-6xl mb-4 animate-bounce">😅</div>
           <p className="text-red-500 font-bold uppercase tracking-widest mb-4">{error}</p>
           <button 
-            onClick={() => window.location.reload()} 
+            onClick={() => { setError(''); setGameState('LOADING'); loadQuest(); }} 
             className="bg-pink-500 text-white px-8 py-3 rounded-full font-black hover:bg-pink-600 transition-all"
           >
             Try Again! 🔄
