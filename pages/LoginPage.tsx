@@ -36,7 +36,8 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
   const [regError, setRegError] = useState('');
   const [newAccessKey, setNewAccessKey] = useState<string | null>(null);
   const [formData, setFormData] = useState({
-    fullName: '',
+    firstName: '',
+    lastName: '',
     birthday: '',
     guardianName: '',
     guardianPhone: '09',
@@ -169,15 +170,16 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
       return;
     }
     try {
+      const fullName = `${formData.firstName} ${formData.lastName}`.trim().toUpperCase();
       const result = await db.addStudent({
-        fullName: formData.fullName.toUpperCase(),
+        fullName: fullName,
         birthday: formData.birthday,
         guardianName: formData.guardianName.toUpperCase(),
         guardianPhone: formData.guardianPhone,
         notes: formData.notes,
         ageGroup: ageData.group!
       });
-      const firstName = getFirstName(formData.fullName).toUpperCase();
+      const firstName = formData.firstName.toUpperCase();
       const smsMsg = `Welcome to Kingdom Kids! Student: ${firstName}, Access Key: ${result.access_key}. See you at the Kingdom! 👑`;
       window.location.href = "sms:" + formData.guardianPhone + "?body=" + encodeURIComponent(smsMsg);
       audio.playYehey();
@@ -295,7 +297,28 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
                 </div>
               ) : (
                 <form onSubmit={handleRegister} className="space-y-6">
-                  <div className="space-y-1"><label className="text-[11px] font-black text-gray-400 uppercase tracking-widest ml-1">Kid's Nickname</label><input type="text" required className="w-full px-6 py-4 bg-gray-50 border border-gray-100 rounded-2xl outline-none focus:ring-2 focus:ring-pink-300 transition-all uppercase font-bold text-gray-700" value={formData.fullName} onChange={e => setFormData({ ...formData, fullName: e.target.value.toUpperCase() })} /></div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-1">
+                      <label className="text-[11px] font-black text-gray-400 uppercase tracking-widest ml-1">First Name</label>
+                      <input 
+                        type="text" 
+                        required 
+                        className="w-full px-6 py-4 bg-gray-50 border border-gray-100 rounded-2xl outline-none focus:ring-2 focus:ring-pink-300 transition-all uppercase font-bold text-gray-700" 
+                        value={formData.firstName} 
+                        onChange={e => setFormData({ ...formData, firstName: e.target.value.toUpperCase() })} 
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-[11px] font-black text-gray-400 uppercase tracking-widest ml-1">Last Name</label>
+                      <input 
+                        type="text" 
+                        required 
+                        className="w-full px-6 py-4 bg-gray-50 border border-gray-100 rounded-2xl outline-none focus:ring-2 focus:ring-pink-300 transition-all uppercase font-bold text-gray-700" 
+                        value={formData.lastName} 
+                        onChange={e => setFormData({ ...formData, lastName: e.target.value.toUpperCase() })} 
+                      />
+                    </div>
+                  </div>
                   <div className="grid grid-cols-2 gap-4"><div className="space-y-1"><label className="text-[11px] font-black text-gray-400 uppercase tracking-widest ml-1">Birthday</label><input type="date" required className="w-full px-6 py-4 bg-gray-50 border rounded-2xl outline-none focus:ring-2 focus:ring-pink-300 transition-all font-bold text-gray-700" value={formData.birthday} onChange={e => setFormData({ ...formData, birthday: e.target.value })} /></div><div className="space-y-1"><label className="text-[11px] font-black text-gray-400 uppercase tracking-widest ml-1">Age Group</label><div className="w-full px-6 py-4 font-black border rounded-2xl flex items-center h-[58px] bg-pink-50 text-pink-600 border-pink-100">{ageData.group || '---'}</div></div></div>
                   <div className="space-y-1"><label className="text-[11px] font-black text-gray-400 uppercase tracking-widest ml-1">Guardian Name</label><input type="text" required className="w-full px-6 py-4 bg-gray-50 border border-gray-100 rounded-2xl outline-none focus:ring-2 focus:ring-pink-300 transition-all uppercase font-bold text-gray-700" value={formData.guardianName} onChange={e => setFormData({ ...formData, guardianName: e.target.value.toUpperCase() })} /></div>
                   <div className="space-y-1"><label className="text-[11px] font-black text-gray-400 uppercase tracking-widest ml-1">Contact No.</label><input type="tel" required maxLength={11} className="w-full px-6 py-4 bg-gray-50 border border-gray-100 rounded-2xl outline-none focus:ring-2 focus:ring-pink-300 transition-all font-bold text-gray-700" value={formData.guardianPhone} onChange={e => setFormData({ ...formData, guardianPhone: e.target.value })} /></div>

@@ -19,7 +19,8 @@ const StudentsPage: React.FC<{ user: UserSession }> = ({ user }) => {
   const [editingAccessKey, setEditingAccessKey] = useState<string | null>(null);
 
   const [formData, setFormData] = useState({
-    fullName: '',
+    firstName: '',
+    lastName: '',
     birthday: '',
     guardianName: '',
     guardianPhone: '',
@@ -124,7 +125,7 @@ const StudentsPage: React.FC<{ user: UserSession }> = ({ user }) => {
   };
 
   const resetForm = () => {
-    setFormData({ fullName: '', birthday: '', guardianName: '', guardianPhone: '', notes: '', photoUrl: '', accessKey: '' });
+    setFormData({ firstName: '', lastName: '', birthday: '', guardianName: '', guardianPhone: '', notes: '', photoUrl: '', accessKey: '' });
     setEditingStudent(null);
     setIsSaving(false);
     isSavingRef.current = false;
@@ -167,9 +168,10 @@ const StudentsPage: React.FC<{ user: UserSession }> = ({ user }) => {
     }
 
     try {
+      const fullName = `${formData.firstName} ${formData.lastName}`.trim().toUpperCase();
       if (editingStudent) {
         await db.updateStudent(editingStudent.id, {
-          fullName: formData.fullName.toUpperCase(),
+          fullName: fullName,
           birthday: formData.birthday,
           guardianName: formData.guardianName.trim() ? formData.guardianName.toUpperCase() : "",
           guardianPhone: formData.guardianPhone.trim() ? formData.guardianPhone : "",
@@ -180,7 +182,7 @@ const StudentsPage: React.FC<{ user: UserSession }> = ({ user }) => {
         });
       } else {
         await db.addStudent({
-          fullName: formData.fullName.toUpperCase(),
+          fullName: fullName,
           birthday: formData.birthday,
           guardianName: formData.guardianName.trim() ? formData.guardianName.toUpperCase() : "",
           guardianPhone: formData.guardianPhone.trim() ? formData.guardianPhone : "",
@@ -201,8 +203,13 @@ const StudentsPage: React.FC<{ user: UserSession }> = ({ user }) => {
 
   const handleEditClick = (student: Student) => {
     setEditingStudent(student);
+    // Parse fullName into first and last name
+    const nameParts = (student.fullName || '').split(' ');
+    const firstName = nameParts[0] || '';
+    const lastName = nameParts.slice(1).join(' ') || '';
     setFormData({
-      fullName: student.fullName ?? '',
+      firstName: firstName,
+      lastName: lastName,
       birthday: student.birthday ?? '',
       guardianName: student.guardianName ?? '',
       guardianPhone: student.guardianPhone ?? '',
@@ -512,16 +519,29 @@ const StudentsPage: React.FC<{ user: UserSession }> = ({ user }) => {
             </div>
 
             <form onSubmit={handleSave} className="p-10 space-y-6 max-h-[70vh] overflow-y-auto custom-scrollbar">
-              <div className="space-y-1">
-                <label className="text-[12px] font-black text-gray-400 uppercase tracking-widest ml-1">Nickname</label>
-                <input
-                  type="text"
-                  required
-                  placeholder="ENTER NICKNAME"
-                  className="w-full px-6 py-4 bg-gray-50 border border-gray-100 rounded-2xl outline-none focus:ring-2 focus:ring-pink-300 transition-all uppercase font-bold text-gray-700 text-[12px]"
-                  value={formData.fullName}
-                  onChange={e => setFormData({ ...formData, fullName: e.target.value.toUpperCase() })}
-                />
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-1">
+                  <label className="text-[12px] font-black text-gray-400 uppercase tracking-widest ml-1">First Name</label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="FIRST NAME"
+                    className="w-full px-6 py-4 bg-gray-50 border border-gray-100 rounded-2xl outline-none focus:ring-2 focus:ring-pink-300 transition-all uppercase font-bold text-gray-700 text-[12px]"
+                    value={formData.firstName}
+                    onChange={e => setFormData({ ...formData, firstName: e.target.value.toUpperCase() })}
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-[12px] font-black text-gray-400 uppercase tracking-widest ml-1">Last Name</label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="LAST NAME"
+                    className="w-full px-6 py-4 bg-gray-50 border border-gray-100 rounded-2xl outline-none focus:ring-2 focus:ring-pink-300 transition-all uppercase font-bold text-gray-700 text-[12px]"
+                    value={formData.lastName}
+                    onChange={e => setFormData({ ...formData, lastName: e.target.value.toUpperCase() })}
+                  />
+                </div>
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
