@@ -351,6 +351,113 @@ class DatabaseService {
     }));
   }
 
+  // Analytics: Get daily point totals for a student over a date range
+  async getStudentDailyPoints(studentId: string, startDate: string, endDate: string): Promise<{ date: string; points: number; formattedDate: string }[]> {
+    const query = `
+      SELECT 
+        entry_date as date,
+        SUM(points) as points
+      FROM point_ledger
+      WHERE student_id = '${studentId}'
+        AND voided = false
+        AND entry_date >= '${startDate}'
+        AND entry_date <= '${endDate}'
+      GROUP BY entry_date
+      ORDER BY entry_date ASC
+    `;
+    
+    const { data, error } = await supabase.rpc('exec_sql', { query_text: query });
+    if (error) {
+      // Fallback: fetch all and aggregate in memory if RPC fails
+      const { data: ledgerData, error: ledgerError } = await supabase
+        .from('point_ledger')
+        .select('entry_date, points')
+        .eq('student_id', studentId)
+        .eq('voided', false)
+        .gte('entry_date', startDate)
+        .lte('entry_date', endDate);
+      
+      if (ledgerError) throw new Error(formatError(ledgerError));
+      
+      // Aggregate by date
+      const grouped = (ledgerData || []).reduce((acc: Record<string, number>, row: any) => {
+        const date = row.entry_date;
+        acc[date] = (acc[date] || 0) + row.points;
+        return acc;
+      }, {});
+      
+      return Object.entries(grouped).map(([date, points]) => ({
+        date,
+        points: points as number,
+        formattedDate: new Date(date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+      })).sort((a, b) => a.date.localeCompare(b.date));
+    }
+    
+    return (data || []).map((row: any) => ({
+      date: row.date,
+      points: parseInt(row.points) || 0,
+      formattedDate: new Date(row.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+    }));
+  }
+
+  // Analytics: Get category breakdown for a student
+  async getStudentCategoryBreakdown(studentId: string): Promise<{ category: string; points: number; color: string }[]> {
+    const query = `
+      SELECT 
+        category,
+        SUM(points) as points
+      FROM point_ledger
+      WHERE student_id = '${studentId}'
+        AND voided = false
+      GROUP BY category
+      ORDER BY points DESC
+    `;
+    
+    const { data, error } = await supabase.rpc('exec_sql', { query_text: query });
+    if (error) {
+      // Fallback: fetch all and aggregate in memory
+      const { data: ledgerData, error: ledgerError } = await supabase
+        .from('point_ledger')
+        .select('category, points')
+        .eq('student_id', studentId)
+        .eq('voided', false);
+      
+      if (ledgerError) throw new Error(formatError(ledgerError));
+      
+      // Aggregate by category
+      const grouped = (ledgerData || []).reduce((acc: Record<string, number>, row: any) => {
+        const category = row.category;
+        acc[category] = (acc[category] || 0) + row.points;
+        return acc;
+      }, {});
+      
+      return Object.entries(grouped).map(([category, points]) => ({
+        category,
+        points: points as number,
+        color: this.getCategoryColor(category)
+      })).sort((a, b) => b.points - a.points);
+    }
+    
+    return (data || []).map((row: any) => ({
+      category: row.category,
+      points: parseInt(row.points) || 0,
+      color: this.getCategoryColor(row.category)
+    }));
+  }
+
+  // Helper to get color for category
+  private getCategoryColor(category: string): string {
+    const colors: Record<string, string> = {
+      'Attendance': '#ec4899',
+      'Memory Verse': '#8b5cf6',
+      'Worksheet / Activities': '#f59e0b',
+      'Recitation': '#10b981',
+      'Presentation': '#3b82f6',
+      'Manual Points': '#f97316',
+    };
+    return colors[category] || '#ec4899';
+  }
+
   async getFairnessData(startDate: string, endDate: string) {
     const { data, error } = await supabase.from('point_ledger').select('*, students(id, full_name, age_group)').eq('voided', false).gte('entry_date', startDate).lte('entry_date', endDate);
     if (error) throw new Error(formatError(error));

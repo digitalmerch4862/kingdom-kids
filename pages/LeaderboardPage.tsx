@@ -2,8 +2,9 @@
 import React, { useState, useEffect } from 'react';
 import { MinistryService, LeaderboardEntry } from '../services/ministry.service';
 import { db, formatError } from '../services/db.service';
-import { AgeGroup, UserSession } from '../types';
+import { AgeGroup, UserSession, Student } from '../types';
 import { audio } from '../services/audio.service';
+import { StudentAnalyticsModal } from '../components/StudentAnalyticsModal';
 
 const LeaderboardPage: React.FC = () => {
   const [overall, setOverall] = useState<LeaderboardEntry[]>([]);
@@ -13,6 +14,9 @@ const LeaderboardPage: React.FC = () => {
   const [ageFilter, setAgeFilter] = useState<AgeGroup | 'ALL'>('ALL');
   const [loading, setLoading] = useState(true);
   const [usingMockData, setUsingMockData] = useState(false);
+  const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
+  const [selectedRank, setSelectedRank] = useState<number>(0);
+  const [isModalOpen, setIsModalOpen] = useState(false);
 
   const sessionStr = localStorage.getItem('km_session');
   const user: UserSession | null = sessionStr ? JSON.parse(sessionStr) : null;
@@ -88,6 +92,40 @@ const LeaderboardPage: React.FC = () => {
 
   const maxPointsOverall = overall.length > 0 ? overall[0].totalPoints : 1;
 
+  const handleStudentClick = (student: LeaderboardEntry, rank: number) => {
+    // Convert LeaderboardEntry to Student type
+    const studentData: Student = {
+      id: student.id,
+      accessKey: student.accessKey,
+      fullName: student.fullName,
+      birthday: student.birthday,
+      ageGroup: student.ageGroup,
+      guardianName: student.guardianName,
+      guardianPhone: student.guardianPhone,
+      photoUrl: student.photoUrl,
+      isEnrolled: student.isEnrolled,
+      notes: student.notes,
+      createdAt: student.createdAt,
+      updatedAt: student.updatedAt,
+      consecutiveAbsences: student.consecutiveAbsences,
+      studentStatus: student.studentStatus,
+      lastFollowupSent: student.lastFollowupSent,
+      guardianNickname: student.guardianNickname,
+      currentRole: student.currentRole,
+      batchYear: student.batchYear,
+      isLegacy: student.isLegacy
+    };
+    setSelectedStudent(studentData);
+    setSelectedRank(rank);
+    setIsModalOpen(true);
+  };
+
+  const handleCloseModal = () => {
+    setIsModalOpen(false);
+    setSelectedStudent(null);
+    setSelectedRank(0);
+  };
+
   if (loading) return <div className="p-10 text-center uppercase font-black text-pink-300 animate-pulse">Ranking the Kids...</div>;
 
   return (
@@ -134,15 +172,25 @@ const LeaderboardPage: React.FC = () => {
 
           <div className="bg-white rounded-[2rem] md:rounded-[2.5rem] shadow-sm border border-pink-50 overflow-hidden p-6 md:p-8 space-y-6">
             {overall.map((kid, i) => (
-              <div key={kid.id} className="group relative">
+              <div 
+                key={kid.id} 
+                className="group relative cursor-pointer"
+                onClick={() => handleStudentClick(kid, i + 1)}
+              >
                 <div className="flex items-center justify-between mb-2">
                   <div className="flex items-center gap-4">
                     <span className={`w-6 md:w-8 font-black text-sm ${i < 3 ? 'text-pink-500' : 'text-gray-300'}`}>
                       #{i + 1}
                     </span>
-                    <span className="font-black text-gray-800 uppercase tracking-tight text-xs truncate max-w-[120px] md:max-w-none">
+                    <button 
+                      className="font-black text-gray-800 uppercase tracking-tight text-xs truncate max-w-[120px] md:max-w-none hover:text-pink-500 transition-colors text-left"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleStudentClick(kid, i + 1);
+                      }}
+                    >
                       {kid.fullName}
-                    </span>
+                    </button>
                     <span className="px-2 py-0.5 bg-gray-50 text-gray-400 text-[8px] font-black rounded uppercase">
                       {kid.ageGroup}
                     </span>
@@ -256,6 +304,16 @@ const LeaderboardPage: React.FC = () => {
             ⚠️ Reset Monthly Stats for {months[selectedMonth]}
           </button>
         </div>
+      )}
+
+      {/* Student Analytics Modal */}
+      {selectedStudent && (
+        <StudentAnalyticsModal
+          student={selectedStudent}
+          currentRank={selectedRank}
+          isOpen={isModalOpen}
+          onClose={handleCloseModal}
+        />
       )}
     </div>
   );
