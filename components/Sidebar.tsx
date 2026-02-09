@@ -28,7 +28,8 @@ import {
   ArrowRight,
   Target,
   FileText,
-  Calendar
+  Calendar,
+  Sparkles
 } from 'lucide-react';
 
 interface SidebarProps {
@@ -150,11 +151,13 @@ const Sidebar: React.FC<SidebarProps> = ({ user, onLogout, isOpen, isDesktopOpen
     { label: 'MY CLASSROOM', icon: Star, path: '/admin/points' },
     { label: 'FAIRNESS MONITOR', icon: Scale, path: '/admin/fairness' },
     { label: 'LEADERBOARD', icon: Trophy, path: '/leaderboard' },
+    { label: 'DAILY QUEST', icon: Sparkles, path: '/daily-quest' },
     { label: 'FAITH PATHWAY', icon: BookOpen, path: '/admin/faith-pathway' },
   ];
 
   const parentItems: SidebarItem[] = [
     { label: 'MY PORTAL', icon: LayoutDashboard, path: '/portal' },
+    { label: 'DAILY QUEST', icon: Sparkles, path: '/daily-quest' },
     { label: 'LEADERBOARD', icon: Trophy, path: '/leaderboard' },
     { label: 'KIDSFLIX', icon: PlayCircle, path: '/kidsflix' },
     { label: 'FB FEED', icon: Facebook, path: '/facebook' },
