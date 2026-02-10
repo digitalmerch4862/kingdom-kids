@@ -27,6 +27,7 @@ import FacebookPage from './pages/FacebookPage';
 import FaithPathwayPage from './pages/FaithPathwayPage';
 import TeachersBoardPage from './pages/TeachersBoardPage';
 import DailyQuestPage from './pages/DailyQuestPage';
+import SideQuestPage from './pages/SideQuestPage';
 
 const App: React.FC = () => {
   const [user, setUser] = useState<UserSession | null>(null);
@@ -146,6 +147,11 @@ const App: React.FC = () => {
           {/* Daily Quest - Public Access */}
           <Route path="/daily-quest" element={
             <DailyQuestPage user={user || { role: 'PARENTS', username: 'Guest', studentId: 'GUEST_DEMO' }} />
+          } />
+
+          {/* Side Quest - Public Access */}
+          <Route path="/side-quest" element={
+            <SideQuestPage user={user || { role: 'PARENTS', username: 'Guest', studentId: 'GUEST_DEMO' }} />
           } />
         </Route>
 
