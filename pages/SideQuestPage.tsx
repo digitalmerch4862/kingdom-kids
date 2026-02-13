@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useNavigate } from 'react-router-dom';
 import { UserSession } from '../types';
 import { audio } from '../services/audio.service';
-import { BookOpen, ScrollText, ChevronLeft, Waves, Award, Clock, AlertCircle, ChevronRight, Settings } from 'lucide-react';
+import { BookOpen, ScrollText, ChevronLeft, Waves, Award, Clock, AlertCircle, ChevronRight } from 'lucide-react';
 
 interface SideQuestPageProps {
   user: UserSession;
@@ -267,6 +268,7 @@ const getTreeStage = (progress: number) => {
 };
 
 const SideQuestPage: React.FC<SideQuestPageProps> = ({ user }) => {
+  const navigate = useNavigate();
   const [waterAmount, setWaterAmount] = useState(58);
   const [growthProgress, setGrowthProgress] = useState(70);
   const [pointsCollected, setPointsCollected] = useState(31.05);
@@ -537,7 +539,7 @@ const SideQuestPage: React.FC<SideQuestPageProps> = ({ user }) => {
         {/* Header */}
         <div className="relative z-10 flex items-center justify-between px-3 sm:px-4 pt-3 sm:pt-4">
           <motion.button
-            onClick={() => audio.playClick()}
+            onClick={() => { audio.playClick(); navigate('/dashboard'); }}
             className="bg-white/90 rounded-full p-2 shadow-lg"
             whileTap={{ scale: 0.95 }}
           >
@@ -557,13 +559,7 @@ const SideQuestPage: React.FC<SideQuestPageProps> = ({ user }) => {
             </div>
           </div>
 
-          <motion.button
-            onClick={() => audio.playClick()}
-            className="bg-white/90 rounded-full p-2 shadow-lg"
-            whileTap={{ scale: 0.95 }}
-          >
-            <Settings className="text-green-600 w-5 h-5" />
-          </motion.button>
+          <div className="w-9 sm:w-10" aria-hidden="true" />
         </div>
 
         <div className="relative z-10 flex-1 flex flex-col items-center gap-3 sm:gap-4 px-3 sm:px-4 pb-3 sm:pb-4">
