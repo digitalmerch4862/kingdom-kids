@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import { UserSession } from '../types';
 import { audio } from '../services/audio.service';
-import { BookOpen, ScrollText, ChevronLeft, Waves, Award, Clock, AlertCircle, ChevronRight } from 'lucide-react';
+import { BookOpen, ScrollText, ChevronLeft, Waves, Award, Clock, AlertCircle, ChevronRight, Settings } from 'lucide-react';
 
 interface SideQuestPageProps {
   user: UserSession;
@@ -256,11 +256,11 @@ const getQuestionsForWave = (wave: number, usedQuestionIds: Set<number> = new Se
 
 // Tree stages matching the React Native design
 const treeStages = [
-  { image: '/stage1.png', name: 'Seedling', minProgress: 0, maxProgress: 20, sizeClass: 'w-36 sm:w-40' },
-  { image: '/stage2.png', name: 'Sprout', minProgress: 21, maxProgress: 40, sizeClass: 'w-44 sm:w-48' },
-  { image: '/stage3.png', name: 'Young Plant', minProgress: 41, maxProgress: 60, sizeClass: 'w-52 sm:w-56' },
-  { image: '/stage4.png', name: 'Growing Tree', minProgress: 61, maxProgress: 80, sizeClass: 'w-64 sm:w-72' },
-  { image: '/stage5.png', name: 'Mature Tree', minProgress: 81, maxProgress: 100, sizeClass: 'w-72 sm:w-80' },
+  { image: '/stage1.png', name: 'Seedling', minProgress: 0, maxProgress: 20, sizeClass: 'w-32 sm:w-36' },
+  { image: '/stage2.png', name: 'Sprout', minProgress: 21, maxProgress: 40, sizeClass: 'w-40 sm:w-44' },
+  { image: '/stage3.png', name: 'Young Plant', minProgress: 41, maxProgress: 60, sizeClass: 'w-48 sm:w-52' },
+  { image: '/stage4.png', name: 'Growing Tree', minProgress: 61, maxProgress: 80, sizeClass: 'w-56 sm:w-64' },
+  { image: '/stage5.png', name: 'Mature Tree', minProgress: 81, maxProgress: 100, sizeClass: 'w-64 sm:w-72' },
 ];
 
 const getTreeStage = (progress: number) => {
@@ -537,134 +537,221 @@ const SideQuestPage: React.FC<SideQuestPageProps> = ({ user }) => {
         </div>
 
         {/* Header */}
-        <div className="relative z-10 flex items-center justify-between px-3 sm:px-4 pt-3 sm:pt-4">
+        <div className="relative z-10 flex items-center justify-between px-4 sm:px-6 pt-4 sm:pt-6">
           <motion.button
             onClick={() => { audio.playClick(); navigate('/dashboard'); }}
-            className="bg-white/90 rounded-full p-2 shadow-lg"
+            className="bg-white/90 backdrop-blur-sm rounded-full p-3 shadow-lg border border-white/50"
             whileTap={{ scale: 0.95 }}
+            whileHover={{ scale: 1.05 }}
           >
-            <ChevronLeft className="text-green-600 w-5 h-5" />
+            <ChevronLeft className="text-green-600 w-6 h-6" />
           </motion.button>
 
-          <div className="mx-2 flex-1 flex justify-center">
-            <div className="relative h-9 sm:h-10 w-full max-w-[12rem] sm:max-w-[15rem] overflow-hidden rounded-full border-[3px] border-[#6b3f1f] bg-[#8b5a2b]/90 shadow-[0_4px_0_#5a341a]">
+          <div className="mx-3 flex-1 flex justify-center">
+            <div className="relative h-10 sm:h-12 w-full max-w-[14rem] sm:max-w-[16rem] overflow-hidden rounded-full border-[3px] border-[#6b3f1f] bg-[#8b5a2b]/95 shadow-[0_6px_0_#5a341a,0_8px_16px_rgba(0,0,0,0.3)]">
               <div
-                className="absolute inset-y-0 left-0 rounded-full bg-gradient-to-r from-[#f9d15a] to-[#e5ac1f]"
+                className="absolute inset-y-0 left-0 rounded-full bg-gradient-to-r from-[#f9d15a] via-[#f4c430] to-[#e5ac1f] shadow-inner"
                 style={{ width: '57%' }}
               />
-              <div className="relative z-10 flex h-full items-center gap-2 px-3">
-                <span className="text-yellow-300 text-sm sm:text-base leading-none drop-shadow">⭐</span>
-                <span className="text-xs sm:text-sm font-black tracking-wide text-white">34 / 60</span>
+              <div className="relative z-10 flex h-full items-center justify-center gap-3 px-4">
+                <span className="text-yellow-200 text-lg sm:text-xl leading-none drop-shadow-lg filter">⭐</span>
+                <span className="text-sm sm:text-base font-black tracking-wider text-white drop-shadow-md">34 / 60</span>
               </div>
             </div>
           </div>
 
-          <div className="w-9 sm:w-10" aria-hidden="true" />
+          <motion.button
+            onClick={() => audio.playClick()}
+            className="bg-white/90 backdrop-blur-sm rounded-full p-3 shadow-lg border border-white/50"
+            whileTap={{ scale: 0.95 }}
+            whileHover={{ scale: 1.05, rotate: 90 }}
+            transition={{ rotate: { duration: 0.3 } }}
+          >
+            <Settings className="text-green-600 w-6 h-6" />
+          </motion.button>
         </div>
 
-        <div className="relative z-10 flex-1 flex flex-col items-center gap-3 sm:gap-4 px-3 sm:px-4 pb-3 sm:pb-4">
-          {/* Main scene */}
-          <div className="relative w-full flex-1 max-w-4xl min-h-[40vh] sm:min-h-0">
-            <div className="absolute inset-x-0 bottom-0 flex items-end justify-center pb-4 sm:pb-0">
-              <div className="relative -mb-40 sm:-mb-[22rem] flex flex-col items-center gap-2 sm:gap-3">
-                {particles.map((particle) => (
-                  <motion.div
-                    key={particle.id}
-                    className="absolute text-lg sm:text-xl"
-                    initial={{ x: 0, y: 0, opacity: 1 }}
-                    animate={{ x: particle.x, y: particle.y, opacity: 0 }}
-                    transition={{ duration: 0.8 }}
-                  >
-                    💧
-                  </motion.div>
-                ))}
-                {showFloatingText && (
-                  <motion.div
-                    className="text-yellow-400 text-2xl sm:text-3xl font-black drop-shadow"
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: -10 }}
-                    exit={{ opacity: 0 }}
-                  >
-                    {floatingText}
-                  </motion.div>
-                )}
-                <motion.img
-                  src={currentStage.image}
-                  alt={currentStage.name}
-                  className={`w-28 sm:${currentStage.sizeClass} max-w-[60vw] sm:max-w-[78vw] origin-bottom drop-shadow-xl`}
-                  animate={{ scale: [1, 1.03, 1], rotate: [0, 1, -1, 0] }}
-                  transition={{ repeat: Infinity, duration: 5 }}
-                />
-                {isPouring && (
-                  <motion.img
-                    src="/pouring%20jar.png"
-                    alt="Pouring water"
-                    className="pointer-events-none absolute left-[17%] top-[32%] z-20 w-32 sm:w-[16.5rem] -translate-x-1/2"
-                    initial={{ opacity: 0, scale: 0.9, y: 12 }}
-                    animate={{ opacity: 1, scale: 1, y: 0 }}
-                    exit={{ opacity: 0 }}
-                    transition={{ duration: 0.2 }}
-                  />
-                )}
-              </div>
-            </div>
-          </div>
-
-          {/* Water Jar - Centered above */}
-          <div className="w-full flex justify-center mb-2">
+        <div className="relative z-10 flex-1 flex flex-col items-center gap-4 sm:gap-6 px-4 sm:px-6 pb-6 sm:pb-8">
+          {/* Main scene with Tree and Watering Can */}
+          <div className="relative w-full flex-1 max-w-4xl flex flex-col items-center justify-end">
+            
+            {/* Floating Watering Can - Above Tree */}
             <motion.button
               type="button"
               onClick={handleWaterClick}
-              className="relative p-0 bg-transparent border-0"
-              animate={{ y: [0, -4, 0] }}
-              transition={{ repeat: Infinity, duration: 3 }}
-              whileHover={{ scale: 1.03 }}
-              whileTap={{ scale: 0.95 }}
+              className="relative z-30 mb-4 sm:mb-6"
+              animate={{ 
+                y: [0, -6, 0],
+                rotate: [0, -2, 2, 0]
+              }}
+              transition={{ 
+                y: { repeat: Infinity, duration: 2.5, ease: "easeInOut" },
+                rotate: { repeat: Infinity, duration: 4, ease: "easeInOut" }
+              }}
+              whileHover={{ scale: 1.08 }}
+              whileTap={{ scale: 0.92 }}
             >
-              <motion.img
-                src="/jar.png"
-                alt="Water Jar"
-                className="block w-20 h-auto sm:w-full sm:max-w-[140px] mx-auto"
-                animate={isPouring ? { scale: 1.12 } : { scale: 1 }}
-                transition={{ duration: 0.2 }}
-              />
-              <div className="pointer-events-none absolute inset-0 flex items-center justify-center translate-y-[2rem] sm:translate-y-[2.75rem] text-black text-[12px] sm:text-[16px] font-black whitespace-nowrap">
+              {/* Water Badge */}
+              <div className="absolute -top-2 -right-2 z-40 bg-gradient-to-br from-yellow-400 to-orange-500 text-white text-xs sm:text-sm font-black px-2 py-1 rounded-full shadow-lg border-2 border-white">
                 {waterAmount}ml
               </div>
+              
+              <motion.div
+                className="relative"
+                animate={isPouring ? { rotate: -25, x: -10 } : { rotate: 0, x: 0 }}
+                transition={{ duration: 0.3 }}
+              >
+                <img
+                  src="/jar.png"
+                  alt="Watering Can"
+                  className="block w-16 sm:w-24 h-auto drop-shadow-2xl"
+                />
+                {/* Glow effect */}
+                <div className="absolute inset-0 bg-yellow-400/20 rounded-full blur-xl -z-10" />
+              </motion.div>
+              
+              {/* Water particles */}
+              {particles.map((particle) => (
+                <motion.div
+                  key={particle.id}
+                  className="absolute top-full left-1/2 text-xl sm:text-2xl"
+                  initial={{ x: 0, y: 0, opacity: 1 }}
+                  animate={{ x: particle.x, y: particle.y, opacity: 0 }}
+                  transition={{ duration: 0.8 }}
+                >
+                  💧
+                </motion.div>
+              ))}
+              
+              {/* Floating text */}
+              {showFloatingText && (
+                <motion.div
+                  className="absolute -top-8 left-1/2 -translate-x-1/2 text-yellow-400 text-xl sm:text-2xl font-black drop-shadow-lg whitespace-nowrap"
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: -20 }}
+                  exit={{ opacity: 0 }}
+                >
+                  {floatingText}
+                </motion.div>
+              )}
             </motion.button>
+
+            {/* Life Tree */}
+            <div className="relative flex flex-col items-center">
+              {/* Pouring animation overlay */}
+              {isPouring && (
+                <motion.div
+                  className="absolute -top-8 left-1/2 -translate-x-1/2 z-20 pointer-events-none"
+                  initial={{ opacity: 0, scale: 0.8 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  exit={{ opacity: 0 }}
+                  transition={{ duration: 0.2 }}
+                >
+                  <img
+                    src="/pouring%20jar.png"
+                    alt="Pouring"
+                    className="w-20 sm:w-28 h-auto"
+                  />
+                </motion.div>
+              )}
+              
+              <motion.img
+                src={currentStage.image}
+                alt={currentStage.name}
+                className={`w-40 sm:${currentStage.sizeClass} max-w-[70vw] sm:max-w-[78vw] origin-bottom drop-shadow-2xl`}
+                animate={{ 
+                  scale: [1, 1.02, 1], 
+                  rotate: [0, 0.5, -0.5, 0],
+                  filter: ["brightness(1)", "brightness(1.1)", "brightness(1)"]
+                }}
+                transition={{ 
+                  repeat: Infinity, 
+                  duration: 4,
+                  ease: "easeInOut"
+                }}
+                style={{
+                  filter: "drop-shadow(0 20px 30px rgba(0,0,0,0.3))"
+                }}
+              />
+              
+              {/* Tree glow effect */}
+              <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-32 h-8 bg-green-500/30 rounded-full blur-2xl -z-10" />
+            </div>
           </div>
 
-          {/* Bible Story / Memory Verse buttons - Aligned side by side */}
-          <div className="w-full flex items-end justify-between gap-2 sm:gap-3">
-            <div className="w-[48%] max-w-44 flex flex-col items-center">
-              <motion.button
-                onClick={() => startQuiz('bible')}
-                className="w-full rounded-xl sm:rounded-2xl shadow-lg"
-                whileHover={{ scale: 1.01 }}
-                whileTap={{ scale: 0.97 }}
-              >
+          {/* Bottom Navigation - Circular Buttons */}
+          <div className="w-full flex items-end justify-center gap-4 sm:gap-6 px-2">
+            {/* Bible Story Button */}
+            <motion.button
+              onClick={() => startQuiz('bible')}
+              className="relative group"
+              whileHover={{ scale: 1.05, y: -4 }}
+              whileTap={{ scale: 0.95 }}
+            >
+              {/* Outer ring */}
+              <div className="absolute inset-0 bg-gradient-to-br from-amber-400 to-orange-600 rounded-full p-1 shadow-lg">
+                <div className="absolute inset-0 bg-gradient-to-br from-amber-400 to-orange-600 rounded-full blur opacity-50 group-hover:opacity-80 transition-opacity" />
+              </div>
+              
+              {/* Inner content */}
+              <div className="relative w-24 h-24 sm:w-32 sm:h-32 rounded-full overflow-hidden border-4 border-amber-200 shadow-inner bg-gradient-to-br from-amber-50 to-orange-100">
                 <img
                   src="/bible%20story.png"
-                  alt="Bible Story Quest"
-                  className="block h-auto w-full object-contain"
+                  alt="Bible Story"
+                  className="w-full h-full object-cover"
                 />
-              </motion.button>
-            </div>
+                {/* Parchment label */}
+                <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-amber-900/90 to-amber-800/70 py-1 sm:py-2 px-2">
+                  <p className="text-[10px] sm:text-xs font-black text-amber-100 text-center uppercase tracking-wider drop-shadow-md"
+                     style={{ 
+                       fontFamily: 'serif',
+                       textShadow: '1px 1px 2px rgba(0,0,0,0.5)'
+                     }}
+                  >
+                    Bible Story
+                  </p>
+                </div>
+              </div>
+              
+              {/* Shine effect */}
+              <div className="absolute top-2 left-2 w-6 h-6 sm:w-8 sm:h-8 bg-white/30 rounded-full blur-sm" />
+            </motion.button>
 
-            <div className="w-[48%] max-w-44 flex flex-col items-center">
-              <motion.button
-                onClick={() => startQuiz('verse')}
-                className="w-full rounded-xl sm:rounded-2xl shadow-lg"
-                whileHover={{ scale: 1.01 }}
-                whileTap={{ scale: 0.97 }}
-              >
+            {/* Memory Verse Button */}
+            <motion.button
+              onClick={() => startQuiz('verse')}
+              className="relative group"
+              whileHover={{ scale: 1.05, y: -4 }}
+              whileTap={{ scale: 0.95 }}
+            >
+              {/* Outer ring */}
+              <div className="absolute inset-0 bg-gradient-to-br from-purple-400 to-indigo-600 rounded-full p-1 shadow-lg">
+                <div className="absolute inset-0 bg-gradient-to-br from-purple-400 to-indigo-600 rounded-full blur opacity-50 group-hover:opacity-80 transition-opacity" />
+              </div>
+              
+              {/* Inner content */}
+              <div className="relative w-24 h-24 sm:w-32 sm:h-32 rounded-full overflow-hidden border-4 border-purple-200 shadow-inner bg-gradient-to-br from-purple-50 to-indigo-100">
                 <img
                   src="/memmory%20verse.png"
-                  alt="Memory Verse Challenge"
-                  className="block h-auto w-full object-contain"
+                  alt="Memory Verse"
+                  className="w-full h-full object-cover"
                 />
-              </motion.button>
-            </div>
+                {/* Parchment label */}
+                <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-purple-900/90 to-indigo-800/70 py-1 sm:py-2 px-2">
+                  <p className="text-[10px] sm:text-xs font-black text-purple-100 text-center uppercase tracking-wider drop-shadow-md"
+                     style={{ 
+                       fontFamily: 'serif',
+                       textShadow: '1px 1px 2px rgba(0,0,0,0.5)'
+                     }}
+                  >
+                    Memory Verse
+                  </p>
+                </div>
+              </div>
+              
+              {/* Shine effect */}
+              <div className="absolute top-2 left-2 w-6 h-6 sm:w-8 sm:h-8 bg-white/30 rounded-full blur-sm" />
+            </motion.button>
           </div>
         </div>
 
