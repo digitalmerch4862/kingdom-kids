@@ -4,6 +4,7 @@ import { db, formatError } from '../services/db.service';
 import { TeacherAssignmentRecord } from '../types';
 import { audio } from '../services/audio.service';
 import { Edit2, Save, X, Loader2, Calendar, ChevronLeft, ChevronRight, Plus, Trash2 } from 'lucide-react';
+import { safeJsonParse } from '../utils/storage';
 
 const COLUMNS = [
    { key: 'age_group_3_6', label: '3-6 YEARS OLD', bg: 'bg-[#4DD0E1]', text: 'text-white' },
@@ -36,9 +37,7 @@ const TeachersBoardPage: React.FC = () => {
    useEffect(() => {
       loadBoard();
       const sessionStr = localStorage.getItem('km_session');
-      if (sessionStr) {
-         setUser(JSON.parse(sessionStr));
-      }
+      setUser(safeJsonParse(sessionStr, null));
    }, []);
 
    const loadBoard = async () => {

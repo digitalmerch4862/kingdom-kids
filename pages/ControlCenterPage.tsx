@@ -5,6 +5,7 @@ import { MinistryService } from '../services/ministry.service';
 import { AppSettings, UserSession } from '../types';
 import { audio } from '../services/audio.service';
 import { Settings, Save, AlertTriangle, Star, CheckCircle, Flame, RefreshCcw, ShieldCheck, FileText, Info } from 'lucide-react';
+import { safeJsonParse } from '../utils/storage';
 
 const ControlCenterPage: React.FC = () => {
   const [settings, setSettings] = useState<AppSettings | null>(null);
@@ -19,7 +20,7 @@ const ControlCenterPage: React.FC = () => {
 
   // Identify User for Audit Logs
   const sessionStr = localStorage.getItem('km_session');
-  const user: UserSession | null = sessionStr ? JSON.parse(sessionStr) : null;
+  const user = safeJsonParse<UserSession | null>(sessionStr, null);
   const actor = user?.username || 'ADMIN';
 
   useEffect(() => {

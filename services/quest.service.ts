@@ -2,6 +2,7 @@
 import { GoogleGenAI, Type } from "@google/genai";
 import { db } from './db.service';
 import { MinistryService } from './ministry.service';
+import { safeJsonParse } from '../utils/storage';
 
 export interface QuestStory {
   title: string;
@@ -260,9 +261,9 @@ export class QuestService {
     let rankIndex = 0;
     
     if (saved) {
-      const data = JSON.parse(saved);
-      stage = data.stage;
-      rankIndex = data.rank;
+      const data = safeJsonParse<{ stage?: number; rank?: number }>(saved, {});
+      stage = data.stage ?? 0;
+      rankIndex = data.rank ?? 0;
     }
 
     const PLANT_STAGES = ['Seed', 'Sprout', 'Rooted', 'Branch', 'Fruit Bearer'];

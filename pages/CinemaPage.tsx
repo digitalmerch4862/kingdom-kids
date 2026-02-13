@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { Play, X, Info, ChevronRight, Plus, AlertCircle } from 'lucide-react';
 import { audio } from '../services/audio.service';
+import { safeJsonParse } from '../utils/storage';
 
 // ==========================================
 // PART 1: DATA LAYER (Future data.ts)
@@ -158,7 +159,7 @@ const YouTubePlayer: React.FC<YouTubePlayerProps> = ({ videoId, onClose, onEnded
       if (!containerRef.current || !window.YT) return;
 
       // Resume Logic
-      const savedProgress = JSON.parse(localStorage.getItem('kidsflix-progress') || '{}');
+      const savedProgress = safeJsonParse<Record<string, number>>(localStorage.getItem('kidsflix-progress'), {});
       const startSeconds = savedProgress[videoId] || 0;
 
       playerRef.current = new window.YT.Player(containerRef.current, {
@@ -193,7 +194,7 @@ const YouTubePlayer: React.FC<YouTubePlayerProps> = ({ videoId, onClose, onEnded
     const interval = setInterval(() => {
       if (playerRef.current && playerRef.current.getCurrentTime && playerRef.current.getPlayerState() === 1) {
         const currentTime = playerRef.current.getCurrentTime();
-        const savedProgress = JSON.parse(localStorage.getItem('kidsflix-progress') || '{}');
+        const savedProgress = safeJsonParse<Record<string, number>>(localStorage.getItem('kidsflix-progress'), {});
         savedProgress[videoId] = currentTime;
         localStorage.setItem('kidsflix-progress', JSON.stringify(savedProgress));
       }

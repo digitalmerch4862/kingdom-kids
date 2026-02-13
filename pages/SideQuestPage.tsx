@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { UserSession } from '../types';
 import { audio } from '../services/audio.service';
-import { BookOpen, ScrollText, Droplets, ChevronLeft, MoreHorizontal, Waves, Award, Clock, AlertCircle, ChevronRight, Settings, Sparkles } from 'lucide-react';
+import { BookOpen, ScrollText, ChevronLeft, Waves, Award, Clock, AlertCircle, ChevronRight, Settings } from 'lucide-react';
 
 interface SideQuestPageProps {
   user: UserSession;
@@ -35,7 +35,7 @@ const parseCSVQuestions = (csvData: string): Question[] => {
       else if (dayNum >= 5) difficulty = 'HARD';
 
       questions.push({
-        id: parseInt(day) * 1000 + questions.length,
+        id: parseInt(day) * 10000 + questions.length, // Use 10000+ to avoid conflict with memory verse IDs (1000-4000)
         question: question.replace(/"/g, ''),
         options: [optionA, optionB, optionC, optionD].map(opt => opt.replace(/"/g, '')),
         correctAnswer: correctAnswer.toUpperCase().charCodeAt(0) - 65, // Convert A/B/C/D to 0/1/2/3
@@ -188,6 +188,7 @@ const memoryVerseQuestions: Question[] = [
 const QUESTION_TIMER = 30;
 const QUESTIONS_PER_WAVE = 10;
 const TOTAL_WAVES = 5;
+const SIDEQUEST_BACKGROUND_URL = '/GamifyBG.png';
 
 const getVerseDifficulty = (wave: number): 'EASY' | 'MEDIUM' | 'HARD' | 'VERY HARD' => {
   if (wave === 1) return 'EASY';
@@ -254,19 +255,20 @@ const getQuestionsForWave = (wave: number, usedQuestionIds: Set<number> = new Se
 
 // Tree stages matching the React Native design
 const treeStages = [
-  { emoji: '🌱', name: 'Seedling', minProgress: 0, maxProgress: 25 },
-  { emoji: '🌿', name: 'Sapling', minProgress: 25, maxProgress: 50 },
-  { emoji: '🌳', name: 'Small Tree', minProgress: 50, maxProgress: 75 },
-  { emoji: '🌲', name: 'Mature Tree', minProgress: 75, maxProgress: 100 },
+  { image: '/stage1.png', name: 'Seedling', minProgress: 0, maxProgress: 20, sizeClass: 'w-36 sm:w-40' },
+  { image: '/stage2.png', name: 'Sprout', minProgress: 21, maxProgress: 40, sizeClass: 'w-44 sm:w-48' },
+  { image: '/stage3.png', name: 'Young Plant', minProgress: 41, maxProgress: 60, sizeClass: 'w-52 sm:w-56' },
+  { image: '/stage4.png', name: 'Growing Tree', minProgress: 61, maxProgress: 80, sizeClass: 'w-64 sm:w-72' },
+  { image: '/stage5.png', name: 'Mature Tree', minProgress: 81, maxProgress: 100, sizeClass: 'w-72 sm:w-80' },
 ];
 
 const getTreeStage = (progress: number) => {
-  return treeStages.find(stage => progress >= stage.minProgress && progress < stage.maxProgress) || treeStages[0];
+  return treeStages.find(stage => progress >= stage.minProgress && progress <= stage.maxProgress) || treeStages[0];
 };
 
 const SideQuestPage: React.FC<SideQuestPageProps> = ({ user }) => {
   const [waterAmount, setWaterAmount] = useState(58);
-  const [growthProgress, setGrowthProgress] = useState(31);
+  const [growthProgress, setGrowthProgress] = useState(70);
   const [pointsCollected, setPointsCollected] = useState(31.05);
   const targetPoints = 60.00;
 
@@ -295,7 +297,7 @@ const SideQuestPage: React.FC<SideQuestPageProps> = ({ user }) => {
       if (saved) {
         const data = JSON.parse(saved);
         setWaterAmount(data.waterAmount || 58);
-        setGrowthProgress(data.growthProgress || 31);
+        setGrowthProgress(Math.max(data.growthProgress || 70, 61));
         setPointsCollected(data.pointsCollected || 31.05);
       }
 
@@ -499,10 +501,14 @@ const SideQuestPage: React.FC<SideQuestPageProps> = ({ user }) => {
   const [showFloatingText, setShowFloatingText] = useState(false);
   const [floatingText, setFloatingText] = useState('');
   const [particles, setParticles] = useState<{ id: number, x: number, y: number }[]>([]);
+  const [isPouring, setIsPouring] = useState(false);
 
   // Main Garden View - Faith Land
   if (!activeMode) {
     const handleWaterClick = () => {
+      setIsPouring(true);
+      setTimeout(() => setIsPouring(false), 700);
+
       handleWatering();
       setFloatingText('+10 XP');
       setShowFloatingText(true);
@@ -519,462 +525,423 @@ const SideQuestPage: React.FC<SideQuestPageProps> = ({ user }) => {
     };
 
     return (
-      <div className="min-h-screen bg-gradient-to-b from-sky-300 via-sky-200 to-sky-100 flex flex-col relative overflow-hidden">
-        {/* Floating Clouds Background */}
-        <div className="absolute inset-0 overflow-hidden pointer-events-none">
-          <motion.div
-            className="absolute top-10 left-10 w-24 h-12 bg-white/70 rounded-full"
-            animate={{ x: [0, 20, 0] }}
-            transition={{ duration: 6, repeat: Infinity }}
+      <div className="min-h-screen flex flex-col relative overflow-hidden">
+        <div className="absolute inset-0 z-0">
+          <div
+            className="absolute inset-0 bg-cover bg-center bg-no-repeat"
+            style={{ backgroundImage: `url(${SIDEQUEST_BACKGROUND_URL}), linear-gradient(to bottom, #bae6fd, #bbf7d0)` }}
           />
-          <motion.div
-            className="absolute top-20 right-20 w-32 h-16 bg-white/60 rounded-full"
-            animate={{ x: [0, -15, 0] }}
-            transition={{ duration: 8, repeat: Infinity }}
-          />
-          <motion.div
-            className="absolute top-40 left-1/3 w-20 h-10 bg-white/50 rounded-full"
-            animate={{ x: [0, 10, 0] }}
-            transition={{ duration: 5, repeat: Infinity }}
-          />
+          <div className="absolute inset-0 bg-black/10" />
         </div>
 
         {/* Header */}
-        <div className="flex justify-between items-center px-4 py-4 pt-8 relative z-10">
+        <div className="relative z-10 flex items-center justify-between px-4 pt-4">
           <motion.button
             onClick={() => audio.playClick()}
-            className="flex items-center gap-2 bg-white/30 backdrop-blur-sm px-4 py-2 rounded-full shadow-lg"
+            className="bg-white/90 rounded-full p-2 shadow-lg"
             whileTap={{ scale: 0.95 }}
           >
-            <ChevronLeft className="text-white w-5 h-5" />
-            <span className="text-white font-bold">Back</span>
+            <ChevronLeft className="text-green-600 w-5 h-5" />
           </motion.button>
 
-          <div className="bg-gradient-to-r from-yellow-400 to-orange-400 px-4 py-2 rounded-full shadow-lg border-2 border-white">
-            <span className="text-white font-black text-sm">Level 5</span>
-          </div>
-
-          <motion.button
-            onClick={() => audio.playClick()}
-            className="bg-white/30 backdrop-blur-sm p-2 rounded-full shadow-lg"
-            whileTap={{ scale: 0.95 }}
-          >
-            <Settings className="text-white w-5 h-5" />
-          </motion.button>
-        </div>
-
-        {/* Main Stage - Floating Island */}
-        <div className="flex-1 flex flex-col items-center justify-center relative px-4">
-          {/* Growth Progress Badge */}
-          <motion.div
-            className="absolute top-0 bg-gradient-to-r from-yellow-400 to-orange-400 px-6 py-2 rounded-full shadow-lg border-3 border-white z-20"
-            initial={{ scale: 0, y: -50 }}
-            animate={{ scale: 1, y: 0 }}
-            transition={{ type: "spring", stiffness: 200 }}
-          >
-            <span className="text-white font-black text-lg">🌱 Growth: {growthProgress}%</span>
-          </motion.div>
-
-          {/* Floating Island Base */}
-          <div className="relative flex flex-col items-center">
-            {/* Floating Particles */}
-            {particles.map((particle) => (
-              <motion.div
-                key={particle.id}
-                className="absolute text-2xl"
-                initial={{ x: 0, y: 0, opacity: 1 }}
-                animate={{ x: particle.x, y: particle.y, opacity: 0 }}
-                transition={{ duration: 0.8 }}
-              >
-                💧
-              </motion.div>
-            ))}
-
-            {/* Floating XP Text */}
-            {showFloatingText && (
-              <motion.div
-                className="absolute -top-20 left-1/2 transform -translate-x-1/2 z-30"
-                initial={{ scale: 0, y: 0 }}
-                animate={{ scale: 1.5, y: -50 }}
-                exit={{ scale: 0, opacity: 0 }}
-                transition={{ duration: 0.5 }}
-              >
-                <span className="text-3xl font-black text-yellow-400 drop-shadow-lg">{floatingText}</span>
-              </motion.div>
-            )}
-
-            {/* Island Shape */}
-            <div className="relative">
-              {/* Island Top (Green Grass) */}
-              <motion.div
-                className="w-72 h-16 bg-gradient-to-b from-green-400 to-green-500 rounded-[50%] shadow-2xl relative"
-                animate={{ y: [0, -5, 0] }}
-                transition={{ duration: 3, repeat: Infinity }}
-              >
-                {/* Soil layer */}
-                <div className="absolute -bottom-8 left-1/2 transform -translate-x-1/2 w-64 h-10 bg-gradient-to-b from-amber-700 to-amber-800 rounded-[50%]" />
-              </motion.div>
-
-              {/* The Tree */}
-              <motion.div
-                className="absolute -top-40 left-1/2 transform -translate-x-1/2 text-[8rem] drop-shadow-2xl"
-                animate={{ scale: [1, 1.03, 1], rotate: [0, 1, -1, 0] }}
-                transition={{ duration: 4, repeat: Infinity }}
-              >
-                {currentStage.emoji}
-              </motion.div>
-
-              {/* Sparkle Effects */}
-              <motion.div
-                className="absolute -top-20 -right-8 text-yellow-400"
-                animate={{ scale: [0, 1, 0], opacity: [0, 1, 0] }}
-                transition={{ duration: 2, repeat: Infinity }}
-              >
-                <Sparkles className="w-6 h-6" />
-              </motion.div>
-              <motion.div
-                className="absolute -top-28 -left-4 text-yellow-400"
-                animate={{ scale: [0, 1, 0], opacity: [0, 1, 0] }}
-                transition={{ duration: 2, repeat: Infinity, delay: 0.5 }}
-              >
-                <Sparkles className="w-5 h-5" />
-              </motion.div>
-            </div>
-
-            {/* Points Display */}
-            <motion.div
-              className="mt-12 bg-white/40 backdrop-blur-sm px-8 py-3 rounded-2xl shadow-lg border-2 border-white/50"
-              initial={{ scale: 0 }}
-              animate={{ scale: 1 }}
-              transition={{ delay: 0.2 }}
-            >
-              <span className="text-white font-bold text-xl drop-shadow-md">
-                ⭐ {pointsCollected.toFixed(0)} / {targetPoints.toFixed(0)}
-              </span>
-            </motion.div>
-          </div>
-
-          {/* Mission Buttons (Left & Right) */}
-          <div className="absolute top-1/3 left-0 right-0 px-6 flex justify-between pointer-events-none">
-            {/* Bible Story Button */}
-            <motion.button
-              onClick={() => startQuiz('bible')}
-              className="pointer-events-auto flex flex-col items-center"
-              initial={{ x: -50, opacity: 0 }}
-              animate={{ x: 0, opacity: 1 }}
-              transition={{ delay: 0.3 }}
-              whileHover={{ scale: 1.1 }}
-              whileTap={{ scale: 0.9 }}
-            >
-              <div className="w-16 h-16 bg-gradient-to-br from-blue-400 to-blue-600 rounded-full shadow-xl border-4 border-white flex items-center justify-center">
-                <BookOpen className="text-white w-8 h-8" />
-              </div>
-              <span className="mt-2 bg-white/90 px-3 py-1 rounded-full text-sm font-bold text-blue-800 shadow">Bible Story</span>
-            </motion.button>
-
-            {/* Memory Verse Button */}
-            <motion.button
-              onClick={() => startQuiz('verse')}
-              className="pointer-events-auto flex flex-col items-center"
-              initial={{ x: 50, opacity: 0 }}
-              animate={{ x: 0, opacity: 1 }}
-              transition={{ delay: 0.4 }}
-              whileHover={{ scale: 1.1 }}
-              whileTap={{ scale: 0.9 }}
-            >
-              <div className="w-16 h-16 bg-gradient-to-br from-purple-400 to-purple-600 rounded-full shadow-xl border-4 border-white flex items-center justify-center">
-                <ScrollText className="text-white w-8 h-8" />
-              </div>
-              <span className="mt-2 bg-white/90 px-3 py-1 rounded-full text-sm font-bold text-purple-800 shadow">Memory Verse</span>
-            </motion.button>
-          </div>
-        </div>
-
-        {/* Bottom Action Zone */}
-        <div className="bg-white/20 backdrop-blur-md rounded-t-3xl px-6 py-4 pb-8 relative z-20">
-          {/* Growth Progress Bar */}
-          <div className="mb-4">
-            <div className="flex justify-between items-center mb-1">
-              <span className="text-white font-bold text-sm">Growth</span>
-              <span className="text-white font-bold text-sm">{growthProgress.toFixed(0)}%</span>
-            </div>
-            <div className="h-4 bg-gray-300/50 rounded-full overflow-hidden shadow-inner border-2 border-white/30">
-              <motion.div
-                className="h-full bg-gradient-to-r from-green-400 via-green-500 to-emerald-400"
-                style={{
-                  backgroundImage: 'repeating-linear-gradient(90deg, transparent, transparent 10px, rgba(255,255,255,0.3) 10px, rgba(255,255,255,0.3) 20px)'
-                }}
-                animate={{ backgroundPosition: ['0% 0%', '100% 0%'] }}
-                transition={{ duration: 2, repeat: Infinity }}
-                initial={{ width: `${(growthProgress / 100) * 100}%` }}
+          <div className="mx-2 flex-1 flex justify-center">
+            <div className="relative h-10 w-full max-w-[15rem] overflow-hidden rounded-full border-[3px] border-[#6b3f1f] bg-[#8b5a2b]/90 shadow-[0_4px_0_#5a341a]">
+              <div
+                className="absolute inset-y-0 left-0 rounded-full bg-gradient-to-r from-[#f9d15a] to-[#e5ac1f]"
+                style={{ width: '57%' }}
               />
+              <div className="relative z-10 flex h-full items-center gap-2 px-3">
+                <span className="text-yellow-300 text-base leading-none drop-shadow">⭐</span>
+                <span className="text-sm font-black tracking-wide text-white">34 / 60</span>
+              </div>
             </div>
           </div>
 
-          {/* Action Buttons */}
-          <div className="flex justify-between items-end relative">
-            {/* Left Side - Water Amount */}
-            <div className="flex flex-col items-center">
-              <div className="bg-gradient-to-br from-green-600 to-green-400 px-6 py-2 rounded-full shadow-lg border-3 border-white mb-2">
-                <span className="text-white font-black text-sm">💧 {waterAmount}ml</span>
+          <motion.button
+            onClick={() => audio.playClick()}
+            className="bg-white/90 rounded-full p-2 shadow-lg"
+            whileTap={{ scale: 0.95 }}
+          >
+            <Settings className="text-green-600 w-5 h-5" />
+          </motion.button>
+        </div>
+
+        <div className="relative z-10 flex-1 flex flex-col items-center gap-4 px-4 pb-4">
+          {/* Main scene */}
+          <div className="relative w-full flex-1 max-w-4xl">
+            <div className="absolute inset-x-0 bottom-0 flex items-end justify-center pb-0">
+              <div className="relative -mb-80 sm:-mb-[22rem] flex flex-col items-center gap-3">
+                {particles.map((particle) => (
+                  <motion.div
+                    key={particle.id}
+                    className="absolute text-xl"
+                    initial={{ x: 0, y: 0, opacity: 1 }}
+                    animate={{ x: particle.x, y: particle.y, opacity: 0 }}
+                    transition={{ duration: 0.8 }}
+                  >
+                    💧
+                  </motion.div>
+                ))}
+                {showFloatingText && (
+                  <motion.div
+                    className="text-yellow-400 text-3xl font-black drop-shadow"
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: -10 }}
+                    exit={{ opacity: 0 }}
+                  >
+                    {floatingText}
+                  </motion.div>
+                )}
+                <motion.img
+                  src={currentStage.image}
+                  alt={currentStage.name}
+                  className={`${currentStage.sizeClass} max-w-[78vw] origin-bottom drop-shadow-xl`}
+                  animate={{ scale: [3, 3.09, 3], rotate: [0, 1, -1, 0] }}
+                  transition={{ repeat: Infinity, duration: 5 }}
+                />
+                {isPouring && (
+                  <motion.img
+                    src="/pouring%20jar.png"
+                    alt="Pouring water"
+                    className="pointer-events-none absolute left-[17%] top-[32%] z-20 w-[16.5rem] -translate-x-1/2"
+                    initial={{ opacity: 0, scale: 0.9, y: 12 }}
+                    animate={{ opacity: 1, scale: 1, y: 0 }}
+                    exit={{ opacity: 0 }}
+                    transition={{ duration: 0.2 }}
+                  />
+                )}
               </div>
             </div>
+          </div>
 
-            {/* Giant Water Button */}
-            <motion.button
-              onClick={handleWaterClick}
-              className="relative w-24 h-24 -mt-4"
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.85 }}
-            >
-              {/* Button Shadow/Depth */}
-              <div className="absolute inset-0 bg-orange-600 rounded-full bottom-0 shadow-2xl border-4 border-orange-800" />
-              {/* Main Button */}
-              <div className="absolute inset-0 bg-gradient-to-br from-orange-400 to-orange-600 rounded-full flex items-center justify-center shadow-lg border-4 border-white/50">
-                <Droplets className="text-white w-12 h-12 drop-shadow-md" />
+          {/* Bible Story / Memory Verse buttons */}
+          <div className="w-full flex items-start justify-between gap-3">
+            <div className="w-[48%] max-w-44 flex flex-col items-center">
+              <div className="h-[6.8rem]" aria-hidden="true" />
+              <motion.button
+                onClick={() => startQuiz('bible')}
+                className="w-full rounded-2xl shadow-lg"
+                whileHover={{ scale: 1.01 }}
+                whileTap={{ scale: 0.97 }}
+              >
+                <img
+                  src="/bible%20story.png"
+                  alt="Bible Story Quest"
+                  className="block h-auto w-full object-contain"
+                />
+              </motion.button>
+            </div>
+
+            <div className="w-[48%] max-w-44 flex flex-col items-center">
+              <div className="relative w-full mb-1">
+                <motion.button
+                  type="button"
+                  onClick={handleWaterClick}
+                  className="relative w-full p-0 bg-transparent border-0"
+                  animate={{ y: [0, -4, 0] }}
+                  transition={{ repeat: Infinity, duration: 3 }}
+                  whileHover={{ scale: 1.03 }}
+                  whileTap={{ scale: 0.95 }}
+                >
+                  <motion.img
+                    src="/jar.png"
+                    alt="Water Jar"
+                    className="block w-full h-auto"
+                    animate={isPouring ? { scale: 1.12 } : { scale: 1 }}
+                    transition={{ duration: 0.2 }}
+                  />
+                  <div className="pointer-events-none absolute inset-0 flex items-center justify-center translate-y-[2.75rem] text-black text-[14px] sm:text-[16px] font-black whitespace-nowrap">
+                    {waterAmount}ml
+                  </div>
+                </motion.button>
               </div>
-              {/* Shine Effect */}
-              <div className="absolute top-2 left-4 w-8 h-4 bg-white/40 rounded-full transform -rotate-12" />
-            </motion.button>
 
-            {/* Right Side - Spacer for balance */}
-            <div className="w-20" />
+              <div className="relative w-full">
+                <motion.button
+                  onClick={() => startQuiz('verse')}
+                  className="w-full rounded-2xl shadow-lg"
+                  whileHover={{ scale: 1.01 }}
+                  whileTap={{ scale: 0.97 }}
+                >
+                  <img
+                    src="/memmory%20verse.png"
+                    alt="Memory Verse Challenge"
+                    className="block h-auto w-full object-contain"
+                  />
+                </motion.button>
+              </div>
+            </div>
           </div>
         </div>
+
       </div>
     );
   }
 
   // Quiz View
   return (
-    <div className="min-h-screen bg-gradient-to-b from-sky-200 via-sky-100 to-green-100 p-4 md:p-8">
-      <motion.div
-        initial={{ opacity: 0, x: 50 }}
-        animate={{ opacity: 1, x: 0 }}
-        exit={{ opacity: 0, x: -50 }}
-        className="max-w-2xl mx-auto"
-      >
-        <button
-          onClick={handleBack}
-          className="mb-4 text-gray-600 hover:text-gray-800 font-bold flex items-center gap-2 bg-white/50 px-4 py-2 rounded-full"
+    <div className="min-h-screen relative p-4 overflow-hidden">
+      <div className="absolute inset-0 z-0">
+        <div
+          className="absolute inset-0 bg-cover bg-center bg-no-repeat"
+          style={{ backgroundImage: `url(${SIDEQUEST_BACKGROUND_URL}), linear-gradient(to bottom, #bae6fd, #bbf7d0)` }}
+        />
+        <div className="absolute inset-0 bg-black/10" />
+      </div>
+
+      <div className="relative z-10 w-full max-w-4xl mx-auto">
+        <motion.div
+          initial={{ opacity: 0, x: 50 }}
+          animate={{ opacity: 1, x: 0 }}
+          exit={{ opacity: 0, x: -50 }}
+          className="w-full max-w-none"
         >
-          <ChevronLeft className="w-5 h-5" /> Back
-        </button>
+          <button
+            onClick={handleBack}
+            className="mb-4 text-gray-600 hover:text-gray-800 font-bold flex items-center gap-2 bg-white/50 px-4 py-2 rounded-full"
+          >
+            <ChevronLeft className="w-5 h-5" /> Back
+          </button>
 
-        {!quizStarted ? (
-          // Quiz Intro
-          <div className="bg-white rounded-[2.5rem] p-8 shadow-xl border-4 border-white">
-            <div className="text-center space-y-6">
-              <div className={`inline-flex p-6 rounded-3xl ${activeMode === 'bible' ? 'bg-blue-500' : 'bg-purple-500'} text-white shadow-lg`}>
-                {activeMode === 'bible' ? <BookOpen className="w-12 h-12" /> : <ScrollText className="w-12 h-12" />}
-              </div>
-
-              <div>
-                <h2 className="text-3xl font-black text-gray-800">
-                  {activeMode === 'bible' ? 'Bible Story' : 'Memory Verse'}
-                </h2>
-                <p className="text-gray-600">5 Waves Challenge!</p>
-              </div>
-
-              <div className="bg-gray-50 rounded-2xl p-6 space-y-3 text-left">
-                <div className="flex items-center gap-3">
-                  <Waves className="w-5 h-5 text-pink-500" />
-                  <span className="text-gray-700 font-bold">5 Waves (50 Questions)</span>
+          {!quizStarted ? (
+            // Quiz Intro
+            <div className="bg-white rounded-[2.5rem] p-8 shadow-xl border-4 border-white">
+              <div className="text-center space-y-6">
+                <div className={`inline-flex p-6 rounded-3xl ${activeMode === 'bible' ? 'bg-blue-500' : 'bg-purple-500'} text-white shadow-lg`}>
+                  {activeMode === 'bible' ? <BookOpen className="w-12 h-12" /> : <ScrollText className="w-12 h-12" />}
                 </div>
+
+                <div>
+                  <h2 className="text-3xl font-black text-gray-800">
+                    {activeMode === 'bible' ? 'Bible Story' : 'Memory Verse'}
+                  </h2>
+                  <p className="text-gray-600">
+                    {activeMode === 'bible' ? 'Read first, then start the challenge.' : '5 Waves Challenge!'}
+                  </p>
+                </div>
+
+                {activeMode === 'bible' ? (
+                  <div className="bg-gray-50 rounded-2xl p-6 text-left space-y-3">
+                    <h3 className="text-lg font-black text-gray-800">Bible Story Preview</h3>
+                    <p className="text-gray-700 leading-relaxed">
+                      Jesus told stories to teach people about God&apos;s love.
+                      In this challenge, read the story first, then answer the questions.
+                      Click <span className="font-black">Start Challenge</span> when you are ready.
+                    </p>
+                    <div className="flex items-center gap-3 pt-2 border-t">
+                      <Clock className="w-5 h-5 text-pink-500" />
+                      <span className="text-gray-700 font-bold">30 seconds per question</span>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="bg-gray-50 rounded-2xl p-6 space-y-3 text-left">
+                    <div className="flex items-center gap-3">
+                      <Waves className="w-5 h-5 text-pink-500" />
+                      <span className="text-gray-700 font-bold">5 Waves (50 Questions)</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="w-3 h-3 rounded-full bg-green-400"></span>
+                      <span className="text-gray-600 text-sm">Waves 1-2: Easy</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="w-3 h-3 rounded-full bg-yellow-400"></span>
+                      <span className="text-gray-600 text-sm">Waves 3-4: Medium</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="w-3 h-3 rounded-full bg-red-400"></span>
+                      <span className="text-gray-600 text-sm">Wave 5: Hard</span>
+                    </div>
+                    <div className="flex items-center gap-3 pt-2 border-t">
+                      <Clock className="w-5 h-5 text-pink-500" />
+                      <span className="text-gray-700 font-bold">30 seconds per question</span>
+                    </div>
+                  </div>
+                )}
+
+                <motion.button
+                  onClick={() => setQuizStarted(true)}
+                  className="w-full py-4 px-8 rounded-2xl font-black text-white text-lg bg-gradient-to-r from-pink-400 to-purple-500 shadow-lg"
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                >
+                  Start Challenge
+                </motion.button>
+              </div>
+            </div>
+          ) : showResults ? (
+            // Final Results
+            <div className="bg-white rounded-[2.5rem] p-8 shadow-xl border-4 border-white">
+              <div className="text-center space-y-6">
+                <div className="inline-flex p-6 rounded-3xl bg-gradient-to-br from-yellow-400 to-orange-500 text-white shadow-lg">
+                  <Award className="w-12 h-12" />
+                </div>
+
+                <h2 className="text-3xl font-black text-gray-800">All Waves Complete!</h2>
+
+                <div className="text-5xl font-black text-pink-500">
+                  {correctAnswers}/{TOTAL_WAVES * QUESTIONS_PER_WAVE}
+                </div>
+
+                <div className="bg-green-50 rounded-2xl p-4">
+                  <p className="text-green-600 font-bold text-xl">
+                    +{50 + (correctAnswers * 5)}ml Water Earned!
+                  </p>
+                </div>
+
+                <motion.button
+                  onClick={completeQuest}
+                  className="w-full py-4 px-8 rounded-2xl font-black text-white text-lg bg-gradient-to-r from-green-400 to-emerald-500 shadow-lg"
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                >
+                  Collect Reward
+                </motion.button>
+              </div>
+            </div>
+          ) : showWaveComplete ? (
+            // Wave Complete
+            <div className="bg-white rounded-[2.5rem] p-8 shadow-xl border-4 border-white">
+              <div className="text-center space-y-6">
+                <div className={`inline-flex p-6 rounded-3xl ${getWaveColor(currentWave)} shadow-lg`}>
+                  <Waves className="w-12 h-12" />
+                </div>
+
+                <h2 className="text-3xl font-black text-gray-800">Wave {currentWave} Complete!</h2>
+
+                <div className="text-5xl font-black text-pink-500">
+                  {waveCorrectAnswers}/{QUESTIONS_PER_WAVE}
+                </div>
+
+                <motion.button
+                  onClick={startNextWave}
+                  className="w-full py-4 px-8 rounded-2xl font-black text-white text-lg bg-gradient-to-r from-blue-400 to-indigo-500 shadow-lg flex items-center justify-center gap-2"
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                >
+                  {currentWave < TOTAL_WAVES ? 'Next Wave' : 'See Results'}
+                  <ChevronRight className="w-5 h-5" />
+                </motion.button>
+              </div>
+            </div>
+          ) : !currentQuestion ? (
+            <div className="bg-white rounded-[2.5rem] p-8 shadow-xl border-4 border-white text-center">
+              <div className="animate-pulse flex flex-col items-center gap-4">
+                <div className="w-16 h-16 bg-gray-200 rounded-full"></div>
+                <div className="h-4 bg-gray-200 rounded w-48"></div>
+                <p className="text-gray-500 font-bold">Preparing Quest...</p>
+              </div>
+            </div>
+          ) : (
+            // Quiz Question
+            <div className="bg-white rounded-[2.5rem] p-8 shadow-xl border-4 border-white">
+              {/* Header */}
+              <div className="flex items-center justify-between mb-4">
                 <div className="flex items-center gap-2">
-                  <span className="w-3 h-3 rounded-full bg-green-400"></span>
-                  <span className="text-gray-600 text-sm">Waves 1-2: Easy</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className="w-3 h-3 rounded-full bg-yellow-400"></span>
-                  <span className="text-gray-600 text-sm">Waves 3-4: Medium</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className="w-3 h-3 rounded-full bg-red-400"></span>
-                  <span className="text-gray-600 text-sm">Wave 5: Hard</span>
-                </div>
-                <div className="flex items-center gap-3 pt-2 border-t">
-                  <Clock className="w-5 h-5 text-pink-500" />
-                  <span className="text-gray-700 font-bold">30 seconds per question</span>
-                </div>
-              </div>
-
-              <motion.button
-                onClick={() => setQuizStarted(true)}
-                className="w-full py-4 px-8 rounded-2xl font-black text-white text-lg bg-gradient-to-r from-pink-400 to-purple-500 shadow-lg"
-                whileHover={{ scale: 1.02 }}
-                whileTap={{ scale: 0.98 }}
-              >
-                Start Challenge
-              </motion.button>
-            </div>
-          </div>
-        ) : showResults ? (
-          // Final Results
-          <div className="bg-white rounded-[2.5rem] p-8 shadow-xl border-4 border-white">
-            <div className="text-center space-y-6">
-              <div className="inline-flex p-6 rounded-3xl bg-gradient-to-br from-yellow-400 to-orange-500 text-white shadow-lg">
-                <Award className="w-12 h-12" />
-              </div>
-
-              <h2 className="text-3xl font-black text-gray-800">All Waves Complete!</h2>
-
-              <div className="text-5xl font-black text-pink-500">
-                {correctAnswers}/{TOTAL_WAVES * QUESTIONS_PER_WAVE}
-              </div>
-
-              <div className="bg-green-50 rounded-2xl p-4">
-                <p className="text-green-600 font-bold text-xl">
-                  +{50 + (correctAnswers * 5)}ml Water Earned!
-                </p>
-              </div>
-
-              <motion.button
-                onClick={completeQuest}
-                className="w-full py-4 px-8 rounded-2xl font-black text-white text-lg bg-gradient-to-r from-green-400 to-emerald-500 shadow-lg"
-                whileHover={{ scale: 1.02 }}
-                whileTap={{ scale: 0.98 }}
-              >
-                Collect Reward
-              </motion.button>
-            </div>
-          </div>
-        ) : showWaveComplete ? (
-          // Wave Complete
-          <div className="bg-white rounded-[2.5rem] p-8 shadow-xl border-4 border-white">
-            <div className="text-center space-y-6">
-              <div className={`inline-flex p-6 rounded-3xl ${getWaveColor(currentWave)} shadow-lg`}>
-                <Waves className="w-12 h-12" />
-              </div>
-
-              <h2 className="text-3xl font-black text-gray-800">Wave {currentWave} Complete!</h2>
-
-              <div className="text-5xl font-black text-pink-500">
-                {waveCorrectAnswers}/{QUESTIONS_PER_WAVE}
-              </div>
-
-              <motion.button
-                onClick={startNextWave}
-                className="w-full py-4 px-8 rounded-2xl font-black text-white text-lg bg-gradient-to-r from-blue-400 to-indigo-500 shadow-lg flex items-center justify-center gap-2"
-                whileHover={{ scale: 1.02 }}
-                whileTap={{ scale: 0.98 }}
-              >
-                {currentWave < TOTAL_WAVES ? 'Next Wave' : 'See Results'}
-                <ChevronRight className="w-5 h-5" />
-              </motion.button>
-            </div>
-          </div>
-        ) : !currentQuestion ? (
-          <div className="bg-white rounded-[2.5rem] p-8 shadow-xl border-4 border-white text-center">
-            <div className="animate-pulse flex flex-col items-center gap-4">
-              <div className="w-16 h-16 bg-gray-200 rounded-full"></div>
-              <div className="h-4 bg-gray-200 rounded w-48"></div>
-              <p className="text-gray-500 font-bold">Preparing Quest...</p>
-            </div>
-          </div>
-        ) : (
-          // Quiz Question
-          <div className="bg-white rounded-[2.5rem] p-8 shadow-xl border-4 border-white">
-            {/* Header */}
-            <div className="flex items-center justify-between mb-4">
-              <div className="flex items-center gap-2">
-                <span className={`px-4 py-2 rounded-full font-bold text-sm ${getWaveColor(currentWave)}`}>
-                  WAVE {currentWave}/{TOTAL_WAVES}
-                </span>
-              </div>
-
-              {/* Timer */}
-              <div className="relative w-16 h-16">
-                <svg className="w-full h-full -rotate-90" viewBox="0 0 100 100">
-                  <circle cx="50" cy="50" r="40" fill="none" stroke="#e5e7eb" strokeWidth="8" />
-                  <circle
-                    cx="50" cy="50" r="40" fill="none"
-                    stroke={isTimeLow ? '#ef4444' : '#ec4899'}
-                    strokeWidth="8" strokeLinecap="round"
-                    strokeDasharray={timerCircumference}
-                    strokeDashoffset={timerOffset}
-                    className="transition-all duration-1000 ease-linear"
-                  />
-                </svg>
-                <div className="absolute inset-0 flex items-center justify-center">
-                  <span className={`text-xl font-black ${isTimeLow ? 'text-red-500' : 'text-gray-800'}`}>
-                    {timeLeft}
+                  <span className={`px-4 py-2 rounded-full font-bold text-sm ${getWaveColor(currentWave)}`}>
+                    WAVE {currentWave}/{TOTAL_WAVES}
                   </span>
                 </div>
-              </div>
-            </div>
 
-            {/* Progress */}
-            <div className="mb-6">
-              <div className="flex justify-between text-xs font-bold text-gray-500 mb-2">
-                <span>Question {currentQuestionIndex + 1}/{QUESTIONS_PER_WAVE}</span>
+                {/* Timer */}
+                <div className="relative w-16 h-16">
+                  <svg className="w-full h-full -rotate-90" viewBox="0 0 100 100">
+                    <circle cx="50" cy="50" r="40" fill="none" stroke="#e5e7eb" strokeWidth="8" />
+                    <circle
+                      cx="50" cy="50" r="40" fill="none"
+                      stroke={isTimeLow ? '#ef4444' : '#ec4899'}
+                      strokeWidth="8" strokeLinecap="round"
+                      strokeDasharray={timerCircumference}
+                      strokeDashoffset={timerOffset}
+                      className="transition-all duration-1000 ease-linear"
+                    />
+                  </svg>
+                  <div className="absolute inset-0 flex items-center justify-center">
+                    <span className={`text-xl font-black ${isTimeLow ? 'text-red-500' : 'text-gray-800'}`}>
+                      {timeLeft}
+                    </span>
+                  </div>
+                </div>
               </div>
-              <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
-                <motion.div
-                  className="h-full bg-gradient-to-r from-pink-400 to-purple-400"
-                  animate={{ width: `${((currentQuestionIndex + 1) / QUESTIONS_PER_WAVE) * 100}%` }}
+
+              {/* Progress */}
+              <div className="mb-6">
+                <div className="flex justify-between text-xs font-bold text-gray-500 mb-2">
+                  <span>Question {currentQuestionIndex + 1}/{QUESTIONS_PER_WAVE}</span>
+                </div>
+                <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
+                  <motion.div
+                    className="h-full bg-gradient-to-r from-pink-400 to-purple-400"
+                    animate={{ width: `${((currentQuestionIndex + 1) / QUESTIONS_PER_WAVE) * 100}%` }}
+                  />
+                </div>
+              </div>
+
+              {/* Question */}
+              <div className="relative mb-6 mx-auto w-full max-w-3xl">
+                <img
+                  src="/Scroll%20v1.png"
+                  alt="Question Scroll"
+                  className="w-full h-auto object-contain"
                 />
+                <h3 className="absolute left-[14%] right-[14%] top-[18%] bottom-[18%] flex items-center justify-center text-center text-lg sm:text-2xl font-black text-gray-800 leading-snug">
+                  {currentQuestion.question}
+                </h3>
               </div>
-            </div>
 
-            {/* Question */}
-            <h3 className="text-2xl font-black text-gray-800 text-center mb-6">
-              {currentQuestion.question}
-            </h3>
+              {/* Multiple Choice Options */}
+              <div className="space-y-3">
+                {currentQuestion.options?.map((option, index) => {
+                  const isCorrect = index === currentQuestion.correctAnswer;
+                  const isSelected = selectedAnswer === index;
+                  const showCorrectness = isAnswered;
 
-            {/* Multiple Choice Options */}
-            <div className="space-y-3">
-              {currentQuestion.options?.map((option, index) => {
-                const isCorrect = index === currentQuestion.correctAnswer;
-                const isSelected = selectedAnswer === index;
-                const showCorrectness = isAnswered;
+                  let buttonClass = "w-full p-4 rounded-2xl border-2 font-bold text-left transition-all flex items-center gap-4 ";
 
-                let buttonClass = "w-full p-4 rounded-2xl border-2 font-bold text-left transition-all flex items-center gap-4 ";
-
-                if (showCorrectness) {
-                  if (isCorrect) {
-                    buttonClass += "bg-green-100 border-green-500 text-green-800";
-                  } else if (isSelected && !isCorrect) {
-                    buttonClass += "bg-red-100 border-red-500 text-red-800";
+                  if (showCorrectness) {
+                    if (isCorrect) {
+                      buttonClass += "bg-green-100 border-green-500 text-green-800";
+                    } else if (isSelected && !isCorrect) {
+                      buttonClass += "bg-red-100 border-red-500 text-red-800";
+                    } else {
+                      buttonClass += "bg-gray-50 border-gray-200 text-gray-400";
+                    }
                   } else {
-                    buttonClass += "bg-gray-50 border-gray-200 text-gray-400";
+                    buttonClass += "bg-white border-gray-200 hover:border-purple-300 hover:bg-purple-50 text-gray-700";
                   }
-                } else {
-                  buttonClass += "bg-white border-gray-200 hover:border-purple-300 hover:bg-purple-50 text-gray-700";
-                }
 
-                return (
-                  <motion.button
-                    key={index}
-                    onClick={() => handleAnswerSelect(index)}
-                    disabled={isAnswered}
-                    className={buttonClass}
-                    whileHover={!isAnswered ? { scale: 1.02 } : {}}
-                    whileTap={!isAnswered ? { scale: 0.98 } : {}}
-                  >
-                    <span className={`w-10 h-10 rounded-full flex items-center justify-center font-black text-sm ${showCorrectness
+                  return (
+                    <motion.button
+                      key={index}
+                      onClick={() => handleAnswerSelect(index)}
+                      disabled={isAnswered}
+                      className={buttonClass}
+                      whileHover={!isAnswered ? { scale: 1.02 } : {}}
+                      whileTap={!isAnswered ? { scale: 0.98 } : {}}
+                    >
+                      <span className={`w-10 h-10 rounded-full flex items-center justify-center font-black text-sm ${showCorrectness
                         ? isCorrect ? "bg-green-500 text-white" : isSelected ? "bg-red-500 text-white" : "bg-gray-200 text-gray-400"
                         : "bg-gray-100 text-gray-600"
-                      }`}>
-                      {String.fromCharCode(65 + index)}
-                    </span>
-                    <span className="flex-1">{option}</span>
-                    {showCorrectness && isCorrect && <span className="text-2xl">✓</span>}
-                    {showCorrectness && isSelected && !isCorrect && <span className="text-2xl">✗</span>}
-                  </motion.button>
-                );
-              })}
-            </div>
+                        }`}>
+                        {String.fromCharCode(65 + index)}
+                      </span>
+                      <span className="flex-1">{option}</span>
+                      {showCorrectness && isCorrect && <span className="text-2xl">✓</span>}
+                      {showCorrectness && isSelected && !isCorrect && <span className="text-2xl">✗</span>}
+                    </motion.button>
+                  );
+                })}
+              </div>
 
-            {isAnswered && selectedAnswer === null && (
-              <motion.div className="mt-4 text-center text-red-500 font-bold flex items-center justify-center gap-2">
-                <AlertCircle className="w-5 h-5" />
-                Time's up!
-              </motion.div>
-            )}
-          </div>
-        )}
-      </motion.div>
+              {isAnswered && selectedAnswer === null && (
+                <motion.div className="mt-4 text-center text-red-500 font-bold flex items-center justify-center gap-2">
+                  <AlertCircle className="w-5 h-5" />
+                  Time's up!
+                </motion.div>
+              )}
+            </div>
+          )}
+        </motion.div>
+      </div>
     </div>
   );
 };

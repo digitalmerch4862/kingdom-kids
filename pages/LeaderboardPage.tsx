@@ -5,6 +5,7 @@ import { db, formatError } from '../services/db.service';
 import { AgeGroup, UserSession, Student } from '../types';
 import { audio } from '../services/audio.service';
 import { StudentAnalyticsModal } from '../components/StudentAnalyticsModal';
+import { safeJsonParse } from '../utils/storage';
 
 const LeaderboardPage: React.FC = () => {
   const [overall, setOverall] = useState<LeaderboardEntry[]>([]);
@@ -19,7 +20,7 @@ const LeaderboardPage: React.FC = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
 
   const sessionStr = localStorage.getItem('km_session');
-  const user: UserSession | null = sessionStr ? JSON.parse(sessionStr) : null;
+  const user = safeJsonParse<UserSession | null>(sessionStr, null);
   const isAdmin = user?.role === 'ADMIN';
 
   const months = [

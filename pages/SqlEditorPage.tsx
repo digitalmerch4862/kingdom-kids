@@ -2,6 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { db, formatError } from '../services/db.service';
 import { audio } from '../services/audio.service';
+import { safeJsonParse } from '../utils/storage';
 
 const SqlEditorPage: React.FC = () => {
   const [query, setQuery] = useState('SELECT * FROM students ORDER BY full_name ASC;');
@@ -13,7 +14,7 @@ const SqlEditorPage: React.FC = () => {
 
   useEffect(() => {
     const saved = localStorage.getItem('km_sql_history');
-    if (saved) setHistory(JSON.parse(saved));
+    setHistory(safeJsonParse<string[]>(saved, []));
   }, []);
 
   const saveHistory = (newQuery: string) => {

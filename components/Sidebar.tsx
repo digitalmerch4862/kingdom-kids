@@ -190,31 +190,31 @@ const Sidebar: React.FC<SidebarProps> = ({ user, onLogout, isOpen, isDesktopOpen
           ${isDesktopOpen ? 'md:translate-x-0' : 'md:-translate-x-full'}
         `}
       >
-        <div className="p-6 pb-4 shrink-0 bg-white border-b border-gray-50/50">
-          <div className="flex flex-col items-center mb-8 relative">
+        <div className="p-3 pb-2 shrink-0 bg-white border-b border-gray-50/50">
+          <div className="flex flex-col items-center mb-2 relative">
             <Link
               to={getHomePath()}
               onClick={() => { audio.playClick(); if (onClose) onClose(); }}
               className="flex flex-col items-center group"
             >
               <div className="relative">
-                <img src="/apple-touch-icon.png" alt="Kingdom Kids" className="h-32 w-auto transition-all group-hover:scale-105 object-contain" />
+                <img src="/apple-touch-icon.png" alt="Kingdom Kids" className="h-16 w-auto transition-all group-hover:scale-105 object-contain" />
                 <div className="absolute -top-1 -right-1">
                   <NetworkStatusDot />
                 </div>
               </div>
             </Link>
-            <button className="md:hidden absolute top-0 right-0 text-gray-400 p-2 hover:bg-gray-50 rounded-lg" onClick={onClose}>
-              <X size={20} />
+            <button className="md:hidden absolute top-0 right-0 text-gray-400 p-1.5 hover:bg-gray-50 rounded-lg" onClick={onClose}>
+              <X size={18} />
             </button>
           </div>
 
           <button
             onClick={() => { audio.playClick(); setIsSearchOpen(true); }}
-            className="w-full flex items-center justify-between px-4 py-2.5 bg-gray-50 hover:bg-gray-100 rounded-xl transition-all border border-gray-200 group text-left shadow-sm"
+            className="w-full flex items-center justify-between px-3 py-2 bg-gray-50 hover:bg-gray-100 rounded-lg transition-all border border-gray-200 group text-left"
           >
-            <div className="flex items-center gap-3">
-              <Search size={16} className="text-gray-400 group-hover:text-pink-500 transition-colors" />
+            <div className="flex items-center gap-2">
+              <Search size={14} className="text-gray-400 group-hover:text-pink-500 transition-colors" />
               <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest group-hover:text-gray-600">Search...</span>
             </div>
             <div className="hidden lg:flex items-center gap-1 px-1.5 py-0.5 bg-white rounded border border-gray-200">
@@ -224,8 +224,8 @@ const Sidebar: React.FC<SidebarProps> = ({ user, onLogout, isOpen, isDesktopOpen
           </button>
         </div>
 
-        <div className="flex-1 overflow-y-auto px-4 py-6 custom-scrollbar space-y-8">
-          <nav className="space-y-1">
+        <div className="flex-1 overflow-y-auto px-3 py-2 custom-scrollbar">
+          <nav className="space-y-0.5">
             {menuItems.map((item) => (
               <NavLink
                 key={item.path}
@@ -237,13 +237,13 @@ const Sidebar: React.FC<SidebarProps> = ({ user, onLogout, isOpen, isDesktopOpen
                   if (onClose) onClose();
                 }}
                 className={({ isActive }) =>
-                  `flex items-center justify-between px-4 py-3 rounded-xl font-black transition-all uppercase tracking-widest text-[9px] ${isActive
+                  `flex items-center justify-between px-3 py-2 rounded-lg font-black transition-all uppercase tracking-widest text-[10px] ${isActive
                     ? 'bg-pink-500 text-white shadow-lg shadow-pink-100'
                     : 'text-gray-500 hover:bg-pink-50 hover:text-pink-600'
                   }`
                 }
               >
-                <div className="flex items-center gap-3">
+                <div className="flex items-center gap-2.5">
                   <item.icon className={`w-4 h-4 transition-colors`} strokeWidth={2.5} />
                   <span>{item.label}</span>
                 </div>
@@ -261,7 +261,7 @@ const Sidebar: React.FC<SidebarProps> = ({ user, onLogout, isOpen, isDesktopOpen
                 onMouseEnter={() => audio.playHover()}
                 onClick={() => { audio.playClick(); if (onClose) onClose(); }}
                 className={({ isActive }) =>
-                  `flex items-center gap-3 px-4 py-3 rounded-xl font-black transition-all uppercase tracking-widest text-[9px] mt-4 ${isActive
+                  `flex items-center gap-2.5 px-3 py-2 rounded-lg font-black transition-all uppercase tracking-widest text-[10px] mt-1 ${isActive
                     ? 'bg-pink-500 text-white shadow-lg shadow-pink-100'
                     : 'text-gray-500 hover:bg-pink-50 hover:text-pink-600'
                   }`
@@ -273,9 +273,9 @@ const Sidebar: React.FC<SidebarProps> = ({ user, onLogout, isOpen, isDesktopOpen
             )}
           </nav>
 
-          <div className="pt-8 border-t border-gray-100 space-y-4">
-            <div className="px-4 flex items-center gap-3">
-              <div className="w-9 h-9 bg-pink-50 rounded-xl flex items-center justify-center text-pink-500 font-black text-sm border border-pink-100 shadow-sm">
+          <div className="pt-3 mt-3 border-t border-gray-100 space-y-2">
+            <div className="px-2 flex items-center gap-2.5">
+              <div className="w-8 h-8 bg-pink-50 rounded-lg flex items-center justify-center text-pink-500 font-black text-sm border border-pink-100 shadow-sm">
                 {user.username[0]}
               </div>
               <div className="flex flex-col overflow-hidden">
@@ -292,7 +292,7 @@ const Sidebar: React.FC<SidebarProps> = ({ user, onLogout, isOpen, isDesktopOpen
                 onLogout();
                 navigate('/login');
               }}
-              className="w-full flex items-center gap-3 px-4 py-3 text-[9px] font-black text-gray-400 hover:text-pink-600 transition-colors uppercase tracking-widest group"
+              className="w-full flex items-center gap-2 px-2 py-2 text-[10px] font-black text-gray-400 hover:text-pink-600 transition-colors uppercase tracking-widest group"
             >
               <LogOut className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
               <span>SIGN OUT</span>

@@ -2,6 +2,9 @@
 {
     "name": "Kingdom Kids Attendance",
     "short_name": "Kingdom Kids",
+    "id": "/#/side-quest",
+    "start_url": "/#/side-quest",
+    "scope": "/",
     "icons": [
         {
             "src": "/android-chrome-192x192.png",
@@ -17,5 +20,12 @@
     "theme_color": "#ec4899",
     "background_color": "#fdf2f8",
     "display": "standalone",
-    "orientation": "portrait"
+    "orientation": "portrait",
+    "shortcuts": [
+        {
+            "name": "Open Side Quest",
+            "short_name": "Side Quest",
+            "url": "/#/side-quest"
+        }
+    ]
 }

@@ -36,7 +36,14 @@ const App: React.FC = () => {
   useEffect(() => {
     MinistryService.getCurrentActivity().then(setActivity);
     const saved = localStorage.getItem('km_session');
-    if (saved) setUser(JSON.parse(saved));
+    if (saved) {
+      try {
+        setUser(JSON.parse(saved));
+      } catch {
+        localStorage.removeItem('km_session');
+        setUser(null);
+      }
+    }
   }, []);
 
   const handleLogin = (role: any, username: string, studentId?: string) => {
@@ -52,7 +59,7 @@ const App: React.FC = () => {
 
   const isTeacherOrAdmin = user?.role === 'TEACHER' || user?.role === 'ADMIN';
   const isAdmin = user?.role === 'ADMIN';
-  const isGuest = user?.username.toUpperCase() === 'GUEST';
+  const isGuest = (user?.username ?? '').toUpperCase() === 'GUEST';
 
   return (
     <HashRouter>

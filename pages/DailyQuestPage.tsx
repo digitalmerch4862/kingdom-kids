@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import { BrowserRouter } from 'react-router-dom';
 import { Droplets, BookOpen, ScrollText, ChevronLeft, Info } from 'lucide-react';
 import { QuestService, QuestStory } from '../services/quest.service';
 import { audio } from '../services/audio.service';
@@ -145,7 +144,7 @@ const DailyQuestPage: React.FC<DailyQuestPageProps> = ({ user }) => {
   }
 
   return (
-    <div className="min-h-screen bg-sky-300 relative overflow-hidden">
+    <div className="min-h-screen bg-sky-300 relative overflow-y-auto max-h-screen">
       <div className="absolute bottom-0 w-full h-[40%] bg-green-300 rounded-t-[300px] transform scale-x-150"></div>
 
       <div className="relative z-10 p-4">

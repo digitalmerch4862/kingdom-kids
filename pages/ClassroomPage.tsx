@@ -6,6 +6,7 @@ import { db, formatError } from '../services/db.service';
 import { AgeGroup, UserSession, Student, PointLedger } from '../types';
 import { DEFAULT_POINT_RULES } from '../constants';
 import { audio } from '../services/audio.service';
+import { safeJsonParse } from '../utils/storage';
 
 const ClassroomPage: React.FC = () => {
   const { group } = useParams<{ group: string }>();
@@ -42,7 +43,7 @@ const ClassroomPage: React.FC = () => {
   const [limitError, setLimitError] = useState<string | null>(null);
 
   const sessionStr = localStorage.getItem('km_session');
-  const user: UserSession | null = sessionStr ? JSON.parse(sessionStr) : null;
+  const user = safeJsonParse<UserSession | null>(sessionStr, null);
 
   const loadClassroom = async () => {
     setLoading(true);

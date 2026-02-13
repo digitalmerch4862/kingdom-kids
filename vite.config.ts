@@ -5,9 +5,18 @@ export default defineConfig(({ mode }) => {
   // Load env file based on `mode` in the current working directory.
   // Set the third parameter to '' to load all env regardless of the `VITE_` prefix.
   const env = loadEnv(mode, (process as any).cwd(), '');
+  const devPort = Number(env.VITE_PORT) || 5174;
 
   return {
     plugins: [react()],
+    server: {
+      host: 'localhost',
+      port: devPort
+    },
+    preview: {
+      host: 'localhost',
+      port: devPort
+    },
     build: {
       outDir: 'dist',
       sourcemap: false
