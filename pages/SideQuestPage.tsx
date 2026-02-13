@@ -571,15 +571,15 @@ const SideQuestPage: React.FC<SideQuestPageProps> = ({ user }) => {
           </motion.button>
         </div>
 
-        <div className="relative z-10 flex-1 flex flex-col items-center gap-4 sm:gap-6 px-4 sm:px-6 pb-6 sm:pb-8">
+        <div className="relative z-10 flex-1 flex flex-col items-center justify-between px-4 sm:px-6 py-4 sm:py-6">
           {/* Main scene with Tree and Watering Can */}
-          <div className="relative w-full flex-1 max-w-4xl flex flex-col items-center justify-end">
+          <div className="relative w-full flex-1 flex flex-col items-center justify-center">
             
-            {/* Floating Watering Can - Above Tree */}
+            {/* Floating Watering Can - Centered Above Tree */}
             <motion.button
               type="button"
               onClick={handleWaterClick}
-              className="relative z-30 mb-4 sm:mb-6"
+              className="relative z-30 mb-2"
               animate={{ 
                 y: [0, -6, 0],
                 rotate: [0, -2, 2, 0]
@@ -592,7 +592,7 @@ const SideQuestPage: React.FC<SideQuestPageProps> = ({ user }) => {
               whileTap={{ scale: 0.92 }}
             >
               {/* Water Badge */}
-              <div className="absolute -top-2 -right-2 z-40 bg-gradient-to-br from-yellow-400 to-orange-500 text-white text-xs sm:text-sm font-black px-2 py-1 rounded-full shadow-lg border-2 border-white">
+              <div className="absolute -top-1 right-0 z-40 bg-gradient-to-br from-yellow-400 to-orange-500 text-white text-xs sm:text-sm font-black px-2 py-0.5 rounded-full shadow-lg border-2 border-white">
                 {waterAmount}ml
               </div>
               
@@ -604,10 +604,8 @@ const SideQuestPage: React.FC<SideQuestPageProps> = ({ user }) => {
                 <img
                   src="/jar.png"
                   alt="Watering Can"
-                  className="block w-16 sm:w-24 h-auto drop-shadow-2xl"
+                  className="block w-14 sm:w-20 h-auto drop-shadow-2xl"
                 />
-                {/* Glow effect */}
-                <div className="absolute inset-0 bg-yellow-400/20 rounded-full blur-xl -z-10" />
               </motion.div>
               
               {/* Water particles */}
@@ -637,7 +635,7 @@ const SideQuestPage: React.FC<SideQuestPageProps> = ({ user }) => {
             </motion.button>
 
             {/* Life Tree */}
-            <div className="relative flex flex-col items-center">
+            <div className="relative flex flex-col items-center mt-2">
               {/* Pouring animation overlay */}
               {isPouring && (
                 <motion.div
@@ -658,24 +656,17 @@ const SideQuestPage: React.FC<SideQuestPageProps> = ({ user }) => {
               <motion.img
                 src={currentStage.image}
                 alt={currentStage.name}
-                className={`w-40 sm:${currentStage.sizeClass} max-w-[70vw] sm:max-w-[78vw] origin-bottom drop-shadow-2xl`}
+                className={`w-36 sm:${currentStage.sizeClass} max-w-[65vw] sm:max-w-[78vw] origin-bottom drop-shadow-2xl`}
                 animate={{ 
                   scale: [1, 1.02, 1], 
-                  rotate: [0, 0.5, -0.5, 0],
-                  filter: ["brightness(1)", "brightness(1.1)", "brightness(1)"]
+                  rotate: [0, 0.5, -0.5, 0]
                 }}
                 transition={{ 
                   repeat: Infinity, 
                   duration: 4,
                   ease: "easeInOut"
                 }}
-                style={{
-                  filter: "drop-shadow(0 20px 30px rgba(0,0,0,0.3))"
-                }}
               />
-              
-              {/* Tree glow effect */}
-              <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-32 h-8 bg-green-500/30 rounded-full blur-2xl -z-10" />
             </div>
           </div>
 
