@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import { UserSession } from '../types';
 import { audio } from '../services/audio.service';
+import { MinistryService } from '../services/ministry.service';
 import { BookOpen, ScrollText, ChevronLeft, Waves, Award, Clock, AlertCircle, ChevronRight, Settings } from 'lucide-react';
 
 interface SideQuestPageProps {
@@ -254,25 +255,25 @@ const getQuestionsForWave = (wave: number, usedQuestionIds: Set<number> = new Se
   return shuffled.slice(0, QUESTIONS_PER_WAVE);
 };
 
-// Tree stages matching the React Native design
+// Tree stages - 5 stages based on 1000ml increments
 const treeStages = [
-  { image: '/stage1.png', name: 'Seedling', minProgress: 0, maxProgress: 20, sizeClass: 'w-32 sm:w-36' },
-  { image: '/stage2.png', name: 'Sprout', minProgress: 21, maxProgress: 40, sizeClass: 'w-40 sm:w-44' },
-  { image: '/stage3.png', name: 'Young Plant', minProgress: 41, maxProgress: 60, sizeClass: 'w-48 sm:w-52' },
-  { image: '/stage4.png', name: 'Growing Tree', minProgress: 61, maxProgress: 80, sizeClass: 'w-56 sm:w-64' },
-  { image: '/stage5.png', name: 'Mature Tree', minProgress: 81, maxProgress: 100, sizeClass: 'w-64 sm:w-72' },
+  { image: '/stage1.png', name: 'Seedling', sizeClass: 'w-32 sm:w-36' },
+  { image: '/stage2.png', name: 'Sprout', sizeClass: 'w-40 sm:w-44' },
+  { image: '/stage3.png', name: 'Young Plant', sizeClass: 'w-48 sm:w-52' },
+  { image: '/stage4.png', name: 'Growing Tree', sizeClass: 'w-56 sm:w-64' },
+  { image: '/stage5.png', name: 'Mature Tree', sizeClass: 'w-64 sm:w-72' },
 ];
-
-const getTreeStage = (progress: number) => {
-  return treeStages.find(stage => progress >= stage.minProgress && progress <= stage.maxProgress) || treeStages[0];
-};
 
 const SideQuestPage: React.FC<SideQuestPageProps> = ({ user }) => {
   const navigate = useNavigate();
-  const [waterAmount, setWaterAmount] = useState(58);
-  const [growthProgress, setGrowthProgress] = useState(70);
-  const [pointsCollected, setPointsCollected] = useState(31.05);
-  const targetPoints = 60.00;
+  
+  // Water and Tree State
+  const [waterAmount, setWaterAmount] = useState(0); // Current water in jar
+  const [totalWaterEarned, setTotalWaterEarned] = useState(0); // Total ml earned for leaderboard
+  const [totalWaterPoured, setTotalWaterPoured] = useState(0); // Total ml poured on tree
+  const [treeStage, setTreeStage] = useState(1); // Tree growth stage (1-5)
+  
+  // Quiz state
 
   // Quiz state
   const [currentWave, setCurrentWave] = useState(1);
@@ -298,9 +299,10 @@ const SideQuestPage: React.FC<SideQuestPageProps> = ({ user }) => {
       const saved = localStorage.getItem(storageKey);
       if (saved) {
         const data = JSON.parse(saved);
-        setWaterAmount(data.waterAmount || 58);
-        setGrowthProgress(Math.max(data.growthProgress || 70, 61));
-        setPointsCollected(data.pointsCollected || 31.05);
+        setWaterAmount(data.waterAmount || 0);
+        setTotalWaterEarned(data.totalWaterEarned || 0);
+        setTotalWaterPoured(data.totalWaterPoured || 0);
+        setTreeStage(data.treeStage || 1);
       }
 
       // Load today's used question IDs
@@ -318,13 +320,14 @@ const SideQuestPage: React.FC<SideQuestPageProps> = ({ user }) => {
     try {
       localStorage.setItem(storageKey, JSON.stringify({
         waterAmount,
-        growthProgress,
-        pointsCollected,
+        totalWaterEarned,
+        totalWaterPoured,
+        treeStage,
       }));
     } catch (e) {
       console.error("Failed to save progress", e);
     }
-  }, [waterAmount, growthProgress, pointsCollected, storageKey]);
+  }, [waterAmount, totalWaterEarned, totalWaterPoured, treeStage, storageKey]);
 
   useEffect(() => {
     try {
@@ -379,6 +382,9 @@ const SideQuestPage: React.FC<SideQuestPageProps> = ({ user }) => {
     if (answerIndex === questions[currentQuestionIndex].correctAnswer) {
       setCorrectAnswers(prev => prev + 1);
       setWaveCorrectAnswers(prev => prev + 1);
+      // Add 5ml to jar immediately for correct answer
+      setWaterAmount(prev => prev + WATER_PER_CORRECT_ANSWER);
+      setTotalWaterEarned(prev => prev + WATER_PER_CORRECT_ANSWER);
       audio.playYehey();
     }
 
@@ -453,24 +459,66 @@ const SideQuestPage: React.FC<SideQuestPageProps> = ({ user }) => {
     }
   };
 
-  const handleWatering = () => {
-    if (waterAmount >= 10) {
-      setWaterAmount(prev => prev - 10);
-      setGrowthProgress(prev => Math.min(prev + 5, 100));
-      setPointsCollected(prev => prev + 2.5);
+  const WATER_PER_CORRECT_ANSWER = 5; // 5ml per correct answer
+  const WATER_PER_WATERING = 50; // 50ml per watering click
+  const TREE_GROWTH_THRESHOLD = 1000; // 1000ml to grow tree to next stage
+
+  const handleWatering = async () => {
+    if (waterAmount >= WATER_PER_WATERING) {
+      const newWaterAmount = waterAmount - WATER_PER_WATERING;
+      const newTotalPoured = totalWaterPoured + WATER_PER_WATERING;
+      
+      setWaterAmount(newWaterAmount);
+      setTotalWaterPoured(newTotalPoured);
+      
+      // Check if tree should grow
+      const growthStage = Math.floor(newTotalPoured / TREE_GROWTH_THRESHOLD) + 1;
+      if (growthStage > treeStage && growthStage <= 5) {
+        setTreeStage(growthStage);
+      }
+      
+      // Add points to leaderboard (total water earned, not poured)
+      if (user.studentId && user.studentId !== 'guest') {
+        try {
+          await MinistryService.addPoints(
+            user.studentId,
+            'Side Quest',
+            WATER_PER_WATERING,
+            'system',
+            `Watered tree with ${WATER_PER_WATERING}ml`
+          );
+        } catch (err) {
+          console.error('Failed to add points to leaderboard:', err);
+        }
+      }
+      
       audio.playYehey();
     }
   };
 
   const completeQuest = () => {
-    const waterReward = 50 + (correctAnswers * 5);
+    // Add 5ml per correct answer to jar
+    const waterReward = correctAnswers * WATER_PER_CORRECT_ANSWER;
+    
     setWaterAmount(prev => prev + waterReward);
-    setPointsCollected(prev => prev + (correctAnswers * 1.5));
+    setTotalWaterEarned(prev => prev + waterReward);
+    
+    // Add earned water to leaderboard
+    if (user.studentId && user.studentId !== 'guest' && waterReward > 0) {
+      MinistryService.addPoints(
+        user.studentId,
+        'Side Quest',
+        waterReward,
+        'system',
+        `Earned ${waterReward}ml from quiz (${correctAnswers} correct answers)`
+      ).catch(err => console.error('Failed to add points:', err));
+    }
 
     setTimeout(() => {
       setActiveMode(null);
       setQuizStarted(false);
       setShowResults(false);
+      setCorrectAnswers(0);
     }, 2000);
   };
 
@@ -485,7 +533,7 @@ const SideQuestPage: React.FC<SideQuestPageProps> = ({ user }) => {
   };
 
   const currentQuestion = questions[currentQuestionIndex];
-  const currentStage = getTreeStage(growthProgress);
+  const currentStage = treeStages[treeStage - 1] || treeStages[0];
   const currentDifficulty = getWaveDifficulty(currentWave);
 
   // Timer circle calculations
@@ -507,12 +555,20 @@ const SideQuestPage: React.FC<SideQuestPageProps> = ({ user }) => {
 
   // Main Garden View - Faith Land
   if (!activeMode) {
-    const handleWaterClick = () => {
+    const handleWaterClick = async () => {
+      if (waterAmount < WATER_PER_WATERING) {
+        // Not enough water
+        setFloatingText('Need more water!');
+        setShowFloatingText(true);
+        setTimeout(() => setShowFloatingText(false), 1000);
+        return;
+      }
+      
       setIsPouring(true);
       setTimeout(() => setIsPouring(false), 700);
 
-      handleWatering();
-      setFloatingText('+10 XP');
+      await handleWatering();
+      setFloatingText(`-${WATER_PER_WATERING}ml`);
       setShowFloatingText(true);
       setTimeout(() => setShowFloatingText(false), 1000);
 
