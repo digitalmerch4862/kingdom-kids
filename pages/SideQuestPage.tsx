@@ -535,7 +535,7 @@ const SideQuestPage: React.FC<SideQuestPageProps> = ({ user }) => {
         </div>
 
         {/* Header */}
-        <div className="relative z-10 flex items-center justify-between px-4 pt-4">
+        <div className="relative z-10 flex items-center justify-between px-3 sm:px-4 pt-3 sm:pt-4">
           <motion.button
             onClick={() => audio.playClick()}
             className="bg-white/90 rounded-full p-2 shadow-lg"
@@ -545,14 +545,14 @@ const SideQuestPage: React.FC<SideQuestPageProps> = ({ user }) => {
           </motion.button>
 
           <div className="mx-2 flex-1 flex justify-center">
-            <div className="relative h-10 w-full max-w-[15rem] overflow-hidden rounded-full border-[3px] border-[#6b3f1f] bg-[#8b5a2b]/90 shadow-[0_4px_0_#5a341a]">
+            <div className="relative h-9 sm:h-10 w-full max-w-[12rem] sm:max-w-[15rem] overflow-hidden rounded-full border-[3px] border-[#6b3f1f] bg-[#8b5a2b]/90 shadow-[0_4px_0_#5a341a]">
               <div
                 className="absolute inset-y-0 left-0 rounded-full bg-gradient-to-r from-[#f9d15a] to-[#e5ac1f]"
                 style={{ width: '57%' }}
               />
               <div className="relative z-10 flex h-full items-center gap-2 px-3">
-                <span className="text-yellow-300 text-base leading-none drop-shadow">⭐</span>
-                <span className="text-sm font-black tracking-wide text-white">34 / 60</span>
+                <span className="text-yellow-300 text-sm sm:text-base leading-none drop-shadow">⭐</span>
+                <span className="text-xs sm:text-sm font-black tracking-wide text-white">34 / 60</span>
               </div>
             </div>
           </div>
@@ -566,15 +566,15 @@ const SideQuestPage: React.FC<SideQuestPageProps> = ({ user }) => {
           </motion.button>
         </div>
 
-        <div className="relative z-10 flex-1 flex flex-col items-center gap-4 px-4 pb-4">
+        <div className="relative z-10 flex-1 flex flex-col items-center gap-3 sm:gap-4 px-3 sm:px-4 pb-3 sm:pb-4">
           {/* Main scene */}
-          <div className="relative w-full flex-1 max-w-4xl">
-            <div className="absolute inset-x-0 bottom-0 flex items-end justify-center pb-0">
-              <div className="relative -mb-80 sm:-mb-[22rem] flex flex-col items-center gap-3">
+          <div className="relative w-full flex-1 max-w-4xl min-h-[40vh] sm:min-h-0">
+            <div className="absolute inset-x-0 bottom-0 flex items-end justify-center pb-4 sm:pb-0">
+              <div className="relative -mb-40 sm:-mb-[22rem] flex flex-col items-center gap-2 sm:gap-3">
                 {particles.map((particle) => (
                   <motion.div
                     key={particle.id}
-                    className="absolute text-xl"
+                    className="absolute text-lg sm:text-xl"
                     initial={{ x: 0, y: 0, opacity: 1 }}
                     animate={{ x: particle.x, y: particle.y, opacity: 0 }}
                     transition={{ duration: 0.8 }}
@@ -584,7 +584,7 @@ const SideQuestPage: React.FC<SideQuestPageProps> = ({ user }) => {
                 ))}
                 {showFloatingText && (
                   <motion.div
-                    className="text-yellow-400 text-3xl font-black drop-shadow"
+                    className="text-yellow-400 text-2xl sm:text-3xl font-black drop-shadow"
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: -10 }}
                     exit={{ opacity: 0 }}
@@ -595,15 +595,15 @@ const SideQuestPage: React.FC<SideQuestPageProps> = ({ user }) => {
                 <motion.img
                   src={currentStage.image}
                   alt={currentStage.name}
-                  className={`${currentStage.sizeClass} max-w-[78vw] origin-bottom drop-shadow-xl`}
-                  animate={{ scale: [3, 3.09, 3], rotate: [0, 1, -1, 0] }}
+                  className={`w-28 sm:${currentStage.sizeClass} max-w-[60vw] sm:max-w-[78vw] origin-bottom drop-shadow-xl`}
+                  animate={{ scale: [1, 1.03, 1], rotate: [0, 1, -1, 0] }}
                   transition={{ repeat: Infinity, duration: 5 }}
                 />
                 {isPouring && (
                   <motion.img
                     src="/pouring%20jar.png"
                     alt="Pouring water"
-                    className="pointer-events-none absolute left-[17%] top-[32%] z-20 w-[16.5rem] -translate-x-1/2"
+                    className="pointer-events-none absolute left-[17%] top-[32%] z-20 w-32 sm:w-[16.5rem] -translate-x-1/2"
                     initial={{ opacity: 0, scale: 0.9, y: 12 }}
                     animate={{ opacity: 1, scale: 1, y: 0 }}
                     exit={{ opacity: 0 }}
@@ -614,13 +614,36 @@ const SideQuestPage: React.FC<SideQuestPageProps> = ({ user }) => {
             </div>
           </div>
 
-          {/* Bible Story / Memory Verse buttons */}
-          <div className="w-full flex items-start justify-between gap-3">
+          {/* Water Jar - Centered above */}
+          <div className="w-full flex justify-center mb-2">
+            <motion.button
+              type="button"
+              onClick={handleWaterClick}
+              className="relative p-0 bg-transparent border-0"
+              animate={{ y: [0, -4, 0] }}
+              transition={{ repeat: Infinity, duration: 3 }}
+              whileHover={{ scale: 1.03 }}
+              whileTap={{ scale: 0.95 }}
+            >
+              <motion.img
+                src="/jar.png"
+                alt="Water Jar"
+                className="block w-20 h-auto sm:w-full sm:max-w-[140px] mx-auto"
+                animate={isPouring ? { scale: 1.12 } : { scale: 1 }}
+                transition={{ duration: 0.2 }}
+              />
+              <div className="pointer-events-none absolute inset-0 flex items-center justify-center translate-y-[2rem] sm:translate-y-[2.75rem] text-black text-[12px] sm:text-[16px] font-black whitespace-nowrap">
+                {waterAmount}ml
+              </div>
+            </motion.button>
+          </div>
+
+          {/* Bible Story / Memory Verse buttons - Aligned side by side */}
+          <div className="w-full flex items-end justify-between gap-2 sm:gap-3">
             <div className="w-[48%] max-w-44 flex flex-col items-center">
-              <div className="h-[6.8rem]" aria-hidden="true" />
               <motion.button
                 onClick={() => startQuiz('bible')}
-                className="w-full rounded-2xl shadow-lg"
+                className="w-full rounded-xl sm:rounded-2xl shadow-lg"
                 whileHover={{ scale: 1.01 }}
                 whileTap={{ scale: 0.97 }}
               >
@@ -633,43 +656,18 @@ const SideQuestPage: React.FC<SideQuestPageProps> = ({ user }) => {
             </div>
 
             <div className="w-[48%] max-w-44 flex flex-col items-center">
-              <div className="relative w-full mb-1">
-                <motion.button
-                  type="button"
-                  onClick={handleWaterClick}
-                  className="relative w-full p-0 bg-transparent border-0"
-                  animate={{ y: [0, -4, 0] }}
-                  transition={{ repeat: Infinity, duration: 3 }}
-                  whileHover={{ scale: 1.03 }}
-                  whileTap={{ scale: 0.95 }}
-                >
-                  <motion.img
-                    src="/jar.png"
-                    alt="Water Jar"
-                    className="block w-full h-auto"
-                    animate={isPouring ? { scale: 1.12 } : { scale: 1 }}
-                    transition={{ duration: 0.2 }}
-                  />
-                  <div className="pointer-events-none absolute inset-0 flex items-center justify-center translate-y-[2.75rem] text-black text-[14px] sm:text-[16px] font-black whitespace-nowrap">
-                    {waterAmount}ml
-                  </div>
-                </motion.button>
-              </div>
-
-              <div className="relative w-full">
-                <motion.button
-                  onClick={() => startQuiz('verse')}
-                  className="w-full rounded-2xl shadow-lg"
-                  whileHover={{ scale: 1.01 }}
-                  whileTap={{ scale: 0.97 }}
-                >
-                  <img
-                    src="/memmory%20verse.png"
-                    alt="Memory Verse Challenge"
-                    className="block h-auto w-full object-contain"
-                  />
-                </motion.button>
-              </div>
+              <motion.button
+                onClick={() => startQuiz('verse')}
+                className="w-full rounded-xl sm:rounded-2xl shadow-lg"
+                whileHover={{ scale: 1.01 }}
+                whileTap={{ scale: 0.97 }}
+              >
+                <img
+                  src="/memmory%20verse.png"
+                  alt="Memory Verse Challenge"
+                  className="block h-auto w-full object-contain"
+                />
+              </motion.button>
             </div>
           </div>
         </div>
@@ -680,7 +678,7 @@ const SideQuestPage: React.FC<SideQuestPageProps> = ({ user }) => {
 
   // Quiz View
   return (
-    <div className="min-h-screen relative p-4 overflow-hidden">
+    <div className="min-h-screen relative p-2 sm:p-4 overflow-hidden">
       <div className="absolute inset-0 z-0">
         <div
           className="absolute inset-0 bg-cover bg-center bg-no-repeat"
@@ -698,69 +696,69 @@ const SideQuestPage: React.FC<SideQuestPageProps> = ({ user }) => {
         >
           <button
             onClick={handleBack}
-            className="mb-4 text-gray-600 hover:text-gray-800 font-bold flex items-center gap-2 bg-white/50 px-4 py-2 rounded-full"
+            className="mb-2 sm:mb-4 text-gray-600 hover:text-gray-800 font-bold flex items-center gap-1 sm:gap-2 bg-white/50 px-3 sm:px-4 py-1.5 sm:py-2 rounded-full text-sm sm:text-base"
           >
-            <ChevronLeft className="w-5 h-5" /> Back
+            <ChevronLeft className="w-4 h-4 sm:w-5 sm:h-5" /> Back
           </button>
 
           {!quizStarted ? (
             // Quiz Intro
-            <div className="bg-white rounded-[2.5rem] p-8 shadow-xl border-4 border-white">
-              <div className="text-center space-y-6">
-                <div className={`inline-flex p-6 rounded-3xl ${activeMode === 'bible' ? 'bg-blue-500' : 'bg-purple-500'} text-white shadow-lg`}>
-                  {activeMode === 'bible' ? <BookOpen className="w-12 h-12" /> : <ScrollText className="w-12 h-12" />}
+            <div className="bg-white rounded-2xl sm:rounded-[2.5rem] p-4 sm:p-8 shadow-xl border-2 sm:border-4 border-white">
+              <div className="text-center space-y-3 sm:space-y-6">
+                <div className={`inline-flex p-4 sm:p-6 rounded-2xl sm:rounded-3xl ${activeMode === 'bible' ? 'bg-blue-500' : 'bg-purple-500'} text-white shadow-lg`}>
+                  {activeMode === 'bible' ? <BookOpen className="w-8 h-8 sm:w-12 sm:h-12" /> : <ScrollText className="w-8 h-8 sm:w-12 sm:h-12" />}
                 </div>
 
                 <div>
-                  <h2 className="text-3xl font-black text-gray-800">
+                  <h2 className="text-xl sm:text-3xl font-black text-gray-800">
                     {activeMode === 'bible' ? 'Bible Story' : 'Memory Verse'}
                   </h2>
-                  <p className="text-gray-600">
+                  <p className="text-gray-600 text-sm sm:text-base">
                     {activeMode === 'bible' ? 'Read first, then start the challenge.' : '5 Waves Challenge!'}
                   </p>
                 </div>
 
                 {activeMode === 'bible' ? (
-                  <div className="bg-gray-50 rounded-2xl p-6 text-left space-y-3">
-                    <h3 className="text-lg font-black text-gray-800">Bible Story Preview</h3>
-                    <p className="text-gray-700 leading-relaxed">
+                  <div className="bg-gray-50 rounded-xl sm:rounded-2xl p-4 sm:p-6 text-left space-y-2 sm:space-y-3">
+                    <h3 className="text-base sm:text-lg font-black text-gray-800">Bible Story Preview</h3>
+                    <p className="text-gray-700 leading-relaxed text-sm sm:text-base">
                       Jesus told stories to teach people about God&apos;s love.
                       In this challenge, read the story first, then answer the questions.
                       Click <span className="font-black">Start Challenge</span> when you are ready.
                     </p>
-                    <div className="flex items-center gap-3 pt-2 border-t">
-                      <Clock className="w-5 h-5 text-pink-500" />
-                      <span className="text-gray-700 font-bold">30 seconds per question</span>
+                    <div className="flex items-center gap-2 sm:gap-3 pt-2 border-t">
+                      <Clock className="w-4 h-4 sm:w-5 sm:h-5 text-pink-500" />
+                      <span className="text-gray-700 font-bold text-sm sm:text-base">30 seconds per question</span>
                     </div>
                   </div>
                 ) : (
-                  <div className="bg-gray-50 rounded-2xl p-6 space-y-3 text-left">
-                    <div className="flex items-center gap-3">
-                      <Waves className="w-5 h-5 text-pink-500" />
-                      <span className="text-gray-700 font-bold">5 Waves (50 Questions)</span>
+                  <div className="bg-gray-50 rounded-xl sm:rounded-2xl p-4 sm:p-6 space-y-2 sm:space-y-3 text-left">
+                    <div className="flex items-center gap-2 sm:gap-3">
+                      <Waves className="w-4 h-4 sm:w-5 sm:h-5 text-pink-500" />
+                      <span className="text-gray-700 font-bold text-sm sm:text-base">5 Waves (50 Questions)</span>
                     </div>
                     <div className="flex items-center gap-2">
-                      <span className="w-3 h-3 rounded-full bg-green-400"></span>
-                      <span className="text-gray-600 text-sm">Waves 1-2: Easy</span>
+                      <span className="w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-full bg-green-400"></span>
+                      <span className="text-gray-600 text-xs sm:text-sm">Waves 1-2: Easy</span>
                     </div>
                     <div className="flex items-center gap-2">
-                      <span className="w-3 h-3 rounded-full bg-yellow-400"></span>
-                      <span className="text-gray-600 text-sm">Waves 3-4: Medium</span>
+                      <span className="w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-full bg-yellow-400"></span>
+                      <span className="text-gray-600 text-xs sm:text-sm">Waves 3-4: Medium</span>
                     </div>
                     <div className="flex items-center gap-2">
-                      <span className="w-3 h-3 rounded-full bg-red-400"></span>
-                      <span className="text-gray-600 text-sm">Wave 5: Hard</span>
+                      <span className="w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-full bg-red-400"></span>
+                      <span className="text-gray-600 text-xs sm:text-sm">Wave 5: Hard</span>
                     </div>
-                    <div className="flex items-center gap-3 pt-2 border-t">
-                      <Clock className="w-5 h-5 text-pink-500" />
-                      <span className="text-gray-700 font-bold">30 seconds per question</span>
+                    <div className="flex items-center gap-2 sm:gap-3 pt-2 border-t">
+                      <Clock className="w-4 h-4 sm:w-5 sm:h-5 text-pink-500" />
+                      <span className="text-gray-700 font-bold text-sm sm:text-base">30 seconds per question</span>
                     </div>
                   </div>
                 )}
 
                 <motion.button
                   onClick={() => setQuizStarted(true)}
-                  className="w-full py-4 px-8 rounded-2xl font-black text-white text-lg bg-gradient-to-r from-pink-400 to-purple-500 shadow-lg"
+                  className="w-full py-3 sm:py-4 px-6 sm:px-8 rounded-xl sm:rounded-2xl font-black text-white text-base sm:text-lg bg-gradient-to-r from-pink-400 to-purple-500 shadow-lg"
                   whileHover={{ scale: 1.02 }}
                   whileTap={{ scale: 0.98 }}
                 >
@@ -770,27 +768,27 @@ const SideQuestPage: React.FC<SideQuestPageProps> = ({ user }) => {
             </div>
           ) : showResults ? (
             // Final Results
-            <div className="bg-white rounded-[2.5rem] p-8 shadow-xl border-4 border-white">
-              <div className="text-center space-y-6">
-                <div className="inline-flex p-6 rounded-3xl bg-gradient-to-br from-yellow-400 to-orange-500 text-white shadow-lg">
-                  <Award className="w-12 h-12" />
+            <div className="bg-white rounded-2xl sm:rounded-[2.5rem] p-4 sm:p-8 shadow-xl border-2 sm:border-4 border-white">
+              <div className="text-center space-y-3 sm:space-y-6">
+                <div className="inline-flex p-4 sm:p-6 rounded-2xl sm:rounded-3xl bg-gradient-to-br from-yellow-400 to-orange-500 text-white shadow-lg">
+                  <Award className="w-8 h-8 sm:w-12 sm:h-12" />
                 </div>
 
-                <h2 className="text-3xl font-black text-gray-800">All Waves Complete!</h2>
+                <h2 className="text-xl sm:text-3xl font-black text-gray-800">All Waves Complete!</h2>
 
-                <div className="text-5xl font-black text-pink-500">
+                <div className="text-3xl sm:text-5xl font-black text-pink-500">
                   {correctAnswers}/{TOTAL_WAVES * QUESTIONS_PER_WAVE}
                 </div>
 
-                <div className="bg-green-50 rounded-2xl p-4">
-                  <p className="text-green-600 font-bold text-xl">
+                <div className="bg-green-50 rounded-xl sm:rounded-2xl p-3 sm:p-4">
+                  <p className="text-green-600 font-bold text-base sm:text-xl">
                     +{50 + (correctAnswers * 5)}ml Water Earned!
                   </p>
                 </div>
 
                 <motion.button
                   onClick={completeQuest}
-                  className="w-full py-4 px-8 rounded-2xl font-black text-white text-lg bg-gradient-to-r from-green-400 to-emerald-500 shadow-lg"
+                  className="w-full py-3 sm:py-4 px-6 sm:px-8 rounded-xl sm:rounded-2xl font-black text-white text-base sm:text-lg bg-gradient-to-r from-green-400 to-emerald-500 shadow-lg"
                   whileHover={{ scale: 1.02 }}
                   whileTap={{ scale: 0.98 }}
                 >
@@ -800,50 +798,50 @@ const SideQuestPage: React.FC<SideQuestPageProps> = ({ user }) => {
             </div>
           ) : showWaveComplete ? (
             // Wave Complete
-            <div className="bg-white rounded-[2.5rem] p-8 shadow-xl border-4 border-white">
-              <div className="text-center space-y-6">
-                <div className={`inline-flex p-6 rounded-3xl ${getWaveColor(currentWave)} shadow-lg`}>
-                  <Waves className="w-12 h-12" />
+            <div className="bg-white rounded-2xl sm:rounded-[2.5rem] p-4 sm:p-8 shadow-xl border-2 sm:border-4 border-white">
+              <div className="text-center space-y-3 sm:space-y-6">
+                <div className={`inline-flex p-4 sm:p-6 rounded-2xl sm:rounded-3xl ${getWaveColor(currentWave)} shadow-lg`}>
+                  <Waves className="w-8 h-8 sm:w-12 sm:h-12" />
                 </div>
 
-                <h2 className="text-3xl font-black text-gray-800">Wave {currentWave} Complete!</h2>
+                <h2 className="text-xl sm:text-3xl font-black text-gray-800">Wave {currentWave} Complete!</h2>
 
-                <div className="text-5xl font-black text-pink-500">
+                <div className="text-3xl sm:text-5xl font-black text-pink-500">
                   {waveCorrectAnswers}/{QUESTIONS_PER_WAVE}
                 </div>
 
                 <motion.button
                   onClick={startNextWave}
-                  className="w-full py-4 px-8 rounded-2xl font-black text-white text-lg bg-gradient-to-r from-blue-400 to-indigo-500 shadow-lg flex items-center justify-center gap-2"
+                  className="w-full py-3 sm:py-4 px-6 sm:px-8 rounded-xl sm:rounded-2xl font-black text-white text-base sm:text-lg bg-gradient-to-r from-blue-400 to-indigo-500 shadow-lg flex items-center justify-center gap-2"
                   whileHover={{ scale: 1.02 }}
                   whileTap={{ scale: 0.98 }}
                 >
                   {currentWave < TOTAL_WAVES ? 'Next Wave' : 'See Results'}
-                  <ChevronRight className="w-5 h-5" />
+                  <ChevronRight className="w-4 h-4 sm:w-5 sm:h-5" />
                 </motion.button>
               </div>
             </div>
           ) : !currentQuestion ? (
-            <div className="bg-white rounded-[2.5rem] p-8 shadow-xl border-4 border-white text-center">
-              <div className="animate-pulse flex flex-col items-center gap-4">
-                <div className="w-16 h-16 bg-gray-200 rounded-full"></div>
-                <div className="h-4 bg-gray-200 rounded w-48"></div>
-                <p className="text-gray-500 font-bold">Preparing Quest...</p>
+            <div className="bg-white rounded-2xl sm:rounded-[2.5rem] p-6 sm:p-8 shadow-xl border-2 sm:border-4 border-white text-center">
+              <div className="animate-pulse flex flex-col items-center gap-3 sm:gap-4">
+                <div className="w-12 h-12 sm:w-16 sm:h-16 bg-gray-200 rounded-full"></div>
+                <div className="h-3 sm:h-4 bg-gray-200 rounded w-32 sm:w-48"></div>
+                <p className="text-gray-500 font-bold text-sm sm:text-base">Preparing Quest...</p>
               </div>
             </div>
           ) : (
             // Quiz Question
-            <div className="bg-white rounded-[2.5rem] p-8 shadow-xl border-4 border-white">
+            <div className="bg-white rounded-2xl sm:rounded-[2.5rem] p-4 sm:p-8 shadow-xl border-2 sm:border-4 border-white">
               {/* Header */}
-              <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center justify-between mb-3 sm:mb-4">
                 <div className="flex items-center gap-2">
-                  <span className={`px-4 py-2 rounded-full font-bold text-sm ${getWaveColor(currentWave)}`}>
+                  <span className={`px-3 sm:px-4 py-1.5 sm:py-2 rounded-full font-bold text-xs sm:text-sm ${getWaveColor(currentWave)}`}>
                     WAVE {currentWave}/{TOTAL_WAVES}
                   </span>
                 </div>
 
                 {/* Timer */}
-                <div className="relative w-16 h-16">
+                <div className="relative w-12 h-12 sm:w-16 sm:h-16">
                   <svg className="w-full h-full -rotate-90" viewBox="0 0 100 100">
                     <circle cx="50" cy="50" r="40" fill="none" stroke="#e5e7eb" strokeWidth="8" />
                     <circle
@@ -856,7 +854,7 @@ const SideQuestPage: React.FC<SideQuestPageProps> = ({ user }) => {
                     />
                   </svg>
                   <div className="absolute inset-0 flex items-center justify-center">
-                    <span className={`text-xl font-black ${isTimeLow ? 'text-red-500' : 'text-gray-800'}`}>
+                    <span className={`text-base sm:text-xl font-black ${isTimeLow ? 'text-red-500' : 'text-gray-800'}`}>
                       {timeLeft}
                     </span>
                   </div>
@@ -864,11 +862,11 @@ const SideQuestPage: React.FC<SideQuestPageProps> = ({ user }) => {
               </div>
 
               {/* Progress */}
-              <div className="mb-6">
-                <div className="flex justify-between text-xs font-bold text-gray-500 mb-2">
+              <div className="mb-4 sm:mb-6">
+                <div className="flex justify-between text-xs font-bold text-gray-500 mb-1 sm:mb-2">
                   <span>Question {currentQuestionIndex + 1}/{QUESTIONS_PER_WAVE}</span>
                 </div>
-                <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
+                <div className="h-1.5 sm:h-2 bg-gray-200 rounded-full overflow-hidden">
                   <motion.div
                     className="h-full bg-gradient-to-r from-pink-400 to-purple-400"
                     animate={{ width: `${((currentQuestionIndex + 1) / QUESTIONS_PER_WAVE) * 100}%` }}
@@ -877,25 +875,28 @@ const SideQuestPage: React.FC<SideQuestPageProps> = ({ user }) => {
               </div>
 
               {/* Question */}
-              <div className="relative mb-6 mx-auto w-full max-w-3xl">
-                <img
-                  src="/Scroll%20v1.png"
-                  alt="Question Scroll"
-                  className="w-full h-auto object-contain"
-                />
-                <h3 className="absolute left-[14%] right-[14%] top-[18%] bottom-[18%] flex items-center justify-center text-center text-lg sm:text-2xl font-black text-gray-800 leading-snug">
-                  {currentQuestion.question}
-                </h3>
+              <div className="relative mb-4 sm:mb-6 mx-auto w-full max-w-3xl">
+                <div 
+                  className="w-full min-h-[120px] sm:min-h-[180px] md:min-h-[200px] rounded-2xl sm:rounded-3xl shadow-inner p-4 sm:p-8 md:p-12 flex items-center justify-center"
+                  style={{
+                    background: 'linear-gradient(135deg, #f5deb3 0%, #f4e4c1 50%, #f5deb3 100%)',
+                    boxShadow: 'inset 0 2px 4px rgba(0,0,0,0.1), 0 4px 6px rgba(0,0,0,0.1)'
+                  }}
+                >
+                  <h3 className="text-center text-base sm:text-lg md:text-2xl font-black text-gray-800 leading-snug">
+                    {currentQuestion.question}
+                  </h3>
+                </div>
               </div>
 
               {/* Multiple Choice Options */}
-              <div className="space-y-3">
+              <div className="space-y-2 sm:space-y-3">
                 {currentQuestion.options?.map((option, index) => {
                   const isCorrect = index === currentQuestion.correctAnswer;
                   const isSelected = selectedAnswer === index;
                   const showCorrectness = isAnswered;
 
-                  let buttonClass = "w-full p-4 rounded-2xl border-2 font-bold text-left transition-all flex items-center gap-4 ";
+                  let buttonClass = "w-full p-3 sm:p-4 rounded-xl sm:rounded-2xl border-2 font-bold text-left transition-all flex items-center gap-2 sm:gap-4 ";
 
                   if (showCorrectness) {
                     if (isCorrect) {
@@ -918,23 +919,23 @@ const SideQuestPage: React.FC<SideQuestPageProps> = ({ user }) => {
                       whileHover={!isAnswered ? { scale: 1.02 } : {}}
                       whileTap={!isAnswered ? { scale: 0.98 } : {}}
                     >
-                      <span className={`w-10 h-10 rounded-full flex items-center justify-center font-black text-sm ${showCorrectness
+                      <span className={`w-8 h-8 sm:w-10 sm:h-10 rounded-full flex items-center justify-center font-black text-xs sm:text-sm ${showCorrectness
                         ? isCorrect ? "bg-green-500 text-white" : isSelected ? "bg-red-500 text-white" : "bg-gray-200 text-gray-400"
                         : "bg-gray-100 text-gray-600"
                         }`}>
                         {String.fromCharCode(65 + index)}
                       </span>
-                      <span className="flex-1">{option}</span>
-                      {showCorrectness && isCorrect && <span className="text-2xl">✓</span>}
-                      {showCorrectness && isSelected && !isCorrect && <span className="text-2xl">✗</span>}
+                      <span className="flex-1 text-sm sm:text-base">{option}</span>
+                      {showCorrectness && isCorrect && <span className="text-xl sm:text-2xl">✓</span>}
+                      {showCorrectness && isSelected && !isCorrect && <span className="text-xl sm:text-2xl">✗</span>}
                     </motion.button>
                   );
                 })}
               </div>
 
               {isAnswered && selectedAnswer === null && (
-                <motion.div className="mt-4 text-center text-red-500 font-bold flex items-center justify-center gap-2">
-                  <AlertCircle className="w-5 h-5" />
+                <motion.div className="mt-3 sm:mt-4 text-center text-red-500 font-bold flex items-center justify-center gap-2 text-sm sm:text-base">
+                  <AlertCircle className="w-4 h-4 sm:w-5 sm:h-5" />
                   Time's up!
                 </motion.div>
               )}
