@@ -18,6 +18,8 @@ interface LoginPageProps {
   onLogin: (role: UserRole, username: string, studentId?: string) => void;
 }
 
+const MONTH_OPTIONS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
 const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
@@ -35,6 +37,9 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
   const [isSaving, setIsSaving] = useState(false);
   const [regError, setRegError] = useState('');
   const [newAccessKey, setNewAccessKey] = useState<string | null>(null);
+  const [birthMonth, setBirthMonth] = useState('');
+  const [birthDay, setBirthDay] = useState('');
+  const [birthYear, setBirthYear] = useState('');
   const [formData, setFormData] = useState({
     firstName: '',
     lastName: '',
@@ -44,6 +49,22 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
     notes: ''
   });
 
+  const yearOptions = useMemo(() => {
+    const currentYear = new Date().getFullYear();
+    return Array.from({ length: 21 }, (_, i) => String(currentYear - i));
+  }, []);
+
+  const daysInSelectedMonth = useMemo(() => {
+    if (!birthMonth || !birthYear) return 31;
+    const monthIndex = MONTH_OPTIONS.indexOf(birthMonth) + 1;
+    if (monthIndex <= 0) return 31;
+    return new Date(Number(birthYear), monthIndex, 0).getDate();
+  }, [birthMonth, birthYear]);
+
+  const dayOptions = useMemo(() => {
+    return Array.from({ length: daysInSelectedMonth }, (_, i) => String(i + 1).padStart(2, '0'));
+  }, [daysInSelectedMonth]);
+
   useEffect(() => {
     const fadeTimer = setTimeout(() => setIsFading(true), 3000);
     const removeTimer = setTimeout(() => setShowSplash(false), 3500);
@@ -52,6 +73,23 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
       clearTimeout(removeTimer);
     };
   }, []);
+
+  useEffect(() => {
+    if (birthDay && Number(birthDay) > daysInSelectedMonth) {
+      setBirthDay('');
+    }
+  }, [birthDay, daysInSelectedMonth]);
+
+  useEffect(() => {
+    if (!birthMonth || !birthDay || !birthYear) {
+      setFormData(prev => (prev.birthday ? { ...prev, birthday: '' } : prev));
+      return;
+    }
+
+    const monthNumber = String(MONTH_OPTIONS.indexOf(birthMonth) + 1).padStart(2, '0');
+    const isoBirthday = `${birthYear}-${monthNumber}-${birthDay}`;
+    setFormData(prev => (prev.birthday === isoBirthday ? prev : { ...prev, birthday: isoBirthday }));
+  }, [birthMonth, birthDay, birthYear]);
 
   const performAccessKeyLogin = async (key: string) => {
     // Normalization: Ensure key is clean and trimmed
@@ -324,7 +362,50 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
                       />
                     </div>
                   </div>
-                  <div className="grid grid-cols-2 gap-4"><div className="space-y-1"><label className="text-[11px] font-black text-gray-400 uppercase tracking-widest ml-1">Birthday</label><input type="date" required className="w-full px-6 py-4 bg-gray-50 border rounded-2xl outline-none focus:ring-2 focus:ring-pink-300 transition-all font-bold text-gray-700" value={formData.birthday} onChange={e => setFormData({ ...formData, birthday: e.target.value })} /></div><div className="space-y-1"><label className="text-[11px] font-black text-gray-400 uppercase tracking-widest ml-1">Age Group</label><div className="w-full px-6 py-4 font-black border rounded-2xl flex items-center h-[58px] bg-pink-50 text-pink-600 border-pink-100">{ageData.group || '---'}</div></div></div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-1">
+                      <label className="text-[11px] font-black text-gray-400 uppercase tracking-widest ml-1">Birthday</label>
+                      <div className="grid grid-cols-3 gap-2">
+                        <select
+                          required
+                          className="w-full px-3 py-4 bg-gray-50 border border-gray-100 rounded-2xl outline-none focus:ring-2 focus:ring-pink-300 transition-all font-bold text-gray-700 text-[12px]"
+                          value={birthMonth}
+                          onChange={e => setBirthMonth(e.target.value)}
+                        >
+                          <option value="">MMM</option>
+                          {MONTH_OPTIONS.map(month => (
+                            <option key={month} value={month}>{month}</option>
+                          ))}
+                        </select>
+                        <select
+                          required
+                          className="w-full px-3 py-4 bg-gray-50 border border-gray-100 rounded-2xl outline-none focus:ring-2 focus:ring-pink-300 transition-all font-bold text-gray-700 text-[12px]"
+                          value={birthDay}
+                          onChange={e => setBirthDay(e.target.value)}
+                        >
+                          <option value="">DD</option>
+                          {dayOptions.map(day => (
+                            <option key={day} value={day}>{day}</option>
+                          ))}
+                        </select>
+                        <select
+                          required
+                          className="w-full px-3 py-4 bg-gray-50 border border-gray-100 rounded-2xl outline-none focus:ring-2 focus:ring-pink-300 transition-all font-bold text-gray-700 text-[12px]"
+                          value={birthYear}
+                          onChange={e => setBirthYear(e.target.value)}
+                        >
+                          <option value="">YYYY</option>
+                          {yearOptions.map(year => (
+                            <option key={year} value={year}>{year}</option>
+                          ))}
+                        </select>
+                      </div>
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-[11px] font-black text-gray-400 uppercase tracking-widest ml-1">Age Group</label>
+                      <div className="w-full px-6 py-4 font-black border rounded-2xl flex items-center h-[58px] bg-pink-50 text-pink-600 border-pink-100">{ageData.group || '---'}</div>
+                    </div>
+                  </div>
                   <div className="space-y-1"><label className="text-[11px] font-black text-gray-400 uppercase tracking-widest ml-1">Guardian Name</label><input type="text" required className="w-full px-6 py-4 bg-gray-50 border border-gray-100 rounded-2xl outline-none focus:ring-2 focus:ring-pink-300 transition-all uppercase font-bold text-gray-700" value={formData.guardianName} onChange={e => setFormData({ ...formData, guardianName: e.target.value.toUpperCase() })} /></div>
                   <div className="space-y-1"><label className="text-[11px] font-black text-gray-400 uppercase tracking-widest ml-1">Contact No.</label><input type="tel" required maxLength={11} className="w-full px-6 py-4 bg-gray-50 border border-gray-100 rounded-2xl outline-none focus:ring-2 focus:ring-pink-300 transition-all font-bold text-gray-700" value={formData.guardianPhone} onChange={e => setFormData({ ...formData, guardianPhone: e.target.value })} /></div>
                   {regError && <p className="text-red-500 text-[10px] font-black uppercase tracking-widest text-center animate-in shake">{regError}</p>}
