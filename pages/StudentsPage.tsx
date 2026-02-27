@@ -301,9 +301,10 @@ const StudentsPage: React.FC<{ user: UserSession }> = ({ user }) => {
     audio.playClick();
     if (students.length === 0) return alert("No students registered yet.");
 
-    const headers = ["Full Name", "Age Group", "Access Key", "Guardian Name", "Contact No"];
+    const headers = ["First Name", "Last Name", "Age Group", "Access Key", "Guardian Name", "Contact No"];
     const rows = students.map(s => [
-      s.fullName,
+      (s.fullName || '').trim().split(/\s+/)[0] || 'N/A',
+      (s.fullName || '').trim().split(/\s+/).slice(1).join(' ') || 'N/A',
       s.ageGroup || 'General',
       s.accessKey,
       s.guardianName || 'N/A',
@@ -335,7 +336,12 @@ const StudentsPage: React.FC<{ user: UserSession }> = ({ user }) => {
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
         <div>
           <h2 className="text-3xl font-black text-gray-800 uppercase tracking-tighter">Student Registry</h2>
-          <p className="text-gray-400 font-medium uppercase tracking-widest text-[12px]">Manage Kingdom Kids</p>
+          <div className="flex items-center gap-3 mt-1">
+            <p className="text-gray-400 font-medium uppercase tracking-widest text-[12px]">Manage Kingdom Kids</p>
+            <span className="px-3 py-1 rounded-full bg-pink-50 text-pink-500 text-[10px] font-black uppercase tracking-widest border border-pink-100">
+              {students.length} Registered
+            </span>
+          </div>
         </div>
         <div className="flex flex-wrap gap-4">
           <div className="relative">
