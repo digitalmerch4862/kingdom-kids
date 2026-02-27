@@ -65,6 +65,7 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
       const student = await db.getStudentByNo(cleanKey);
       if (student) {
         audio.playYehey();
+        await db.ensureProfile(student.id, student.fullName);
         onLogin('PARENTS', getFirstName(student.fullName).toUpperCase(), student.id);
       } else {
         audio.playClick();
@@ -179,6 +180,10 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
         notes: formData.notes,
         ageGroup: ageData.group!
       });
+
+      // Ensure profile exists immediately
+      await db.ensureProfile(result.id, fullName);
+
       const firstName = formData.firstName.toUpperCase();
       const smsMsg = `Welcome to Kingdom Kids! Student: ${firstName}, Access Key: ${result.access_key}. See you at the Kingdom! 👑`;
       window.location.href = "sms:" + formData.guardianPhone + "?body=" + encodeURIComponent(smsMsg);
@@ -300,22 +305,22 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-1">
                       <label className="text-[11px] font-black text-gray-400 uppercase tracking-widest ml-1">First Name</label>
-                      <input 
-                        type="text" 
-                        required 
-                        className="w-full px-6 py-4 bg-gray-50 border border-gray-100 rounded-2xl outline-none focus:ring-2 focus:ring-pink-300 transition-all uppercase font-bold text-gray-700" 
-                        value={formData.firstName} 
-                        onChange={e => setFormData({ ...formData, firstName: e.target.value.toUpperCase() })} 
+                      <input
+                        type="text"
+                        required
+                        className="w-full px-6 py-4 bg-gray-50 border border-gray-100 rounded-2xl outline-none focus:ring-2 focus:ring-pink-300 transition-all uppercase font-bold text-gray-700"
+                        value={formData.firstName}
+                        onChange={e => setFormData({ ...formData, firstName: e.target.value.toUpperCase() })}
                       />
                     </div>
                     <div className="space-y-1">
                       <label className="text-[11px] font-black text-gray-400 uppercase tracking-widest ml-1">Last Name</label>
-                      <input 
-                        type="text" 
-                        required 
-                        className="w-full px-6 py-4 bg-gray-50 border border-gray-100 rounded-2xl outline-none focus:ring-2 focus:ring-pink-300 transition-all uppercase font-bold text-gray-700" 
-                        value={formData.lastName} 
-                        onChange={e => setFormData({ ...formData, lastName: e.target.value.toUpperCase() })} 
+                      <input
+                        type="text"
+                        required
+                        className="w-full px-6 py-4 bg-gray-50 border border-gray-100 rounded-2xl outline-none focus:ring-2 focus:ring-pink-300 transition-all uppercase font-bold text-gray-700"
+                        value={formData.lastName}
+                        onChange={e => setFormData({ ...formData, lastName: e.target.value.toUpperCase() })}
                       />
                     </div>
                   </div>

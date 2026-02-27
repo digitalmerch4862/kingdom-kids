@@ -1,0 +1,407 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bible Memory Verse Game</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #faf8f3 0%, #f5f0e8 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .game-container {
+            background: #ffffff;
+            border-radius: 24px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.08);
+            padding: 40px 30px;
+            max-width: 600px;
+            width: 100%;
+            text-align: center;
+        }
+
+        .game-header {
+            margin-bottom: 30px;
+        }
+
+        .game-title {
+            font-size: 28px;
+            font-weight: 700;
+            color: #5a4a3a;
+            margin-bottom: 8px;
+        }
+
+        .game-subtitle {
+            font-size: 14px;
+            color: #8b7355;
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 6px;
+            background: #e8e0d5;
+            border-radius: 3px;
+            margin-bottom: 30px;
+            overflow: hidden;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #a8d8b9 0%, #8bc4a6 100%);
+            border-radius: 3px;
+            transition: width 1s linear;
+        }
+
+        .verse-section {
+            margin-bottom: 30px;
+        }
+
+        .verse-reference {
+            font-size: 18px;
+            font-weight: 600;
+            color: #7a9e7e;
+            margin-bottom: 20px;
+            letter-spacing: 1px;
+        }
+
+        .verse-text {
+            font-size: 22px;
+            line-height: 1.8;
+            color: #4a4035;
+            font-weight: 500;
+            padding: 20px;
+            background: #fdfbf7;
+            border-radius: 16px;
+            border: 2px solid #e8e0d5;
+            min-height: 120px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+
+        .word {
+            display: inline-block;
+        }
+
+        .input-field {
+            display: inline-block;
+            width: 120px;
+            padding: 8px 12px;
+            font-size: 18px;
+            border: 2px solid #d4c4b0;
+            border-radius: 8px;
+            text-align: center;
+            background: #fff;
+            color: #4a4035;
+            font-weight: 600;
+            outline: none;
+            transition: all 0.3s ease;
+            margin: 0 4px;
+        }
+
+        .input-field:focus {
+            border-color: #a8d8b9;
+            box-shadow: 0 0 0 3px rgba(168, 216, 185, 0.3);
+        }
+
+        .input-field.correct {
+            border-color: #5cb85c;
+            background: #e8f5e9;
+            color: #2e7d32;
+        }
+
+        .input-field.wrong {
+            border-color: #d9534f;
+            background: #ffebee;
+            color: #c62828;
+            animation: shake 0.5s ease;
+        }
+
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            25% { transform: translateX(-5px); }
+            75% { transform: translateX(5px); }
+        }
+
+        .timer-section {
+            margin-bottom: 25px;
+        }
+
+        .timer-display {
+            font-size: 48px;
+            font-weight: 700;
+            color: #5a4a3a;
+            margin-bottom: 10px;
+        }
+
+        .timer-label {
+            font-size: 14px;
+            color: #8b7355;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+        }
+
+        .feedback {
+            font-size: 18px;
+            font-weight: 600;
+            margin-bottom: 20px;
+            padding: 12px 24px;
+            border-radius: 12px;
+            display: inline-block;
+        }
+
+        .feedback.correct {
+            background: #e8f5e9;
+            color: #2e7d32;
+        }
+
+        .feedback.wrong {
+            background: #ffebee;
+            color: #c62828;
+        }
+
+        .next-button {
+            background: linear-gradient(135deg, #a8d8b9 0%, #8bc4a6 100%);
+            color: white;
+            border: none;
+            padding: 16px 40px;
+            font-size: 18px;
+            font-weight: 600;
+            border-radius: 12px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(168, 216, 185, 0.4);
+        }
+
+        .next-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(168, 216, 185, 0.5);
+        }
+
+        .next-button:active {
+            transform: translateY(0);
+        }
+
+        .next-button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+            box-shadow: none;
+        }
+
+        .hidden {
+            display: none;
+        }
+
+        .phase-indicator {
+            font-size: 14px;
+            color: #8b7355;
+            margin-bottom: 20px;
+            padding: 8px 20px;
+            background: #f5f0e8;
+            border-radius: 20px;
+            display: inline-block;
+        }
+
+        @media (max-width: 480px) {
+            .game-container {
+                padding: 30px 20px;
+            }
+
+            .game-title {
+                font-size: 24px;
+            }
+
+            .verse-text {
+                font-size: 18px;
+                padding: 15px;
+            }
+
+            .input-field {
+                width: 100px;
+                font-size: 16px;
+            }
+
+            .timer-display {
+                font-size: 36px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="game-container">
+        <div class="game-header">
+            <h1 class="game-title">📖 Bible Memory Verse</h1>
+            <p class="game-subtitle">Test your memory with Scripture</p>
+        </div>
+
+        <div class="progress-bar">
+            <div class="progress-fill" id="progressBar"></div>
+        </div>
+
+        <div class="timer-section" id="timerSection">
+            <div class="timer-display" id="timerDisplay">15</div>
+            <div class="timer-label">Seconds Remaining</div>
+        </div>
+
+        <div class="phase-indicator" id="phaseIndicator">Phase 1: Memorize the Verse</div>
+
+        <div class="verse-section">
+            <div class="verse-reference" id="verseReference"></div>
+            <div class="verse-text" id="verseText"></div>
+        </div>
+
+        <div id="feedbackSection"></div>
+        
+        <button class="next-button hidden" id="nextButton" onclick="nextVerse()">Next Verse →</button>
+    </div>
+
+    <script>
+        const verseList = [
+            {
+                reference: "Proverbs 11:1",
+                fullText: "The Lord detests dishonest scales, but accurate weights are his delight.",
+                missingWords: ["detests", "dishonest", "accurate"]
+            },
+            {
+                reference: "Psalm 23:1",
+                fullText: "The Lord is my shepherd, I lack nothing.",
+                missingWords: ["Lord", "shepherd", "lack"]
+            },
+            {
+                reference: "John 3:16",
+                fullText: "For God so loved the world that he gave his one and only Son.",
+                missingWords: ["loved", "world", "only"]
+            },
+            {
+                reference: "Philippians 4:13",
+                fullText: "I can do all things through Christ who strengthens me.",
+                missingWords: ["all", "Christ", "strengthens"]
+            },
+            {
+                reference: "Romans 8:28",
+                fullText: "And we know that in all things God works for the good of those who love him.",
+                missingWords: ["know", "works", "love"]
+            }
+        ];
+
+        let currentVerseIndex = 0;
+        let currentPhase = 1;
+        let timerInterval;
+        let timeRemaining = 15;
+
+        function loadVerse() {
+            const verse = verseList[currentVerseIndex];
+            document.getElementById('verseReference').textContent = verse.reference;
+            document.getElementById('verseText').textContent = verse.fullText;
+            document.getElementById('phaseIndicator').textContent = 'Phase 1: Memorize the Verse';
+            document.getElementById('timerSection').classList.remove('hidden');
+            document.getElementById('nextButton').classList.add('hidden');
+            document.getElementById('feedbackSection').innerHTML = '';
+            
+            timeRemaining = 15;
+            updateTimerDisplay();
+            updateProgressBar();
+            
+            clearInterval(timerInterval);
+            timerInterval = setInterval(() => {
+                timeRemaining--;
+                updateTimerDisplay();
+                updateProgressBar();
+                
+                if (timeRemaining <= 0) {
+                    clearInterval(timerInterval);
+                    startPhase2();
+                }
+            }, 1000);
+        }
+
+        function updateTimerDisplay() {
+            document.getElementById('timerDisplay').textContent = timeRemaining;
+        }
+
+        function updateProgressBar() {
+            const progress = ((15 - timeRemaining) / 15) * 100;
+            document.getElementById('progressBar').style.width = progress + '%';
+        }
+
+        function startPhase2() {
+            currentPhase = 2;
+            const verse = verseList[currentVerseIndex];
+            document.getElementById('phaseIndicator').textContent = 'Phase 2: Fill in the Missing Words';
+            document.getElementById('timerSection').classList.add('hidden');
+            
+            let verseHTML = verse.fullText;
+            const missingWords = verse.missingWords;
+            
+            // Replace missing words with input fields
+            missingWords.forEach((word, index) => {
+                const regex = new RegExp(`\\b${word}\\b`, 'g');
+                verseHTML = verseHTML.replace(regex, `<input type="text" class="input-field" id="input${index}" placeholder="?" oninput="checkAnswers()">`);
+            });
+            
+            document.getElementById('verseText').innerHTML = verseHTML;
+        }
+
+        function checkAnswers() {
+            const verse = verseList[currentVerseIndex];
+            const missingWords = verse.missingWords;
+            let allCorrect = true;
+            let anyFilled = false;
+            
+            missingWords.forEach((word, index) => {
+                const input = document.getElementById(`input${index}`);
+                const userAnswer = input.value.trim().toLowerCase();
+                
+                if (userAnswer) {
+                    anyFilled = true;
+                    if (userAnswer === word.toLowerCase()) {
+                        input.classList.add('correct');
+                        input.classList.remove('wrong');
+                    } else {
+                        input.classList.add('wrong');
+                        input.classList.remove('correct');
+                        allCorrect = false;
+                    }
+                } else {
+                    allCorrect = false;
+                }
+            });
+            
+            const feedbackSection = document.getElementById('feedbackSection');
+            
+            if (allCorrect && anyFilled) {
+                feedbackSection.innerHTML = '<div class="feedback correct">🎉 Excellent! All words correct!</div>';
+                document.getElementById('nextButton').classList.remove('hidden');
+            } else if (anyFilled && !allCorrect) {
+                feedbackSection.innerHTML = '<div class="feedback wrong">❌ Some words are incorrect. Try again!</div>';
+                document.getElementById('nextButton').classList.add('hidden');
+            } else {
+                feedbackSection.innerHTML = '';
+                document.getElementById('nextButton').classList.add('hidden');
+            }
+        }
+
+        function nextVerse() {
+            currentVerseIndex = (currentVerseIndex + 1) % verseList.length;
+            currentPhase = 1;
+            loadVerse();
+        }
+
+        // Start the game
+        loadVerse();
+    </script>
+</body>
+</html>

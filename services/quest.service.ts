@@ -114,10 +114,10 @@ const FALLBACK_STORIES: QuestStory[] = [
 function getFallbackStory(history: string[] = []): QuestStory {
   // Filter out stories that have already been shown
   const availableStories = FALLBACK_STORIES.filter(story => !history.includes(story.topic));
-  
+
   // If all stories have been shown, reset and pick from all
   const storiesToUse = availableStories.length > 0 ? availableStories : FALLBACK_STORIES;
-  
+
   const randomIndex = Math.floor(Math.random() * storiesToUse.length);
   return storiesToUse[randomIndex];
 }
@@ -147,7 +147,7 @@ export class QuestService {
         const leaderboard = await MinistryService.getLeaderboard(student.ageGroup);
         const entry = leaderboard.find(e => e.id === studentId);
         const totalPoints = entry?.totalPoints || 0;
-        
+
         if (totalPoints >= 100) rank = 'Sprout';
         if (totalPoints >= 300) rank = 'Rooted';
         if (totalPoints >= 600) rank = 'Branch';
@@ -167,7 +167,7 @@ export class QuestService {
       // 4. Gemini Generation
       // Generate random number of questions between 10 and 50
       const questionCount = Math.floor(Math.random() * 41) + 10; // 10-50 questions
-      
+
       const prompt = `
         Create a NEW Bible story for a child.
         Profile:
@@ -249,33 +249,40 @@ export class QuestService {
   static async completeQuest(studentId: string) {
     // 1. Award Points
     await MinistryService.addPoints(studentId, 'Daily Quest', 5, 'System', 'Completed Daily Quest');
-    
-    // 2. Client-side state update for visual plant progress
-    const key = `km_plant_${studentId}`;
-    const today = new Date().toDateString();
-    localStorage.setItem(`${key}_last_water`, today);
-    
-    // Update Plant Progress
-    const saved = localStorage.getItem(key);
-    let stage = 0;
-    let rankIndex = 0;
-    
-    if (saved) {
-      const data = safeJsonParse<{ stage?: number; rank?: number }>(saved, {});
-      stage = data.stage ?? 0;
-      rankIndex = data.rank ?? 0;
-    }
 
-    const PLANT_STAGES = ['Seed', 'Sprout', 'Rooted', 'Branch', 'Fruit Bearer'];
-    let newStage = stage + 20;
-    let newRankIndex = rankIndex;
+    // 2. Update Supabase Profile for plant progress (replacing localStorage)
+    if (studentId === 'GUEST_DEMO') return { newStage: 0, newRankIndex: 0 };
 
-    if (newStage >= 100) {
-      newStage = 0;
-      newRankIndex = Math.min(rankIndex + 1, PLANT_STAGES.length - 1);
+    try {
+      const profile = await db.getProfile(studentId);
+      let totalXp = profile?.total_xp || 0;
+      let stage = profile?.current_plant_stage || 1;
+      let rank = profile?.current_rank || 'Seed';
+
+      const PLANT_STAGES = ['Seed', 'Sprout', 'Rooted', 'Branch', 'Fruit Bearer'];
+
+      // Calculate new XP and Stage
+      let newXp = totalXp + 20;
+      let newStage = stage;
+      let newRank = rank;
+
+      if (newXp >= 100) {
+        newXp = 0;
+        newStage = Math.min(stage + 1, 5);
+        const rankIndex = PLANT_STAGES.indexOf(rank);
+        newRank = PLANT_STAGES[Math.min(rankIndex + 1, PLANT_STAGES.length - 1)];
+      }
+
+      await db.updateProfile(studentId, {
+        total_xp: newXp,
+        current_plant_stage: newStage,
+        current_rank: newRank
+      });
+
+      return { newStage, newRankIndex: PLANT_STAGES.indexOf(newRank) };
+    } catch (err) {
+      console.error('Failed to update quest progress in Supabase:', err);
+      return { newStage: 0, newRankIndex: 0 };
     }
-    
-    localStorage.setItem(key, JSON.stringify({ stage: newStage, rank: newRankIndex }));
-    return { newStage, newRankIndex };
   }
 }

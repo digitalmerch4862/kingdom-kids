@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Droplets, BookOpen, ScrollText, ChevronLeft, Info } from 'lucide-react';
+import { db } from '../services/db.service';
 import { QuestService, QuestStory } from '../services/quest.service';
 import { audio } from '../services/audio.service';
 import MemoryVersePage from './MemoryVersePage';
@@ -22,18 +23,28 @@ const DailyQuestPage: React.FC<DailyQuestPageProps> = ({ user }) => {
   const targetGrowth = 60.00;
 
   useEffect(() => {
-    loadStory();
+    loadData();
   }, [user]);
 
-  const loadStory = async () => {
+  const loadData = async () => {
     try {
       setLoading(true);
       setError(null);
       const studentId = user?.studentId || 'GUEST_DEMO';
-      const questStory = await QuestService.generateStory(studentId);
+
+      const [questStory, profile] = await Promise.all([
+        QuestService.generateStory(studentId),
+        studentId !== 'GUEST_DEMO' ? db.getProfile(studentId) : Promise.resolve(null)
+      ]);
+
       setStory(questStory);
+      if (profile) {
+        setGrowthProgress(profile.total_xp || 0);
+        // Stage could be used for the tree image if we wanted, but let's keep it simple for now
+        // Mapping XP 0-100 to progress
+      }
     } catch (err) {
-      setError('Failed to load story. Please try again.');
+      setError('Failed to load quest. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -75,7 +86,12 @@ const DailyQuestPage: React.FC<DailyQuestPageProps> = ({ user }) => {
       setCurrentQuizIndex(prev => prev + 1);
     } else {
       setShowQuiz(false);
-      setWaterAmount(prev => prev + 20);
+      const studentId = user?.studentId || 'GUEST_DEMO';
+      QuestService.completeQuest(studentId).then(({ newStage, newRankIndex }) => {
+        setWaterAmount(prev => prev + 20);
+        // Refresh progress from server if needed, or just update local state
+        setGrowthProgress(prev => Math.min(prev + 20, 100));
+      });
     }
   };
 
@@ -97,7 +113,7 @@ const DailyQuestPage: React.FC<DailyQuestPageProps> = ({ user }) => {
           <p className="text-red-500 text-xl font-bold mb-4">Oops! The magic didn't work</p>
           <p className="text-gray-600 mb-6">{error}</p>
           <button
-            onClick={loadStory}
+            onClick={loadData}
             className="bg-blue-500 text-white px-6 py-3 rounded-lg hover:bg-blue-600 transition-colors"
           >
             Try Again

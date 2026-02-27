@@ -365,7 +365,7 @@ class DatabaseService {
       GROUP BY entry_date
       ORDER BY entry_date ASC
     `;
-    
+
     const { data, error } = await supabase.rpc('exec_sql', { query_text: query });
     if (error) {
       // Fallback: fetch all and aggregate in memory if RPC fails
@@ -376,23 +376,23 @@ class DatabaseService {
         .eq('voided', false)
         .gte('entry_date', startDate)
         .lte('entry_date', endDate);
-      
+
       if (ledgerError) throw new Error(formatError(ledgerError));
-      
+
       // Aggregate by date
       const grouped = (ledgerData || []).reduce((acc: Record<string, number>, row: any) => {
         const date = row.entry_date;
         acc[date] = (acc[date] || 0) + row.points;
         return acc;
       }, {});
-      
+
       return Object.entries(grouped).map(([date, points]) => ({
         date,
         points: points as number,
         formattedDate: new Date(date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
       })).sort((a, b) => a.date.localeCompare(b.date));
     }
-    
+
     return (data || []).map((row: any) => ({
       date: row.date,
       points: parseInt(row.points) || 0,
@@ -412,7 +412,7 @@ class DatabaseService {
       GROUP BY category
       ORDER BY points DESC
     `;
-    
+
     const { data, error } = await supabase.rpc('exec_sql', { query_text: query });
     if (error) {
       // Fallback: fetch all and aggregate in memory
@@ -421,23 +421,23 @@ class DatabaseService {
         .select('category, points')
         .eq('student_id', studentId)
         .eq('voided', false);
-      
+
       if (ledgerError) throw new Error(formatError(ledgerError));
-      
+
       // Aggregate by category
       const grouped = (ledgerData || []).reduce((acc: Record<string, number>, row: any) => {
         const category = row.category;
         acc[category] = (acc[category] || 0) + row.points;
         return acc;
       }, {});
-      
+
       return Object.entries(grouped).map(([category, points]) => ({
         category,
         points: points as number,
         color: this.getCategoryColor(category)
       })).sort((a, b) => b.points - a.points);
     }
-    
+
     return (data || []).map((row: any) => ({
       category: row.category,
       points: parseInt(row.points) || 0,
@@ -537,12 +537,45 @@ class DatabaseService {
   }
 
   async getStoryHistory(studentId: string): Promise<string[]> {
-    const { data } = await supabase.from('story_history').select('topic').eq('student_id', studentId);
-    return (data || []).map((row: any) => row.topic);
+    const { data } = await supabase.from('story_history').select('story_topic').eq('user_id', studentId);
+    return (data || []).map((row: any) => row.story_topic);
   }
 
   async addStoryHistory(studentId: string, topic: string) {
-    await supabase.from('story_history').insert([{ student_id: studentId, topic: topic }]);
+    await supabase.from('story_history').insert([{ user_id: studentId, story_topic: topic }]);
+  }
+
+  async getProfile(studentId: string): Promise<any> {
+    const { data, error } = await supabase
+      .from('kingdom_kids_profiles')
+      .select('*')
+      .eq('id', studentId)
+      .maybeSingle();
+
+    if (!data && !error) {
+      // Auto-create profile if missing? Maybe better to do it explicitly or on demand.
+      return null;
+    }
+    return data;
+  }
+
+  async updateProfile(studentId: string, updates: any) {
+    const { error } = await supabase
+      .from('kingdom_kids_profiles')
+      .upsert({ id: studentId, ...updates, updated_at: new Date().toISOString() });
+    if (error) throw new Error(formatError(error));
+  }
+
+  async ensureProfile(studentId: string, fullName: string) {
+    const profile = await this.getProfile(studentId);
+    if (!profile) {
+      await this.updateProfile(studentId, {
+        full_name: fullName,
+        current_rank: 'Seed',
+        current_plant_stage: 1,
+        total_xp: 0
+      });
+    }
   }
 
   async getTeacherBoard(): Promise<TeacherAssignmentRecord[]> {

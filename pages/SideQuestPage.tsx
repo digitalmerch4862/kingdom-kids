@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import { UserSession } from '../types';
 import { audio } from '../services/audio.service';
+import { db } from '../services/db.service';
 import { MinistryService } from '../services/ministry.service';
 import { BookOpen, ScrollText, ChevronLeft, Waves, Award, Clock, AlertCircle, ChevronRight, Settings } from 'lucide-react';
 
@@ -190,7 +191,62 @@ const memoryVerseQuestions: Question[] = [
 const QUESTION_TIMER = 30;
 const QUESTIONS_PER_WAVE = 10;
 const TOTAL_WAVES = 5;
+const MEMORY_VERSE_TIMER = 5; // 5 seconds to memorize
 const SIDEQUEST_BACKGROUND_URL = '/GamifyBG.png';
+
+// Memory Verse with full text and hidden words for new mechanics
+interface MemoryVerse {
+  id: number;
+  reference: string;
+  fullText: string;
+  hiddenWords: string[]; // 3 words to hide
+}
+
+const memoryVerses: MemoryVerse[] = [
+  { id: 1, reference: "Proverbs 11:1", fullText: "The Lord detests dishonest scales, but accurate weights are his delight.", hiddenWords: ["detests", "dishonest", "accurate"] },
+  { id: 2, reference: "Psalm 23:1", fullText: "The Lord is my shepherd, I lack nothing.", hiddenWords: ["shepherd", "lack", "nothing"] },
+  { id: 3, reference: "John 3:16", fullText: "For God so loved the world that he gave his one and only Son.", hiddenWords: ["loved", "world", "only"] },
+  { id: 4, reference: "Philippians 4:13", fullText: "I can do all things through Christ who strengthens me.", hiddenWords: ["through", "Christ", "strengthens"] },
+  { id: 5, reference: "Romans 8:28", fullText: "And we know that in all things God works for the good of those who love him.", hiddenWords: ["know", "works", "love"] },
+  { id: 6, reference: "Psalm 100:2", fullText: "Serve the Lord with gladness and come before his presence with singing.", hiddenWords: ["gladness", "singing", "presence"] },
+  { id: 7, reference: "1 John 4:8", fullText: "Whoever does not love does not know God, because God is love.", hiddenWords: ["love", "God", "love"] },
+  { id: 8, reference: "Matthew 6:34", fullText: "Therefore do not worry about tomorrow, for tomorrow will worry about itself.", hiddenWords: ["worry", "tomorrow", "tomorrow"] },
+  { id: 9, reference: "Psalm 27:1", fullText: "The Lord is my light and my salvation, whom shall I fear?", hiddenWords: ["light", "salvation", "fear"] },
+  { id: 10, reference: "Isaiah 40:31", fullText: "But they who wait for the Lord shall renew their strength.", hiddenWords: ["wait", "renew", "strength"] },
+  { id: 11, reference: "Proverbs 3:5", fullText: "Trust in the Lord with all your heart and lean not on your own understanding.", hiddenWords: ["Trust", "heart", "understanding"] },
+  { id: 12, reference: "Joshua 1:9", fullText: "Be strong and courageous. Do not be afraid; do not be discouraged.", hiddenWords: ["strong", "courageous", "afraid"] },
+  { id: 13, reference: "Deuteronomy 31:6", fullText: "Be strong and courageous. Do not be afraid or terrified because of them.", hiddenWords: ["strong", "courageous", "terrified"] },
+  { id: 14, reference: "Psalm 119:105", fullText: "Your word is a lamp to my feet and a light for my path.", hiddenWords: ["lamp", "light", "path"] },
+  { id: 15, reference: "Ephesians 4:32", fullText: "Be kind and compassionate to one another, forgiving each other.", hiddenWords: ["kind", "compassionate", "forgiving"] },
+];
+
+// Get next memory verse question - 3 choices, all must be correct
+const getMemoryVerseQuestion = (usedVerseIds: Set<number>): { verse: MemoryVerse; question: Question } | null => {
+  const availableVerses = memoryVerses.filter(v => !usedVerseIds.has(v.id));
+
+  // If all verses used, reset
+  const versesToUse = availableVerses.length > 0 ? availableVerses : memoryVerses;
+  const verse = versesToUse[Math.floor(Math.random() * versesToUse.length)];
+
+  const correctWords = verse.hiddenWords;
+
+  // Just use the 3 correct words as options - shuffle them
+  const shuffledOptions = [...correctWords].sort(() => Math.random() - 0.5);
+
+  // Question shows all 3 blanks
+  const questionText = `Piliin ang 3 nawawalang salita sa "${verse.reference}":\n\n"${verse.fullText}"`;
+
+  const question: Question = {
+    id: 10000 + verse.id,
+    question: questionText,
+    options: shuffledOptions,
+    correctAnswer: 0, // Will be handled specially - all 3 must be selected
+    answer: correctWords.join(','), // Store all correct words
+    difficulty: 'EASY'
+  };
+
+  return { verse, question };
+};
 
 const getVerseDifficulty = (wave: number): 'EASY' | 'MEDIUM' | 'HARD' | 'VERY HARD' => {
   if (wave === 1) return 'EASY';
@@ -203,25 +259,22 @@ const getVerseDifficultyLevel = (wave: number): 'EASY' | 'MEDIUM' | 'HARD' | 'VE
   return getVerseDifficulty(wave);
 };
 
-const getMemoryVerseQuestionsForWave = (wave: number, usedQuestionIds: Set<number> = new Set()): Question[] => {
-  const difficulty = getVerseDifficultyLevel(wave);
+// Get memory verse questions - cycles through ALL verses repeatedly for memorization
+const getMemoryVerseQuestions = (shownIds: Set<number>): { questions: Question[]; cycleComplete: boolean } => {
+  // Get unused questions first
+  let availableQuestions = memoryVerseQuestions.filter(q => !shownIds.has(q.id));
 
-  let pool = memoryVerseQuestions.filter(q =>
-    q.difficulty === difficulty && !usedQuestionIds.has(q.id)
-  );
-
-  if (pool.length < QUESTIONS_PER_WAVE) {
-    const allDifficultyQuestions = memoryVerseQuestions.filter(q => q.difficulty === difficulty);
-    const usedQuestions = allDifficultyQuestions.filter(q => usedQuestionIds.has(q.id));
-
-    const additionalQuestions = usedQuestions
-      .sort(() => Math.random() - 0.5)
-      .slice(0, QUESTIONS_PER_WAVE - pool.length);
-    pool = [...pool, ...additionalQuestions];
+  // If we've shown all questions, reset the cycle
+  const cycleComplete = availableQuestions.length === 0;
+  if (cycleComplete) {
+    availableQuestions = [...memoryVerseQuestions];
   }
 
-  const shuffled = pool.sort(() => Math.random() - 0.5);
-  return shuffled.slice(0, QUESTIONS_PER_WAVE);
+  // Shuffle and return up to QUESTIONS_PER_WAVE
+  const shuffled = availableQuestions.sort(() => Math.random() - 0.5);
+  const questions = shuffled.slice(0, QUESTIONS_PER_WAVE);
+
+  return { questions, cycleComplete };
 };
 
 const getWaveDifficulty = (wave: number): 'EASY' | 'MEDIUM' | 'HARD' => {
@@ -266,19 +319,20 @@ const treeStages = [
 
 const SideQuestPage: React.FC<SideQuestPageProps> = ({ user }) => {
   const navigate = useNavigate();
-  
+
   // Water and Tree State
   const [waterAmount, setWaterAmount] = useState(0); // Current water in jar
   const [totalWaterEarned, setTotalWaterEarned] = useState(0); // Total ml earned for leaderboard
   const [totalWaterPoured, setTotalWaterPoured] = useState(0); // Total ml poured on tree
   const [treeStage, setTreeStage] = useState(1); // Tree growth stage (1-5)
-  
+
   // Quiz state
 
   // Quiz state
   const [currentWave, setCurrentWave] = useState(1);
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [selectedAnswer, setSelectedAnswer] = useState<number | null>(null);
+  const [selectedAnswers, setSelectedAnswers] = useState<Set<number>>(new Set()); // For memory verse multi-select
   const [timeLeft, setTimeLeft] = useState(QUESTION_TIMER);
   const [isAnswered, setIsAnswered] = useState(false);
   const [correctAnswers, setCorrectAnswers] = useState(0);
@@ -289,45 +343,58 @@ const SideQuestPage: React.FC<SideQuestPageProps> = ({ user }) => {
   const [quizStarted, setQuizStarted] = useState(false);
   const [activeMode, setActiveMode] = useState<'bible' | 'verse' | null>(null);
   const [usedQuestionIds, setUsedQuestionIds] = useState<Set<number>>(new Set());
+  const [memoryVerseShownIds, setMemoryVerseShownIds] = useState<Set<number>>(new Set()); // Track shown memory verses in current cycle
+  const [currentMemoryVerse, setCurrentMemoryVerse] = useState<MemoryVerse | null>(null); // Current verse for memorize phase
+  const [memoryVersePhase, setMemoryVersePhase] = useState<1 | 2>(1); // 1 = memorize, 2 = answer
+  const [usedVerseIds, setUsedVerseIds] = useState<Set<number>>(new Set()); // Track which verses have been used
 
   const studentId = user.studentId || 'guest';
-  const storageKey = `sidequest_${studentId}`;
   const dailyQuestionsKey = `daily_questions_${studentId}_${new Date().toDateString()}`;
 
   useEffect(() => {
-    try {
-      const saved = localStorage.getItem(storageKey);
-      if (saved) {
-        const data = JSON.parse(saved);
-        setWaterAmount(data.waterAmount || 0);
-        setTotalWaterEarned(data.totalWaterEarned || 0);
-        setTotalWaterPoured(data.totalWaterPoured || 0);
-        setTreeStage(data.treeStage || 1);
-      }
+    async function loadProgress() {
+      if (!studentId || studentId === 'guest') return;
 
-      // Load today's used question IDs
-      const dailyUsed = localStorage.getItem(dailyQuestionsKey);
-      if (dailyUsed) {
-        const usedIds = JSON.parse(dailyUsed);
-        setUsedQuestionIds(new Set(usedIds));
+      try {
+        const profile = await db.getProfile(studentId);
+        if (profile) {
+          setWaterAmount(profile.water_balance || 0);
+          setTotalWaterEarned(profile.total_xp || 0);
+          setTotalWaterPoured(profile.total_water_poured || 0);
+          setTreeStage(profile.current_plant_stage || 1);
+        }
+
+        // Load today's used question IDs (still using localStorage for temporary daily state is fine, 
+        // but let's at least sync the main stats)
+        const dailyUsed = localStorage.getItem(dailyQuestionsKey);
+        if (dailyUsed) {
+          const usedIds = JSON.parse(dailyUsed);
+          setUsedQuestionIds(new Set(usedIds));
+        }
+      } catch (e) {
+        console.error("Failed to load saved progress from Supabase", e);
       }
-    } catch (e) {
-      console.error("Failed to load saved progress", e);
     }
-  }, [storageKey, dailyQuestionsKey]);
+    loadProgress();
+  }, [studentId, dailyQuestionsKey]);
 
+  // Sync state to Supabase when it changes
   useEffect(() => {
-    try {
-      localStorage.setItem(storageKey, JSON.stringify({
-        waterAmount,
-        totalWaterEarned,
-        totalWaterPoured,
-        treeStage,
-      }));
-    } catch (e) {
-      console.error("Failed to save progress", e);
+    async function syncProgress() {
+      if (!studentId || studentId === 'guest') return;
+      try {
+        await db.updateProfile(studentId, {
+          water_balance: waterAmount,
+          total_xp: totalWaterEarned,
+          total_water_poured: totalWaterPoured,
+          current_plant_stage: treeStage
+        });
+      } catch (e) {
+        console.error("Failed to sync progress to Supabase", e);
+      }
     }
-  }, [waterAmount, totalWaterEarned, totalWaterPoured, treeStage, storageKey]);
+    syncProgress();
+  }, [waterAmount, totalWaterEarned, totalWaterPoured, treeStage, studentId]);
 
   useEffect(() => {
     try {
@@ -353,9 +420,17 @@ const SideQuestPage: React.FC<SideQuestPageProps> = ({ user }) => {
     }, 1000);
 
     return () => clearInterval(timer);
-  }, [quizStarted, showResults, showWaveComplete, isAnswered, currentQuestionIndex]);
+  }, [quizStarted, showResults, showWaveComplete, isAnswered, currentQuestionIndex, memoryVersePhase]);
 
   const handleTimeUp = () => {
+    // If in Memory Verse Phase 1 (memorize), transition to Phase 2 (answer)
+    if (activeMode === 'verse' && memoryVersePhase === 1) {
+      setMemoryVersePhase(2);
+      setIsAnswered(false);
+      setTimeLeft(QUESTION_TIMER);
+      return;
+    }
+
     setIsAnswered(true);
     setTimeout(() => {
       nextQuestion();
@@ -366,6 +441,7 @@ const SideQuestPage: React.FC<SideQuestPageProps> = ({ user }) => {
     if (currentQuestionIndex < questions.length - 1) {
       setCurrentQuestionIndex(prev => prev + 1);
       setSelectedAnswer(null);
+      setSelectedAnswers(new Set());
       setIsAnswered(false);
       setTimeLeft(QUESTION_TIMER);
     } else {
@@ -376,6 +452,19 @@ const SideQuestPage: React.FC<SideQuestPageProps> = ({ user }) => {
   const handleAnswerSelect = (answerIndex: number) => {
     if (isAnswered) return;
 
+    // Memory verse mode - multi-select
+    if (activeMode === 'verse' && memoryVersePhase === 2) {
+      const newSelected = new Set(selectedAnswers);
+      if (newSelected.has(answerIndex)) {
+        newSelected.delete(answerIndex);
+      } else if (newSelected.size < 3) {
+        newSelected.add(answerIndex);
+      }
+      setSelectedAnswers(newSelected);
+      return;
+    }
+
+    // Normal mode - single select
     setSelectedAnswer(answerIndex);
     setIsAnswered(true);
 
@@ -393,32 +482,82 @@ const SideQuestPage: React.FC<SideQuestPageProps> = ({ user }) => {
     }, 1500);
   };
 
+  const submitMemoryVerseAnswers = () => {
+    if (selectedAnswers.size !== 3) return;
+
+    const selectedWords = Array.from(selectedAnswers).map(i => currentQuestion.options?.[i] || '');
+    const correctWords = (currentQuestion.answer || '').split(',');
+
+    // Check if all 3 selected words are correct
+    const allCorrect = selectedWords.every(word => correctWords.includes(word)) &&
+      selectedWords.length === correctWords.length;
+
+    setIsAnswered(true);
+
+    if (allCorrect) {
+      setCorrectAnswers(prev => prev + 1);
+      setWaveCorrectAnswers(prev => prev + 1);
+      setWaterAmount(prev => prev + WATER_PER_CORRECT_ANSWER);
+      setTotalWaterEarned(prev => prev + WATER_PER_CORRECT_ANSWER);
+      audio.playYehey();
+    }
+
+    setTimeout(() => {
+      nextQuestion();
+    }, 2000);
+  };
+
   const startQuiz = (mode: 'bible' | 'verse') => {
-    let newQuestions: Question[];
     if (mode === 'verse') {
-      newQuestions = getMemoryVerseQuestionsForWave(1, usedQuestionIds);
+      // Memory Verse: New mechanics - Phase 1 (memorize) then Phase 2 (answer)
+      const result = getMemoryVerseQuestion(usedVerseIds);
+
+      if (!result) {
+        console.error("No verse generated");
+        return;
+      }
+
+      const { verse, question } = result;
+
+      // Mark this verse as used
+      const newUsedIds = new Set(usedVerseIds);
+      newUsedIds.add(verse.id);
+      setUsedVerseIds(newUsedIds);
+
+      // Reset if all verses used
+      if (newUsedIds.size >= memoryVerses.length) {
+        setUsedVerseIds(new Set());
+      }
+
+      setCurrentMemoryVerse(verse);
+      setQuestions([question]);
+      setMemoryVersePhase(1);
+      setTimeLeft(MEMORY_VERSE_TIMER);
     } else {
-      newQuestions = getQuestionsForWave(1, usedQuestionIds);
+      // Bible Story: Normal mode with tracking
+      const newQuestions = getQuestionsForWave(1, usedQuestionIds);
+
+      if (!newQuestions || newQuestions.length === 0) {
+        console.error("No questions generated for mode:", mode);
+        return;
+      }
+
+      // Mark these questions as used
+      const newUsedIds = new Set(usedQuestionIds);
+      newQuestions.forEach(q => newUsedIds.add(q.id));
+      setUsedQuestionIds(newUsedIds);
+
+      setQuestions(newQuestions);
+      setMemoryVersePhase(2); // Bible story skips memorize phase
+      setTimeLeft(QUESTION_TIMER);
     }
 
-    if (!newQuestions || newQuestions.length === 0) {
-      console.error("No questions generated for mode:", mode);
-      return;
-    }
-
-    // Mark these questions as used FIRST
-    const newUsedIds = new Set(usedQuestionIds);
-    newQuestions.forEach(q => newUsedIds.add(q.id));
-    setUsedQuestionIds(newUsedIds);
-
-    // Set questions BEFORE enabling quiz mode
-    setQuestions(newQuestions);
     setActiveMode(mode);
     setCurrentWave(1);
     setCurrentQuestionIndex(0);
     setSelectedAnswer(null);
+    setSelectedAnswers(new Set()); // Reset multi-select for memory verse
     setIsAnswered(false);
-    setTimeLeft(QUESTION_TIMER);
     setCorrectAnswers(0);
     setWaveCorrectAnswers(0);
     setShowResults(false);
@@ -430,32 +569,63 @@ const SideQuestPage: React.FC<SideQuestPageProps> = ({ user }) => {
   };
 
   const startNextWave = () => {
-    const nextWave = currentWave + 1;
-    if (nextWave <= TOTAL_WAVES) {
-      setCurrentWave(nextWave);
+    if (activeMode === 'verse') {
+      // Memory Verse: Get next verse for memorize phase
+      const result = getMemoryVerseQuestion(usedVerseIds);
 
-      let newQuestions: Question[];
-      if (activeMode === 'verse') {
-        newQuestions = getMemoryVerseQuestionsForWave(nextWave, usedQuestionIds);
-      } else {
-        newQuestions = getQuestionsForWave(nextWave, usedQuestionIds);
+      if (!result) {
+        setShowWaveComplete(true);
+        return;
       }
-      setQuestions(newQuestions);
 
-      // Mark these questions as used
-      const newUsedIds = new Set(usedQuestionIds);
-      newQuestions.forEach(q => newUsedIds.add(q.id));
-      setUsedQuestionIds(newUsedIds);
+      const { verse, question } = result;
 
+      // Mark this verse as used
+      const newUsedIds = new Set(usedVerseIds);
+      newUsedIds.add(verse.id);
+      setUsedVerseIds(newUsedIds);
+
+      // Reset if all verses used
+      if (newUsedIds.size >= memoryVerses.length) {
+        setUsedVerseIds(new Set());
+      }
+
+      setCurrentMemoryVerse(verse);
+      setQuestions([question]);
+      setMemoryVersePhase(1);
+      setCurrentWave(prev => prev + 1);
       setCurrentQuestionIndex(0);
       setSelectedAnswer(null);
+      setSelectedAnswers(new Set()); // Reset multi-select
       setIsAnswered(false);
-      setTimeLeft(QUESTION_TIMER);
+      setTimeLeft(MEMORY_VERSE_TIMER);
       setWaveCorrectAnswers(0);
       setShowWaveComplete(false);
       audio.playClick();
     } else {
-      setShowResults(true);
+      // Bible Story: Normal wave system
+      const nextWave = currentWave + 1;
+      if (nextWave <= TOTAL_WAVES) {
+        setCurrentWave(nextWave);
+
+        const newQuestions = getQuestionsForWave(nextWave, usedQuestionIds);
+        setQuestions(newQuestions);
+
+        // Mark these questions as used
+        const newUsedIds = new Set(usedQuestionIds);
+        newQuestions.forEach(q => newUsedIds.add(q.id));
+        setUsedQuestionIds(newUsedIds);
+
+        setCurrentQuestionIndex(0);
+        setSelectedAnswer(null);
+        setIsAnswered(false);
+        setTimeLeft(QUESTION_TIMER);
+        setWaveCorrectAnswers(0);
+        setShowWaveComplete(false);
+        audio.playClick();
+      } else {
+        setShowResults(true);
+      }
     }
   };
 
@@ -467,16 +637,16 @@ const SideQuestPage: React.FC<SideQuestPageProps> = ({ user }) => {
     if (waterAmount >= WATER_PER_WATERING) {
       const newWaterAmount = waterAmount - WATER_PER_WATERING;
       const newTotalPoured = totalWaterPoured + WATER_PER_WATERING;
-      
+
       setWaterAmount(newWaterAmount);
       setTotalWaterPoured(newTotalPoured);
-      
+
       // Check if tree should grow
       const growthStage = Math.floor(newTotalPoured / TREE_GROWTH_THRESHOLD) + 1;
       if (growthStage > treeStage && growthStage <= 5) {
         setTreeStage(growthStage);
       }
-      
+
       // Add points to leaderboard (total water earned, not poured)
       if (user.studentId && user.studentId !== 'guest') {
         try {
@@ -491,7 +661,7 @@ const SideQuestPage: React.FC<SideQuestPageProps> = ({ user }) => {
           console.error('Failed to add points to leaderboard:', err);
         }
       }
-      
+
       audio.playYehey();
     }
   };
@@ -499,10 +669,10 @@ const SideQuestPage: React.FC<SideQuestPageProps> = ({ user }) => {
   const completeQuest = () => {
     // Add 5ml per correct answer to jar
     const waterReward = correctAnswers * WATER_PER_CORRECT_ANSWER;
-    
+
     setWaterAmount(prev => prev + waterReward);
     setTotalWaterEarned(prev => prev + waterReward);
-    
+
     // Add earned water to leaderboard
     if (user.studentId && user.studentId !== 'guest' && waterReward > 0) {
       MinistryService.addPoints(
@@ -537,10 +707,11 @@ const SideQuestPage: React.FC<SideQuestPageProps> = ({ user }) => {
   const currentDifficulty = getWaveDifficulty(currentWave);
 
   // Timer circle calculations
-  const timerProgress = (timeLeft / QUESTION_TIMER) * 100;
+  const currentTimerMax = (activeMode === 'verse' && memoryVersePhase === 1) ? MEMORY_VERSE_TIMER : QUESTION_TIMER;
+  const timerProgress = (timeLeft / currentTimerMax) * 100;
   const timerCircumference = 2 * Math.PI * 40;
   const timerOffset = timerCircumference - (timerProgress / 100) * timerCircumference;
-  const isTimeLow = timeLeft <= 5;
+  const isTimeLow = timeLeft <= 2;
 
   const getWaveColor = (wave: number) => {
     if (wave <= 2) return 'bg-green-100 text-green-600 border-green-400';
@@ -563,7 +734,7 @@ const SideQuestPage: React.FC<SideQuestPageProps> = ({ user }) => {
         setTimeout(() => setShowFloatingText(false), 1000);
         return;
       }
-      
+
       setIsPouring(true);
       setTimeout(() => setIsPouring(false), 700);
 
@@ -630,17 +801,17 @@ const SideQuestPage: React.FC<SideQuestPageProps> = ({ user }) => {
         <div className="relative z-10 flex-1 flex flex-col items-center justify-between px-4 sm:px-6 py-4 sm:py-6">
           {/* Main scene with Tree and Watering Can */}
           <div className="relative w-full flex-1 flex flex-col items-center justify-center">
-            
+
             {/* Floating Watering Can - Centered Above Tree */}
             <motion.button
               type="button"
               onClick={handleWaterClick}
               className="relative z-30 mb-2"
-              animate={{ 
+              animate={{
                 y: [0, -6, 0],
                 rotate: [0, -2, 2, 0]
               }}
-              transition={{ 
+              transition={{
                 y: { repeat: Infinity, duration: 2.5, ease: "easeInOut" },
                 rotate: { repeat: Infinity, duration: 4, ease: "easeInOut" }
               }}
@@ -651,7 +822,7 @@ const SideQuestPage: React.FC<SideQuestPageProps> = ({ user }) => {
               <div className="absolute -top-1 right-0 z-40 bg-gradient-to-br from-yellow-400 to-orange-500 text-white text-xs sm:text-sm font-black px-2 py-0.5 rounded-full shadow-lg border-2 border-white">
                 {waterAmount}ml
               </div>
-              
+
               <motion.div
                 className="relative"
                 animate={isPouring ? { rotate: -25, x: -10 } : { rotate: 0, x: 0 }}
@@ -663,7 +834,7 @@ const SideQuestPage: React.FC<SideQuestPageProps> = ({ user }) => {
                   className="block w-14 sm:w-20 h-auto drop-shadow-2xl"
                 />
               </motion.div>
-              
+
               {/* Water particles */}
               {particles.map((particle) => (
                 <motion.div
@@ -676,7 +847,7 @@ const SideQuestPage: React.FC<SideQuestPageProps> = ({ user }) => {
                   💧
                 </motion.div>
               ))}
-              
+
               {/* Floating text */}
               {showFloatingText && (
                 <motion.div
@@ -708,17 +879,17 @@ const SideQuestPage: React.FC<SideQuestPageProps> = ({ user }) => {
                   />
                 </motion.div>
               )}
-              
+
               <motion.img
                 src={currentStage.image}
                 alt={currentStage.name}
                 className={`w-36 sm:${currentStage.sizeClass} max-w-[65vw] sm:max-w-[78vw] origin-bottom drop-shadow-2xl`}
-                animate={{ 
-                  scale: [1, 1.02, 1], 
+                animate={{
+                  scale: [1, 1.02, 1],
                   rotate: [0, 0.5, -0.5, 0]
                 }}
-                transition={{ 
-                  repeat: Infinity, 
+                transition={{
+                  repeat: Infinity,
                   duration: 4,
                   ease: "easeInOut"
                 }}
@@ -735,33 +906,11 @@ const SideQuestPage: React.FC<SideQuestPageProps> = ({ user }) => {
               whileHover={{ scale: 1.05, y: -4 }}
               whileTap={{ scale: 0.95 }}
             >
-              {/* Outer ring */}
-              <div className="absolute inset-0 bg-gradient-to-br from-amber-400 to-orange-600 rounded-full p-1 shadow-lg">
-                <div className="absolute inset-0 bg-gradient-to-br from-amber-400 to-orange-600 rounded-full blur opacity-50 group-hover:opacity-80 transition-opacity" />
-              </div>
-              
-              {/* Inner content */}
-              <div className="relative w-24 h-24 sm:w-32 sm:h-32 rounded-full overflow-hidden border-4 border-amber-200 shadow-inner bg-gradient-to-br from-amber-50 to-orange-100">
-                <img
-                  src="/bible%20story.png"
-                  alt="Bible Story"
-                  className="w-full h-full object-cover"
-                />
-                {/* Parchment label */}
-                <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-amber-900/90 to-amber-800/70 py-1 sm:py-2 px-2">
-                  <p className="text-[10px] sm:text-xs font-black text-amber-100 text-center uppercase tracking-wider drop-shadow-md"
-                     style={{ 
-                       fontFamily: 'serif',
-                       textShadow: '1px 1px 2px rgba(0,0,0,0.5)'
-                     }}
-                  >
-                    Bible Story
-                  </p>
-                </div>
-              </div>
-              
-              {/* Shine effect */}
-              <div className="absolute top-2 left-2 w-6 h-6 sm:w-8 sm:h-8 bg-white/30 rounded-full blur-sm" />
+              <img
+                src="/bible%20story.png"
+                alt="Bible Story"
+                className="w-28 h-28 sm:w-36 sm:h-36 object-contain drop-shadow-lg"
+              />
             </motion.button>
 
             {/* Memory Verse Button */}
@@ -771,33 +920,11 @@ const SideQuestPage: React.FC<SideQuestPageProps> = ({ user }) => {
               whileHover={{ scale: 1.05, y: -4 }}
               whileTap={{ scale: 0.95 }}
             >
-              {/* Outer ring */}
-              <div className="absolute inset-0 bg-gradient-to-br from-purple-400 to-indigo-600 rounded-full p-1 shadow-lg">
-                <div className="absolute inset-0 bg-gradient-to-br from-purple-400 to-indigo-600 rounded-full blur opacity-50 group-hover:opacity-80 transition-opacity" />
-              </div>
-              
-              {/* Inner content */}
-              <div className="relative w-24 h-24 sm:w-32 sm:h-32 rounded-full overflow-hidden border-4 border-purple-200 shadow-inner bg-gradient-to-br from-purple-50 to-indigo-100">
-                <img
-                  src="/memmory%20verse.png"
-                  alt="Memory Verse"
-                  className="w-full h-full object-cover"
-                />
-                {/* Parchment label */}
-                <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-purple-900/90 to-indigo-800/70 py-1 sm:py-2 px-2">
-                  <p className="text-[10px] sm:text-xs font-black text-purple-100 text-center uppercase tracking-wider drop-shadow-md"
-                     style={{ 
-                       fontFamily: 'serif',
-                       textShadow: '1px 1px 2px rgba(0,0,0,0.5)'
-                     }}
-                  >
-                    Memory Verse
-                  </p>
-                </div>
-              </div>
-              
-              {/* Shine effect */}
-              <div className="absolute top-2 left-2 w-6 h-6 sm:w-8 sm:h-8 bg-white/30 rounded-full blur-sm" />
+              <img
+                src="/memmory%20verse.png"
+                alt="Memory Verse"
+                className="w-28 h-28 sm:w-36 sm:h-36 object-contain drop-shadow-lg"
+              />
             </motion.button>
           </div>
         </div>
@@ -930,11 +1057,19 @@ const SideQuestPage: React.FC<SideQuestPageProps> = ({ user }) => {
             // Wave Complete
             <div className="bg-white rounded-2xl sm:rounded-[2.5rem] p-4 sm:p-8 shadow-xl border-2 sm:border-4 border-white">
               <div className="text-center space-y-3 sm:space-y-6">
-                <div className={`inline-flex p-4 sm:p-6 rounded-2xl sm:rounded-3xl ${getWaveColor(currentWave)} shadow-lg`}>
-                  <Waves className="w-8 h-8 sm:w-12 sm:h-12" />
+                <div className={`inline-flex p-4 sm:p-6 rounded-2xl sm:rounded-3xl ${activeMode === 'verse' ? 'bg-purple-100 text-purple-600' : getWaveColor(currentWave)} shadow-lg`}>
+                  {activeMode === 'verse' ? <BookOpen className="w-8 h-8 sm:w-12 sm:h-12" /> : <Waves className="w-8 h-8 sm:w-12 sm:h-12" />}
                 </div>
 
-                <h2 className="text-xl sm:text-3xl font-black text-gray-800">Wave {currentWave} Complete!</h2>
+                <h2 className="text-xl sm:text-3xl font-black text-gray-800">
+                  {activeMode === 'verse' ? 'Practice Complete!' : `Wave ${currentWave} Complete!`}
+                </h2>
+
+                {activeMode === 'verse' && (
+                  <p className="text-sm sm:text-base text-purple-600 font-medium">
+                    Great job practicing! Keep memorizing these verses.
+                  </p>
+                )}
 
                 <div className="text-3xl sm:text-5xl font-black text-pink-500">
                   {waveCorrectAnswers}/{QUESTIONS_PER_WAVE}
@@ -946,7 +1081,7 @@ const SideQuestPage: React.FC<SideQuestPageProps> = ({ user }) => {
                   whileHover={{ scale: 1.02 }}
                   whileTap={{ scale: 0.98 }}
                 >
-                  {currentWave < TOTAL_WAVES ? 'Next Wave' : 'See Results'}
+                  {activeMode === 'verse' ? 'Continue Practicing' : (currentWave < TOTAL_WAVES ? 'Next Wave' : 'See Results')}
                   <ChevronRight className="w-4 h-4 sm:w-5 sm:h-5" />
                 </motion.button>
               </div>
@@ -965,8 +1100,11 @@ const SideQuestPage: React.FC<SideQuestPageProps> = ({ user }) => {
               {/* Header */}
               <div className="flex items-center justify-between mb-3 sm:mb-4">
                 <div className="flex items-center gap-2">
-                  <span className={`px-3 sm:px-4 py-1.5 sm:py-2 rounded-full font-bold text-xs sm:text-sm ${getWaveColor(currentWave)}`}>
-                    WAVE {currentWave}/{TOTAL_WAVES}
+                  <span className={`px-3 sm:px-4 py-1.5 sm:py-2 rounded-full font-bold text-xs sm:text-sm ${activeMode === 'verse' ? 'bg-purple-100 text-purple-700' : getWaveColor(currentWave)}`}>
+                    {activeMode === 'verse'
+                      ? (memoryVersePhase === 1 ? '📖 MEMORIZE' : `SET ${currentWave}`)
+                      : `WAVE ${currentWave}/${TOTAL_WAVES}`
+                    }
                   </span>
                 </div>
 
@@ -976,7 +1114,7 @@ const SideQuestPage: React.FC<SideQuestPageProps> = ({ user }) => {
                     <circle cx="50" cy="50" r="40" fill="none" stroke="#e5e7eb" strokeWidth="8" />
                     <circle
                       cx="50" cy="50" r="40" fill="none"
-                      stroke={isTimeLow ? '#ef4444' : '#ec4899'}
+                      stroke={isTimeLow ? '#ef4444' : (activeMode === 'verse' && memoryVersePhase === 1 ? '#9333ea' : '#ec4899')}
                       strokeWidth="8" strokeLinecap="round"
                       strokeDasharray={timerCircumference}
                       strokeDashoffset={timerOffset}
@@ -1006,62 +1144,145 @@ const SideQuestPage: React.FC<SideQuestPageProps> = ({ user }) => {
 
               {/* Question */}
               <div className="relative mb-4 sm:mb-6 mx-auto w-full max-w-3xl">
-                <div 
-                  className="w-full min-h-[120px] sm:min-h-[180px] md:min-h-[200px] rounded-2xl sm:rounded-3xl shadow-inner p-4 sm:p-8 md:p-12 flex items-center justify-center"
-                  style={{
-                    background: 'linear-gradient(135deg, #f5deb3 0%, #f4e4c1 50%, #f5deb3 100%)',
-                    boxShadow: 'inset 0 2px 4px rgba(0,0,0,0.1), 0 4px 6px rgba(0,0,0,0.1)'
-                  }}
-                >
-                  <h3 className="text-center text-base sm:text-lg md:text-2xl font-black text-gray-800 leading-snug">
-                    {currentQuestion.question}
-                  </h3>
+                {activeMode === 'verse' && memoryVersePhase === 1 && currentMemoryVerse ? (
+                  // Phase 1: Show full verse to memorize
+                  <div
+                    className="w-full min-h-[180px] sm:min-h-[220px] md:min-h-[250px] rounded-2xl sm:rounded-3xl shadow-inner p-4 sm:p-8 md:p-10 flex flex-col items-center justify-center"
+                    style={{
+                      background: 'linear-gradient(135deg, #e8d5f2 0%, #d4b8e8 50%, #c9a8dc 100%)',
+                      boxShadow: 'inset 0 2px 4px rgba(0,0,0,0.1), 0 4px 6px rgba(0,0,0,0.1)'
+                    }}
+                  >
+                    <p className="text-sm sm:text-base font-bold text-purple-700 mb-2">{currentMemoryVerse.reference}</p>
+                    <h3 className="text-center text-lg sm:text-xl md:text-2xl font-black text-purple-900 leading-relaxed">
+                      {currentMemoryVerse.fullText}
+                    </h3>
+                    <p className="mt-4 text-xs sm:text-sm text-purple-600 font-medium">Memorize this verse!</p>
+                  </div>
+                ) : (
+                  // Phase 2: Show question
+                  <div
+                    className="w-full min-h-[120px] sm:min-h-[180px] md:min-h-[200px] rounded-2xl sm:rounded-3xl shadow-inner p-4 sm:p-8 md:p-12 flex items-center justify-center"
+                    style={{
+                      background: 'linear-gradient(135deg, #f5deb3 0%, #f4e4c1 50%, #f5deb3 100%)',
+                      boxShadow: 'inset 0 2px 4px rgba(0,0,0,0.1), 0 4px 6px rgba(0,0,0,0.1)'
+                    }}
+                  >
+                    <h3 className="text-center text-base sm:text-lg md:text-2xl font-black text-gray-800 leading-snug whitespace-pre-line">
+                      {currentQuestion.question}
+                    </h3>
+                  </div>
+                )}
+              </div>
+
+              {/* Multiple Choice Options - Hide during Phase 1 (memorize) */}
+              {!(activeMode === 'verse' && memoryVersePhase === 1) && (
+                <div className="space-y-2 sm:space-y-3">
+                  {/* Memory Verse Mode - Multi-select */}
+                  {activeMode === 'verse' && memoryVersePhase === 2 ? (
+                    <>
+                      <p className="text-center text-sm font-bold text-purple-600 mb-2">Pumili ng 3 tamang salita (napili: {selectedAnswers.size}/3)</p>
+                      <div className="grid grid-cols-3 gap-2">
+                        {currentQuestion.options?.map((option, index) => {
+                          const isSelected = selectedAnswers.has(index);
+                          const showCorrectness = isAnswered;
+                          const correctWords = (currentQuestion.answer || '').split(',');
+                          const isCorrect = correctWords.includes(option);
+
+                          let buttonClass = "p-2 sm:p-3 rounded-xl border-2 font-bold text-center text-sm sm:text-base transition-all ";
+
+                          if (showCorrectness) {
+                            if (isCorrect) {
+                              buttonClass += "bg-green-100 border-green-500 text-green-800";
+                            } else if (isSelected) {
+                              buttonClass += "bg-red-100 border-red-500 text-red-800";
+                            } else {
+                              buttonClass += "bg-gray-50 border-gray-200 text-gray-400";
+                            }
+                          } else {
+                            buttonClass += isSelected
+                              ? "bg-purple-200 border-purple-500 text-purple-800"
+                              : "bg-white border-gray-200 hover:border-purple-300 hover:bg-purple-50 text-gray-700";
+                          }
+
+                          return (
+                            <motion.button
+                              key={index}
+                              onClick={() => handleAnswerSelect(index)}
+                              disabled={isAnswered}
+                              className={buttonClass}
+                              whileHover={!isAnswered ? { scale: 1.05 } : {}}
+                              whileTap={!isAnswered ? { scale: 0.95 } : {}}
+                            >
+                              {option}
+                              {isSelected && !showCorrectness && <span className="ml-1">✓</span>}
+                            </motion.button>
+                          );
+                        })}
+                      </div>
+                      {/* Submit button for memory verse */}
+                      {selectedAnswers.size === 3 && !isAnswered && (
+                        <motion.button
+                          onClick={submitMemoryVerseAnswers}
+                          className="w-full py-3 sm:py-4 rounded-xl font-bold text-white bg-gradient-to-r from-purple-500 to-indigo-500"
+                          whileHover={{ scale: 1.02 }}
+                          whileTap={{ scale: 0.98 }}
+                        >
+                          Submit Answers
+                        </motion.button>
+                      )}
+                      {/* Result message */}
+                      {isAnswered && (
+                        <div className={`text-center py-2 rounded-xl font-bold ${selectedAnswers.size === 3 ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
+                          {correctAnswers > waveCorrectAnswers ? '🎉 Tamang sagot!' : '❌ Mali ang sagot'}
+                        </div>
+                      )}
+                    </>
+                  ) : (
+                    /* Normal Mode - Single select */
+                    currentQuestion.options?.map((option, index) => {
+                      const isCorrect = index === currentQuestion.correctAnswer;
+                      const isSelected = selectedAnswer === index;
+                      const showCorrectness = isAnswered;
+
+                      let buttonClass = "w-full p-3 sm:p-4 rounded-xl sm:rounded-2xl border-2 font-bold text-left transition-all flex items-center gap-2 sm:gap-4 ";
+
+                      if (showCorrectness) {
+                        if (isCorrect) {
+                          buttonClass += "bg-green-100 border-green-500 text-green-800";
+                        } else if (isSelected && !isCorrect) {
+                          buttonClass += "bg-red-100 border-red-500 text-red-800";
+                        } else {
+                          buttonClass += "bg-gray-50 border-gray-200 text-gray-400";
+                        }
+                      } else {
+                        buttonClass += "bg-white border-gray-200 hover:border-purple-300 hover:bg-purple-50 text-gray-700";
+                      }
+
+                      return (
+                        <motion.button
+                          key={index}
+                          onClick={() => handleAnswerSelect(index)}
+                          disabled={isAnswered}
+                          className={buttonClass}
+                          whileHover={!isAnswered ? { scale: 1.02 } : {}}
+                          whileTap={!isAnswered ? { scale: 0.98 } : {}}
+                        >
+                          <span className={`w-8 h-8 sm:w-10 sm:h-10 rounded-full flex items-center justify-center font-black text-xs sm:text-sm ${showCorrectness
+                            ? isCorrect ? "bg-green-500 text-white" : isSelected ? "bg-red-500 text-white" : "bg-gray-200 text-gray-400"
+                            : "bg-gray-100 text-gray-600"
+                            }`}>
+                            {String.fromCharCode(65 + index)}
+                          </span>
+                          <span className="flex-1 text-sm sm:text-base">{option}</span>
+                          {showCorrectness && isCorrect && <span className="text-xl sm:text-2xl">✓</span>}
+                          {showCorrectness && isSelected && !isCorrect && <span className="text-xl sm:text-2xl">✗</span>}
+                        </motion.button>
+                      );
+                    })
+                  )}
                 </div>
-              </div>
-
-              {/* Multiple Choice Options */}
-              <div className="space-y-2 sm:space-y-3">
-                {currentQuestion.options?.map((option, index) => {
-                  const isCorrect = index === currentQuestion.correctAnswer;
-                  const isSelected = selectedAnswer === index;
-                  const showCorrectness = isAnswered;
-
-                  let buttonClass = "w-full p-3 sm:p-4 rounded-xl sm:rounded-2xl border-2 font-bold text-left transition-all flex items-center gap-2 sm:gap-4 ";
-
-                  if (showCorrectness) {
-                    if (isCorrect) {
-                      buttonClass += "bg-green-100 border-green-500 text-green-800";
-                    } else if (isSelected && !isCorrect) {
-                      buttonClass += "bg-red-100 border-red-500 text-red-800";
-                    } else {
-                      buttonClass += "bg-gray-50 border-gray-200 text-gray-400";
-                    }
-                  } else {
-                    buttonClass += "bg-white border-gray-200 hover:border-purple-300 hover:bg-purple-50 text-gray-700";
-                  }
-
-                  return (
-                    <motion.button
-                      key={index}
-                      onClick={() => handleAnswerSelect(index)}
-                      disabled={isAnswered}
-                      className={buttonClass}
-                      whileHover={!isAnswered ? { scale: 1.02 } : {}}
-                      whileTap={!isAnswered ? { scale: 0.98 } : {}}
-                    >
-                      <span className={`w-8 h-8 sm:w-10 sm:h-10 rounded-full flex items-center justify-center font-black text-xs sm:text-sm ${showCorrectness
-                        ? isCorrect ? "bg-green-500 text-white" : isSelected ? "bg-red-500 text-white" : "bg-gray-200 text-gray-400"
-                        : "bg-gray-100 text-gray-600"
-                        }`}>
-                        {String.fromCharCode(65 + index)}
-                      </span>
-                      <span className="flex-1 text-sm sm:text-base">{option}</span>
-                      {showCorrectness && isCorrect && <span className="text-xl sm:text-2xl">✓</span>}
-                      {showCorrectness && isSelected && !isCorrect && <span className="text-xl sm:text-2xl">✗</span>}
-                    </motion.button>
-                  );
-                })}
-              </div>
+              )}
 
               {isAnswered && selectedAnswer === null && (
                 <motion.div className="mt-3 sm:mt-4 text-center text-red-500 font-bold flex items-center justify-center gap-2 text-sm sm:text-base">
