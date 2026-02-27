@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { db, formatError } from '../services/db.service';
+import { MinistryService } from '../services/ministry.service';
 import { PointLedger, Student, UserSession, TeacherAssignmentRecord } from '../types';
 import { audio } from '../services/audio.service';
-import { AlertTriangle, Star, Users, ArrowLeft, Trophy } from 'lucide-react';
+import { Star, Users, Edit2 } from 'lucide-react';
 import GlobalAwardModal from '../components/GlobalAwardModal';
 
 const PointsLedgerPage: React.FC<{ user: UserSession }> = ({ user }) => {
@@ -20,6 +21,12 @@ const PointsLedgerPage: React.FC<{ user: UserSession }> = ({ user }) => {
   const [classroomSearch, setClassroomSearch] = useState('');
   /* New State for 2-Step Workflow */
   const [selectedAction, setSelectedAction] = useState<{ label: string, pts: number } | null>(null);
+  const [manualTargetStudent, setManualTargetStudent] = useState<Student | null>(null);
+  const [manualPoints, setManualPoints] = useState('1');
+  const [manualCategory, setManualCategory] = useState('Manual Adjustment');
+  const [manualNote, setManualNote] = useState('');
+  const [manualError, setManualError] = useState('');
+  const [isManualSaving, setIsManualSaving] = useState(false);
 
   const ACTIONS = [
     { label: 'WORKSHEET / ACTIVITIES', pts: 5 },
@@ -30,6 +37,8 @@ const PointsLedgerPage: React.FC<{ user: UserSession }> = ({ user }) => {
 
   const [loading, setLoading] = useState(true);
   const isAdmin = user.role === 'ADMIN';
+  const manualEditors = ['LEE', 'CHING', 'MARGE', 'MAGI', 'BETH'];
+  const canManualEditPoints = isAdmin || manualEditors.includes(user.username.toUpperCase());
 
   useEffect(() => {
     if (viewMode === 'LEDGER') {
@@ -203,6 +212,55 @@ const PointsLedgerPage: React.FC<{ user: UserSession }> = ({ user }) => {
     }
   };
 
+  const openManualModal = (student: Student) => {
+    audio.playClick();
+    setManualTargetStudent(student);
+    setManualPoints('1');
+    setManualCategory('Manual Adjustment');
+    setManualNote('');
+    setManualError('');
+  };
+
+  const closeManualModal = () => {
+    audio.playClick();
+    setManualTargetStudent(null);
+    setManualError('');
+  };
+
+  const handleManualPointsSave = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!manualTargetStudent) return;
+
+    const pts = Number(manualPoints);
+    if (!Number.isInteger(pts) || pts < 1) {
+      setManualError('Points must be a whole number greater than zero.');
+      return;
+    }
+
+    setManualError('');
+    setIsManualSaving(true);
+    audio.playClick();
+
+    try {
+      await MinistryService.addPoints(
+        manualTargetStudent.id,
+        manualCategory || 'Manual Adjustment',
+        pts,
+        user.username,
+        manualNote.trim() || `Manual add in ${assignedClass?.name || 'Classroom'}`
+      );
+
+      setDailyScores(prev => ({ ...prev, [manualTargetStudent.id]: (prev[manualTargetStudent.id] || 0) + pts }));
+      setTotalScores(prev => ({ ...prev, [manualTargetStudent.id]: (prev[manualTargetStudent.id] || 0) + pts }));
+      audio.playYehey();
+      closeManualModal();
+    } catch (err: any) {
+      setManualError(formatError(err));
+    } finally {
+      setIsManualSaving(false);
+    }
+  };
+
   const filteredStudents = useMemo(() => {
     if (!assignedClass) return [];
     if (!classroomSearch.trim()) return assignedClass.students;
@@ -292,15 +350,30 @@ const PointsLedgerPage: React.FC<{ user: UserSession }> = ({ user }) => {
             const daily = dailyScores[student.id] || 0;
 
             return (
-              <button
+              <div
                 key={student.id}
-                onClick={() => handleQuickAward(student)}
-                disabled={!selectedAction}
+                onClick={() => {
+                  if (!selectedAction) return;
+                  handleQuickAward(student);
+                }}
                 className={`
                   bg-white p-6 rounded-[2rem] border shadow-sm transition-all group flex flex-col items-center text-center relative overflow-hidden
                   ${!selectedAction ? 'opacity-70 grayscale cursor-not-allowed border-gray-100' : 'hover:shadow-xl hover:scale-105 border-pink-50 hover:border-pink-200 cursor-pointer'}
                 `}
               >
+                {canManualEditPoints && (
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      openManualModal(student);
+                    }}
+                    className="absolute top-3 left-3 w-8 h-8 rounded-lg border border-pink-100 bg-white text-pink-500 hover:bg-pink-50 transition-colors flex items-center justify-center"
+                    title="Manual points"
+                  >
+                    <Edit2 size={14} />
+                  </button>
+                )}
                 <div className="absolute top-3 right-3 text-[10px] font-black text-gray-300 group-hover:text-pink-400">
                   #{index + 1}
                 </div>
@@ -321,7 +394,7 @@ const PointsLedgerPage: React.FC<{ user: UserSession }> = ({ user }) => {
                 <div className="mt-2 text-[9px] font-bold text-gray-300 uppercase">
                   Today: {daily}/50
                 </div>
-              </button>
+              </div>
             )
           })}
           {filteredStudents.length === 0 && (
@@ -549,6 +622,78 @@ const PointsLedgerPage: React.FC<{ user: UserSession }> = ({ user }) => {
             </>
           )}
         </>
+      )}
+
+      {manualTargetStudent && (
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-[120] flex items-center justify-center p-4">
+          <div className="bg-white w-full max-w-md rounded-[2.5rem] shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-300">
+            <div className="bg-pink-500 p-6 text-white relative">
+              <h3 className="text-xl font-black uppercase tracking-tighter">Manual Points</h3>
+              <p className="text-pink-100 text-[10px] font-black uppercase tracking-widest mt-1">{manualTargetStudent.fullName}</p>
+              <button
+                onClick={closeManualModal}
+                className="absolute top-6 right-6 text-white/60 hover:text-white text-3xl leading-none"
+                disabled={isManualSaving}
+              >
+                &times;
+              </button>
+            </div>
+            <form onSubmit={handleManualPointsSave} className="p-6 space-y-4">
+              <div className="space-y-1">
+                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Points</label>
+                <input
+                  type="number"
+                  min={1}
+                  required
+                  value={manualPoints}
+                  onChange={(e) => setManualPoints(e.target.value.replace(/[^0-9]/g, ''))}
+                  className="w-full px-5 py-3 bg-gray-50 border border-gray-100 rounded-2xl outline-none focus:ring-2 focus:ring-pink-200 font-black text-gray-800"
+                />
+              </div>
+              <div className="space-y-1">
+                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Category</label>
+                <select
+                  value={manualCategory}
+                  onChange={(e) => setManualCategory(e.target.value)}
+                  className="w-full px-5 py-3 bg-gray-50 border border-gray-100 rounded-2xl outline-none focus:ring-2 focus:ring-pink-200 font-black text-gray-700 text-[11px] uppercase"
+                >
+                  <option value="Manual Adjustment">Manual Adjustment</option>
+                  {ACTIONS.map(action => (
+                    <option key={action.label} value={action.label}>{action.label}</option>
+                  ))}
+                </select>
+              </div>
+              <div className="space-y-1">
+                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Note (Optional)</label>
+                <input
+                  type="text"
+                  value={manualNote}
+                  onChange={(e) => setManualNote(e.target.value)}
+                  className="w-full px-5 py-3 bg-gray-50 border border-gray-100 rounded-2xl outline-none focus:ring-2 focus:ring-pink-200 font-bold text-gray-700 text-[11px]"
+                  placeholder="Manual points reason"
+                />
+              </div>
+              {manualError && <p className="text-red-500 text-[10px] font-black uppercase tracking-widest text-center">{manualError}</p>}
+              <div className="pt-2 flex gap-3">
+                <button
+                  type="button"
+                  onClick={closeManualModal}
+                  disabled={isManualSaving}
+                  className="flex-1 py-3 rounded-2xl text-gray-400 font-black uppercase tracking-widest text-[10px] hover:bg-gray-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={isManualSaving}
+                  className="flex-1 py-3 rounded-2xl bg-pink-500 hover:bg-pink-600 text-white font-black uppercase tracking-widest text-[10px] disabled:opacity-50"
+                >
+                  {isManualSaving ? 'Saving...' : 'Add Points'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
       )}
 
 
