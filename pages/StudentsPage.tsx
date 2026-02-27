@@ -21,6 +21,7 @@ const StudentsPage: React.FC<{ user: UserSession }> = ({ user }) => {
   const [formData, setFormData] = useState({
     firstName: '',
     lastName: '',
+    age: '',
     birthday: '',
     guardianName: '',
     guardianPhone: '',
@@ -76,36 +77,32 @@ const StudentsPage: React.FC<{ user: UserSession }> = ({ user }) => {
     );
   }, [students, search]);
 
-  // Helper helper to calculate age group
-  const calculateAgeGroup = (birthday: string | undefined | null): { age: number, group: AgeGroup, error: string } => {
-    if (!birthday) return { age: 0, group: "General" as AgeGroup, error: '' };
-
-    const yearParts = birthday.split('-');
-    if (yearParts[0].length !== 4) {
-      return { age: 0, group: "General" as AgeGroup, error: 'Year must be exactly 4 digits (YYYY).' };
-    }
-
+  const calculateAgeFromBirthday = (birthday: string | undefined | null): number => {
+    if (!birthday) return 0;
     const birthDate = new Date(birthday);
-    if (isNaN(birthDate.getTime())) return { age: 0, group: "General" as AgeGroup, error: 'Invalid Date.' };
-
+    if (isNaN(birthDate.getTime())) return 0;
     const today = new Date();
     let age = today.getFullYear() - birthDate.getFullYear();
     const m = today.getMonth() - birthDate.getMonth();
-    if (m < 0 || (m === 0 && today.getDate() < birthDate.getDate())) {
-      age--;
-    }
+    if (m < 0 || (m === 0 && today.getDate() < birthDate.getDate())) age--;
+    return age;
+  };
 
-    let group: AgeGroup = "General";
-    if (age >= 3 && age <= 6) group = "3-6";
-    else if (age >= 7 && age <= 9) group = "7-9";
-    else if (age >= 10 && age <= 12) group = "10-12";
-
-    return { age, group, error: '' };
+  const calculateAgeGroupFromAge = (age: number): AgeGroup | null => {
+    if (age >= 3 && age <= 6) return '3-6';
+    if (age >= 7 && age <= 9) return '7-9';
+    if (age >= 10 && age <= 12) return '10-12';
+    return null;
   };
 
   const ageData = useMemo(() => {
-    return calculateAgeGroup(formData.birthday);
-  }, [formData.birthday]);
+    if (!formData.age.trim()) return { age: 0, group: null as AgeGroup | null, error: 'Age is required.' };
+    const parsedAge = Number(formData.age);
+    if (!Number.isInteger(parsedAge)) return { age: 0, group: null as AgeGroup | null, error: 'Age must be a whole number.' };
+    const group = calculateAgeGroupFromAge(parsedAge);
+    if (!group) return { age: parsedAge, group: null as AgeGroup | null, error: 'Age must be 3-12 years.' };
+    return { age: parsedAge, group, error: '' };
+  }, [formData.age]);
 
   const handlePhoneChange = (val: string) => {
     let cleaned = val.replace(/\D/g, '');
@@ -125,7 +122,7 @@ const StudentsPage: React.FC<{ user: UserSession }> = ({ user }) => {
   };
 
   const resetForm = () => {
-    setFormData({ firstName: '', lastName: '', birthday: '', guardianName: '', guardianPhone: '', notes: '', photoUrl: '', accessKey: '' });
+    setFormData({ firstName: '', lastName: '', age: '', birthday: '', guardianName: '', guardianPhone: '', notes: '', photoUrl: '', accessKey: '' });
     setEditingStudent(null);
     setIsSaving(false);
     isSavingRef.current = false;
@@ -210,6 +207,7 @@ const StudentsPage: React.FC<{ user: UserSession }> = ({ user }) => {
     setFormData({
       firstName: firstName,
       lastName: lastName,
+      age: String(calculateAgeFromBirthday(student.birthday) || (student.ageGroup === '3-6' ? 5 : student.ageGroup === '7-9' ? 8 : student.ageGroup === '10-12' ? 11 : '')),
       birthday: student.birthday ?? '',
       guardianName: student.guardianName ?? '',
       guardianPhone: student.guardianPhone ?? '',
@@ -302,7 +300,7 @@ const StudentsPage: React.FC<{ user: UserSession }> = ({ user }) => {
     const headers = ["Full Name", "Age Group", "Access Key", "Guardian Name", "Contact No"];
     const rows = students.map(s => [
       s.fullName,
-      calculateAgeGroup(s.birthday).group,
+      s.ageGroup || 'General',
       s.accessKey,
       s.guardianName || 'N/A',
       s.guardianPhone || 'N/A'
@@ -452,7 +450,7 @@ const StudentsPage: React.FC<{ user: UserSession }> = ({ user }) => {
 
             <h3 className="text-[18px] font-black text-gray-800 uppercase tracking-tighter mb-1 truncate">{s.fullName}</h3>
             {(() => {
-              const { group } = calculateAgeGroup(s.birthday);
+              const group = s.ageGroup || 'General';
               return (
                 <span className="inline-block px-3 py-1 bg-gray-50 text-gray-400 rounded-lg text-[12px] font-black uppercase tracking-widest mb-6 border border-gray-100/50">
                   {group === "General" ? "-" : `${group} Group`}
@@ -546,16 +544,28 @@ const StudentsPage: React.FC<{ user: UserSession }> = ({ user }) => {
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-1">
-                  <label className="text-[12px] font-black text-gray-400 uppercase tracking-widest ml-1">Birthday</label>
+                  <label className="text-[12px] font-black text-gray-400 uppercase tracking-widest ml-1">Birthday (Optional)</label>
                   <input
                     type="date"
-                    required
                     max="9999-12-31"
-                    className={`w-full px-6 py-4 bg-gray-50 border rounded-2xl outline-none focus:ring-2 focus:ring-pink-300 transition-all font-bold text-gray-700 text-[12px] ${ageData.error ? 'border-red-300' : 'border-gray-100'}`}
+                    className="w-full px-6 py-4 bg-gray-50 border border-gray-100 rounded-2xl outline-none focus:ring-2 focus:ring-pink-300 transition-all font-bold text-gray-700 text-[12px]"
                     value={formData.birthday}
                     onChange={handleBirthdayChange}
                   />
-                  {ageData.error && <p className="text-red-500 text-[11px] font-bold mt-1 ml-1">{ageData.error}</p>}
+                  <div className="space-y-1 pt-2">
+                    <label className="text-[12px] font-black text-gray-400 uppercase tracking-widest ml-1">Age</label>
+                    <input
+                      type="number"
+                      required
+                      min={3}
+                      max={12}
+                      placeholder="3-12"
+                      className={`w-full px-6 py-4 bg-gray-50 border rounded-2xl outline-none focus:ring-2 focus:ring-pink-300 transition-all font-bold text-gray-700 text-[12px] ${ageData.error ? 'border-red-300' : 'border-gray-100'}`}
+                      value={formData.age}
+                      onChange={e => setFormData({ ...formData, age: e.target.value.replace(/[^0-9]/g, '') })}
+                    />
+                    {ageData.error && <p className="text-red-500 text-[11px] font-bold mt-1 ml-1">{ageData.error}</p>}
+                  </div>
                 </div>
                 <div className="space-y-1">
                   <label className="text-[12px] font-black text-gray-400 uppercase tracking-widest ml-1">Age Group</label>
