@@ -155,8 +155,8 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
   };
 
   /**
-   * Smarter formatting that allows non-numeric keys but still
-   * assists with the standard KK-YYYYMMDD-SS pattern.
+   * Keeps access key input normalized while allowing both
+   * legacy (KK-...) and new numeric student keys (YYYY###).
    */
   const handleAccessKeyChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (error) setError('');
@@ -294,7 +294,7 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
                     className="w-full px-6 py-4 bg-gray-50 border border-gray-100 rounded-2xl outline-none focus:ring-2 focus:ring-pink-300 transition-all uppercase font-black text-gray-700 placeholder:text-gray-300 text-center tracking-[0.25em] text-lg disabled:opacity-50"
                     value={accessKey}
                     onChange={handleAccessKeyChange}
-                    placeholder="########-##"
+                    placeholder="YYYY### or KK-..."
                   />
                   <p className="text-[9px] text-gray-300 font-bold uppercase tracking-widest text-center">{isVerifying ? 'VERIFYING KEY...' : 'ENTER YOUR UNIQUE ACCESS KEY'}</p>
                 </div>

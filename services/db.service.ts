@@ -21,6 +21,32 @@ export const formatError = (err: any): string => {
 };
 
 class DatabaseService {
+  private async generateStudentAccessKey(): Promise<string> {
+    const year = String(new Date().getFullYear());
+    const { data, error } = await supabase
+      .from('students')
+      .select('access_key')
+      .like('access_key', `${year}%`);
+
+    if (error) throw new Error(formatError(error));
+
+    let maxSequence = 0;
+    for (const row of data || []) {
+      const key = String(row.access_key || '').trim();
+      if (/^\d{7}$/.test(key) && key.startsWith(year)) {
+        const sequence = Number(key.slice(4));
+        if (!Number.isNaN(sequence)) maxSequence = Math.max(maxSequence, sequence);
+      }
+    }
+
+    const nextSequence = maxSequence + 1;
+    if (nextSequence > 999) {
+      throw new Error(`Student key limit reached for ${year}.`);
+    }
+
+    return `${year}${String(nextSequence).padStart(3, '0')}`;
+  }
+
   public calculateAge(birthday: string | null): number {
     if (!birthday) return 0;
     const birthDate = new Date(birthday);
@@ -222,17 +248,7 @@ class DatabaseService {
   }
 
   async addStudent(data: Omit<Student, 'id' | 'createdAt' | 'updatedAt' | 'isEnrolled' | 'accessKey' | 'consecutiveAbsences' | 'studentStatus'>) {
-    let accessKey = '';
-    if (data.birthday) {
-      const yyyymmdd = data.birthday.replace(/-/g, '');
-      const { count } = await supabase.from('students').select('*', { count: 'exact', head: true }).eq('birthday', data.birthday);
-      const sequence = (count || 0) + 1;
-      accessKey = `KK-${yyyymmdd}-${sequence.toString().padStart(2, '0')}`;
-    } else {
-      const now = new Date();
-      const yyyymmdd = now.toISOString().slice(0, 10).replace(/-/g, '');
-      accessKey = `KK-${yyyymmdd}-${Math.floor(Math.random() * 99).toString().padStart(2, '0')}`;
-    }
+    const accessKey = await this.generateStudentAccessKey();
 
     const payload: any = {
       access_key: accessKey,

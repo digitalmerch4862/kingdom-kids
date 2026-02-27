@@ -362,7 +362,7 @@ const ControlCenterPage: React.FC = () => {
              </div>
              <ul className="space-y-3">
                {[
-                 { t: "Access Keys", d: "KK-YYYYMMDD-XX (Birthday-based or Random for Guest)." },
+                 { t: "Access Keys", d: "Students: YYYY###. Legacy/manual keys still supported." },
                  { t: "ID Badges", d: "Standard 626x626px square PNG with QR and Student Nickname." },
                  { t: "Weakest Link", d: "Fairness monitor alerts for students < 50% of monthly average." },
                  { t: "Monthly Dashboard", d: "Current Month Only: Compares Weekly progression (W1 to W5)." },
