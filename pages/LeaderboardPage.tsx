@@ -13,6 +13,8 @@ const LeaderboardPage: React.FC = () => {
   const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth());
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
   const [ageFilter, setAgeFilter] = useState<AgeGroup | 'ALL'>('ALL');
+  const [categoryFilter, setCategoryFilter] = useState<string>('ALL');
+  const [categoryOptions, setCategoryOptions] = useState<string[]>(['Attendance', 'Worksheet', 'Memory Verse', 'Recitation', 'Presentation']);
   const [loading, setLoading] = useState(true);
   const [usingMockData, setUsingMockData] = useState(false);
   const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
@@ -30,14 +32,19 @@ const LeaderboardPage: React.FC = () => {
 
   useEffect(() => {
     loadData();
-  }, [selectedMonth, selectedYear, ageFilter]);
+  }, [selectedMonth, selectedYear, ageFilter, categoryFilter]);
 
   const loadData = async () => {
     setLoading(true);
     setUsingMockData(false);
     try {
-      const ov = await MinistryService.getLeaderboard(ageFilter === 'ALL' ? undefined : ageFilter);
-      const mon = await MinistryService.getMonthlyLeaderboard(selectedMonth, selectedYear, ageFilter === 'ALL' ? undefined : ageFilter);
+      const ledger = await db.getPointsLedger();
+      const categories = Array.from(new Set(ledger.filter(l => !l.voided).map(l => l.category).filter(Boolean))).sort();
+      if (categories.length > 0) setCategoryOptions(categories);
+
+      const selectedCategory = categoryFilter === 'ALL' ? undefined : categoryFilter;
+      const ov = await MinistryService.getLeaderboard(ageFilter === 'ALL' ? undefined : ageFilter, undefined, selectedCategory);
+      const mon = await MinistryService.getMonthlyLeaderboard(selectedMonth, selectedYear, ageFilter === 'ALL' ? undefined : ageFilter, selectedCategory);
 
       setOverall(ov.filter(k => k.totalPoints > 0).slice(0, 10));
       setMonthly(mon.filter(k => k.totalPoints > 0).slice(0, 5));
@@ -158,6 +165,16 @@ const LeaderboardPage: React.FC = () => {
             <option value="10-12">10-12 Years</option>
             <option value="General">General Group</option>
           </select>
+          <select
+            value={categoryFilter}
+            onChange={(e) => setCategoryFilter(e.target.value)}
+            className="flex-1 md:flex-none px-6 py-3 bg-white border border-pink-50 rounded-2xl outline-none focus:ring-2 focus:ring-pink-200 text-xs font-black tracking-widest uppercase shadow-sm cursor-pointer"
+          >
+            <option value="ALL">All Categories</option>
+            {categoryOptions.map((category) => (
+              <option key={category} value={category}>{category}</option>
+            ))}
+          </select>
         </div>
       </div>
 
@@ -168,7 +185,7 @@ const LeaderboardPage: React.FC = () => {
             <h3 className="text-sm font-black text-gray-800 uppercase tracking-widest flex items-center gap-2">
               <span className="text-xl">🏆</span> Overall Top 10
             </h3>
-            <span className="px-3 py-1 bg-pink-50 text-pink-500 text-[10px] font-black rounded-full uppercase">All-time</span>
+            <span className="px-3 py-1 bg-pink-50 text-pink-500 text-[10px] font-black rounded-full uppercase">{categoryFilter === 'ALL' ? 'All-time' : categoryFilter}</span>
           </div>
 
           <div className="bg-white rounded-[2rem] md:rounded-[2.5rem] shadow-sm border border-pink-50 overflow-hidden p-6 md:p-8 space-y-6">
@@ -270,11 +287,11 @@ const LeaderboardPage: React.FC = () => {
                   ))}
                   {monthly.length === 0 && (
                     <tr>
-                      <td colSpan={3} className="px-8 py-20 text-center text-gray-300 uppercase font-black text-[10px] tracking-widest">
-                        No points earned in {months[selectedMonth]} {selectedYear}
-                      </td>
-                    </tr>
-                  )}
+                        <td colSpan={3} className="px-8 py-20 text-center text-gray-300 uppercase font-black text-[10px] tracking-widest">
+                         No {categoryFilter === 'ALL' ? '' : `${categoryFilter} `}points earned in {months[selectedMonth]} {selectedYear}
+                       </td>
+                     </tr>
+                   )}
                 </tbody>
               </table>
             </div>

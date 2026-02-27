@@ -43,6 +43,7 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
   const [formData, setFormData] = useState({
     firstName: '',
     lastName: '',
+    age: '',
     birthday: '',
     guardianName: '',
     guardianPhone: '09',
@@ -183,19 +184,16 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
   };
 
   const ageData = useMemo(() => {
-    if (!formData.birthday) return { age: 0, group: null, error: '' };
-    const birthDate = new Date(formData.birthday);
-    if (isNaN(birthDate.getTime())) return { age: 0, group: null, error: 'Invalid Date.' };
-    const today = new Date();
-    let age = today.getFullYear() - birthDate.getFullYear();
-    const m = today.getMonth() - birthDate.getMonth();
-    if (m < 0 || (m === 0 && today.getDate() < birthDate.getDate())) age--;
+    const parsedAge = Number(formData.age);
+    if (!formData.age.trim()) return { age: 0, group: null, error: 'Age is required.' };
+    if (!Number.isInteger(parsedAge)) return { age: 0, group: null, error: 'Age must be a whole number.' };
+    const age = parsedAge;
     if (age < 3 || age > 12) return { age, group: null, error: 'Age must be 3-12 years.' };
     let group: AgeGroup = "3-6";
     if (age >= 7 && age <= 9) group = "7-9";
     else if (age >= 10 && age <= 12) group = "10-12";
     return { age, group, error: '' };
-  }, [formData.birthday]);
+  }, [formData.age]);
 
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -364,10 +362,9 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
                   </div>
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-1">
-                      <label className="text-[11px] font-black text-gray-400 uppercase tracking-widest ml-1">Birthday</label>
+                      <label className="text-[11px] font-black text-gray-400 uppercase tracking-widest ml-1">Birthday (Optional)</label>
                       <div className="grid grid-cols-3 gap-2">
                         <select
-                          required
                           className="w-full px-3 py-4 bg-gray-50 border border-gray-100 rounded-2xl outline-none focus:ring-2 focus:ring-pink-300 transition-all font-bold text-gray-700 text-[12px]"
                           value={birthMonth}
                           onChange={e => setBirthMonth(e.target.value)}
@@ -378,7 +375,6 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
                           ))}
                         </select>
                         <select
-                          required
                           className="w-full px-3 py-4 bg-gray-50 border border-gray-100 rounded-2xl outline-none focus:ring-2 focus:ring-pink-300 transition-all font-bold text-gray-700 text-[12px]"
                           value={birthDay}
                           onChange={e => setBirthDay(e.target.value)}
@@ -389,7 +385,6 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
                           ))}
                         </select>
                         <select
-                          required
                           className="w-full px-3 py-4 bg-gray-50 border border-gray-100 rounded-2xl outline-none focus:ring-2 focus:ring-pink-300 transition-all font-bold text-gray-700 text-[12px]"
                           value={birthYear}
                           onChange={e => setBirthYear(e.target.value)}
@@ -399,6 +394,19 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
                             <option key={year} value={year}>{year}</option>
                           ))}
                         </select>
+                      </div>
+                      <div className="pt-2">
+                        <label className="text-[11px] font-black text-gray-400 uppercase tracking-widest ml-1">Age</label>
+                        <input
+                          type="number"
+                          min={3}
+                          max={12}
+                          required
+                          className="w-full px-6 py-4 bg-gray-50 border border-gray-100 rounded-2xl outline-none focus:ring-2 focus:ring-pink-300 transition-all font-bold text-gray-700"
+                          value={formData.age}
+                          onChange={e => setFormData({ ...formData, age: e.target.value.replace(/[^0-9]/g, '') })}
+                          placeholder="3-12"
+                        />
                       </div>
                     </div>
                     <div className="space-y-1">

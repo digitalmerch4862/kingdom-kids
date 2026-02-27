@@ -251,7 +251,7 @@ export class MinistryService {
     return entry;
   }
 
-  static async getLeaderboard(ageGroup?: AgeGroup, filterDate?: (date: string) => boolean): Promise<LeaderboardEntry[]> {
+  static async getLeaderboard(ageGroup?: AgeGroup, filterDate?: (date: string) => boolean, category?: string): Promise<LeaderboardEntry[]> {
     const students = await db.getStudents();
     const ledger = await db.getPointsLedger();
 
@@ -267,6 +267,10 @@ export class MinistryService {
         studentPoints = studentPoints.filter(l => filterDate(l.entryDate));
       }
 
+      if (category) {
+        studentPoints = studentPoints.filter(l => l.category === category);
+      }
+
       const totalPoints = studentPoints.reduce((sum, curr) => sum + curr.points, 0);
       const lastPoint = studentPoints.length > 0
         ? studentPoints.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())[0].createdAt
@@ -280,12 +284,12 @@ export class MinistryService {
     });
   }
 
-  static async getMonthlyLeaderboard(month: number, year: number, ageGroup?: AgeGroup): Promise<LeaderboardEntry[]> {
+  static async getMonthlyLeaderboard(month: number, year: number, ageGroup?: AgeGroup, category?: string): Promise<LeaderboardEntry[]> {
     const filter = (dateStr: string) => {
       const d = new Date(dateStr);
       return d.getMonth() === month && d.getFullYear() === year;
     };
-    return this.getLeaderboard(ageGroup, filter);
+    return this.getLeaderboard(ageGroup, filter, category);
   }
 
   static async getClassroomStats() {
