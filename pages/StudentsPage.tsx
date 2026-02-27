@@ -267,11 +267,11 @@ const StudentsPage: React.FC<{ user: UserSession }> = ({ user }) => {
 
       ctx.drawImage(img, 88, 50, 450, 450);
 
-      const nickname = (student.fullName || 'STUDENT').split(' ')[0].toUpperCase();
+      const accessKeyLabel = (student.accessKey || 'NO-KEY').toUpperCase();
       let fontSize = 60;
       ctx.font = `900 ${fontSize}px Inter, sans-serif`;
 
-      while (ctx.measureText(nickname).width > 550 && fontSize > 20) {
+      while (ctx.measureText(accessKeyLabel).width > 550 && fontSize > 20) {
         fontSize -= 5;
         ctx.font = `900 ${fontSize}px Inter, sans-serif`;
       }
@@ -279,12 +279,16 @@ const StudentsPage: React.FC<{ user: UserSession }> = ({ user }) => {
       ctx.fillStyle = '#000000';
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
-      ctx.fillText(nickname, 313, 550);
+      ctx.fillText(accessKeyLabel, 313, 550);
 
       const dataUrl = canvas.toDataURL('image/png');
       const link = document.createElement('a');
       link.href = dataUrl;
-      link.download = `${(student.fullName || 'student').replace(/\s+/g, '_')}_ID.png`;
+      const nameParts = (student.fullName || 'STUDENT').trim().toUpperCase().split(/\s+/).filter(Boolean);
+      const firstName = (nameParts[0] || 'STUDENT').replace(/[^A-Z0-9]/g, '');
+      const lastName = (nameParts.length > 1 ? nameParts[nameParts.length - 1] : 'STUDENT').replace(/[^A-Z0-9]/g, '');
+      const cleanAccessKey = accessKeyLabel.replace(/[^A-Z0-9]/g, '');
+      link.download = `${firstName}_${lastName}_${cleanAccessKey}.png`;
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
