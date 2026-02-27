@@ -388,125 +388,103 @@ const StudentsPage: React.FC<{ user: UserSession }> = ({ user }) => {
         </div>
       )}
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-        {filteredStudents.map(s => (
-          <div key={s.id} className="bg-white p-7 rounded-[2.5rem] border border-pink-50 shadow-sm hover:shadow-xl hover:shadow-pink-100/30 transition-all group relative overflow-hidden">
-            {isTeacherOrAdmin && (
-              <div className="absolute top-6 right-6 flex gap-2 z-10">
-                <button
-                  onClick={() => handleEditClick(s)}
-                  className="w-12 h-12 bg-white border border-pink-100 text-pink-500 rounded-2xl flex items-center justify-center hover:bg-pink-500 hover:text-white transition-all shadow-md text-xl"
-                  title="View Profile"
-                >
-                  👤
-                </button>
-                {isAdmin && (
-                  <button
-                    onClick={(e) => { e.preventDefault(); handleDelete(s.id); }}
-                    className="w-12 h-12 bg-white border border-red-100 text-red-500 rounded-2xl flex items-center justify-center hover:bg-red-500 hover:text-white transition-all shadow-md text-xl"
-                    title="Delete Student"
-                  >
-                    🗑️
-                  </button>
-                )}
-              </div>
-            )}
+      <div className="bg-white rounded-[2rem] border border-pink-50 shadow-sm overflow-hidden">
+        <div className="hidden md:grid grid-cols-[2fr,1fr,1.2fr,1.2fr,1.2fr,2fr] gap-4 px-6 py-4 bg-gray-50/50 border-b border-pink-50 text-[10px] font-black text-pink-400 uppercase tracking-widest">
+          <span>Name</span>
+          <span>Age Group</span>
+          <span>Access Key</span>
+          <span>Contact</span>
+          <span>Birthday</span>
+          <span>Actions</span>
+        </div>
 
-            <div className="flex justify-between items-start mb-6">
-              <div className="text-left w-full">
-                <p className="text-[10px] font-black text-pink-500 uppercase tracking-widest leading-none mb-1">Access Key</p>
+        <div className="divide-y divide-pink-50">
+          {filteredStudents.map((s) => (
+            <div key={s.id} className="px-4 md:px-6 py-4 md:py-5 hover:bg-pink-50/20 transition-colors">
+              <div className="md:hidden space-y-3">
+                <div className="flex items-center justify-between gap-3">
+                  <p className="font-black text-gray-800 uppercase tracking-tight text-sm truncate">{s.fullName}</p>
+                  <span className="px-2 py-1 bg-gray-50 text-gray-400 rounded-lg text-[10px] font-black uppercase tracking-widest">{s.ageGroup === 'General' ? '-' : `${s.ageGroup}`}</span>
+                </div>
+                <div className="flex items-center justify-between text-[11px] font-black uppercase tracking-widest text-gray-400">
+                  <span>Key</span>
+                  <span className="text-gray-700">{s.accessKey || '---'}</span>
+                </div>
+                <div className="flex items-center justify-between text-[11px] font-black uppercase tracking-widest text-gray-400">
+                  <span>Contact</span>
+                  <span className="text-gray-700">{maskPhone(s.guardianPhone)}</span>
+                </div>
+                <div className="flex items-center justify-between text-[11px] font-black uppercase tracking-widest text-gray-400">
+                  <span>Birthday</span>
+                  <span className="text-gray-700">{s.birthday || 'N/A'}</span>
+                </div>
+                <div className="flex items-center gap-2 pt-1">
+                  <button onClick={() => generateAndDownloadBadge(s)} className="w-10 h-10 rounded-xl bg-pink-500 text-white flex items-center justify-center" title="Download ID Badge">🪪</button>
+                  {isTeacherOrAdmin && <button onClick={() => handleEditClick(s)} className="w-10 h-10 rounded-xl border border-pink-100 text-pink-500 flex items-center justify-center" title="View Profile">👤</button>}
+                  {isAdmin && <button onClick={() => handleDelete(s.id)} className="w-10 h-10 rounded-xl border border-red-100 text-red-500 flex items-center justify-center" title="Delete Student">🗑️</button>}
+                  {isTeacherOrAdmin && <a href={s.guardianPhone ? `tel:${s.guardianPhone}` : '#'} className={`w-10 h-10 rounded-xl border border-pink-100 text-pink-500 flex items-center justify-center ${!s.guardianPhone ? 'opacity-30 pointer-events-none' : ''}`} title="Call">📞</a>}
+                  {isTeacherOrAdmin && <a href={s.guardianPhone ? `sms:${s.guardianPhone}` : '#'} className={`w-10 h-10 rounded-xl bg-pink-500 text-white flex items-center justify-center ${!s.guardianPhone ? 'opacity-30 pointer-events-none' : ''}`} title="SMS">📩</a>}
+                </div>
+              </div>
+
+              <div className="hidden md:grid grid-cols-[2fr,1fr,1.2fr,1.2fr,1.2fr,2fr] gap-4 items-center">
+                <p className="font-black text-gray-800 uppercase tracking-tight text-sm truncate">{s.fullName}</p>
+                <span className="px-2 py-1 bg-gray-50 text-gray-400 rounded-lg text-[10px] font-black uppercase tracking-widest w-fit">{s.ageGroup === 'General' ? '-' : `${s.ageGroup}`}</span>
+
                 {editingAccessKey === s.id ? (
-                  <div className="flex items-center gap-2">
-                    <input
-                      type="text"
-                      autoFocus
-                      className="w-full bg-pink-50 border border-pink-200 rounded px-2 py-1 text-xs font-black text-gray-800 uppercase"
-                      defaultValue={s.accessKey}
-                      onBlur={() => setEditingAccessKey(null)}
-                      onKeyDown={async (e) => {
-                        if (e.key === 'Enter') {
-                          const val = e.currentTarget.value.trim().toUpperCase();
-                          if (val) {
-                            await db.updateStudent(s.id, { accessKey: val });
-                            loadStudents();
-                            setEditingAccessKey(null);
-                          }
+                  <input
+                    type="text"
+                    autoFocus
+                    className="w-full bg-pink-50 border border-pink-200 rounded px-2 py-1 text-xs font-black text-gray-800 uppercase"
+                    defaultValue={s.accessKey}
+                    onBlur={() => setEditingAccessKey(null)}
+                    onKeyDown={async (e) => {
+                      if (e.key === 'Enter') {
+                        const val = e.currentTarget.value.trim().toUpperCase();
+                        if (val) {
+                          await db.updateStudent(s.id, { accessKey: val });
+                          loadStudents();
+                          setEditingAccessKey(null);
                         }
-                        if (e.key === 'Escape') setEditingAccessKey(null);
-                      }}
-                    />
-                  </div>
+                      }
+                      if (e.key === 'Escape') setEditingAccessKey(null);
+                    }}
+                  />
                 ) : (
                   <div className="flex items-center gap-2 group/key">
                     <p className="text-xs font-black text-gray-800 uppercase tracking-tight">{s.accessKey || '---'}</p>
-                {canDelete && (
+                    {canDelete && (
                       <button
                         onClick={() => setEditingAccessKey(s.id)}
                         className="opacity-0 group-hover/key:opacity-100 transition-opacity text-gray-400 hover:text-pink-500"
+                        title="Edit Access Key"
                       >
                         <Edit2 size={12} />
                       </button>
                     )}
                   </div>
                 )}
+
+                <span className="text-[12px] font-black text-gray-700 uppercase tracking-tight">{maskPhone(s.guardianPhone)}</span>
+                <span className="text-[12px] font-black text-gray-700 uppercase tracking-tight">{s.birthday || 'N/A'}</span>
+
+                <div className="flex items-center gap-2">
+                  <button onClick={() => generateAndDownloadBadge(s)} className="w-9 h-9 rounded-xl bg-pink-500 text-white flex items-center justify-center" title="Download ID Badge">🪪</button>
+                  {isTeacherOrAdmin && <button onClick={() => handleEditClick(s)} className="w-9 h-9 rounded-xl border border-pink-100 text-pink-500 flex items-center justify-center" title="View Profile">👤</button>}
+                  {isAdmin && <button onClick={() => handleDelete(s.id)} className="w-9 h-9 rounded-xl border border-red-100 text-red-500 flex items-center justify-center" title="Delete Student">🗑️</button>}
+                  {isTeacherOrAdmin && <a href={s.guardianPhone ? `tel:${s.guardianPhone}` : '#'} className={`w-9 h-9 rounded-xl border border-pink-100 text-pink-500 flex items-center justify-center ${!s.guardianPhone ? 'opacity-30 pointer-events-none' : ''}`} title="Call">📞</a>}
+                  {isTeacherOrAdmin && <a href={s.guardianPhone ? `sms:${s.guardianPhone}` : '#'} className={`w-9 h-9 rounded-xl bg-pink-500 text-white flex items-center justify-center ${!s.guardianPhone ? 'opacity-30 pointer-events-none' : ''}`} title="SMS">📩</a>}
+                </div>
               </div>
             </div>
-
-            <h3 className="text-[18px] font-black text-gray-800 uppercase tracking-tighter mb-1 truncate">{s.fullName}</h3>
-            {(() => {
-              const group = s.ageGroup || 'General';
-              return (
-                <span className="inline-block px-3 py-1 bg-gray-50 text-gray-400 rounded-lg text-[12px] font-black uppercase tracking-widest mb-6 border border-gray-100/50">
-                  {group === "General" ? "-" : `${group} Group`}
-                </span>
-              );
-            })()}
-
-            <button
-              onClick={() => generateAndDownloadBadge(s)}
-              className="flex items-center justify-center gap-2 p-4 bg-pink-500 text-white rounded-[1.25rem] shadow-lg shadow-pink-100 mb-6 w-full hover:bg-pink-600 transition-all font-black uppercase tracking-widest text-[10px] active:scale-95"
-            >
-              <span className="text-lg">🪪</span>
-              <span>DL ID Badge</span>
-            </button>
-
-            <div className="space-y-4 pt-5 border-t border-pink-50/50">
-              <div className="flex justify-between items-center text-[12px] font-black text-gray-400 uppercase tracking-widest">
-                <span className="opacity-50">Contact</span>
-                <span className="text-gray-700 tracking-tighter">{maskPhone(s.guardianPhone)}</span>
-              </div>
-              <div className="flex justify-between items-center text-[12px] font-black text-gray-400 uppercase tracking-widest">
-                <span className="opacity-50">Birthday</span>
-                <span className="text-gray-700 tracking-tighter">{s.birthday || 'N/A'}</span>
-              </div>
+          ))}
+          {filteredStudents.length === 0 && (
+            <div className="py-20 text-center space-y-3">
+              <span className="text-5xl block opacity-20">🔍</span>
+              <p className="text-gray-400 font-black uppercase tracking-[0.2em] text-[12px]">No kingdom kids matched your criteria</p>
             </div>
-
-            <div className="mt-8 flex gap-3">
-              {isTeacherOrAdmin && (
-                <>
-                  <a
-                    href={s.guardianPhone ? `tel:${s.guardianPhone}` : '#'}
-                    className={`flex-1 h-14 bg-pink-50 hover:bg-pink-100 text-pink-500 rounded-[1.25rem] flex items-center justify-center transition-all font-black text-xs uppercase tracking-widest gap-2 ${!s.guardianPhone ? 'opacity-30 cursor-not-allowed' : ''}`}
-                  >
-                    <span>📞</span> Call
-                  </a>
-                  <a
-                    href={s.guardianPhone ? `sms:${s.guardianPhone}` : '#'}
-                    className={`flex-1 h-14 bg-pink-500 hover:bg-pink-600 text-white rounded-[1.25rem] flex items-center justify-center transition-all shadow-lg shadow-pink-100 font-black text-xs uppercase tracking-widest gap-2 ${!s.guardianPhone ? 'opacity-30 cursor-not-allowed' : ''}`}
-                  >
-                    <span>📩</span> SMS
-                  </a>
-                </>
-              )}
-            </div>
-          </div>
-        ))}
-        {filteredStudents.length === 0 && (
-          <div className="col-span-full py-24 bg-white rounded-[3rem] border border-pink-50 text-center space-y-4 shadow-sm">
-            <span className="text-6xl block opacity-20">🔍</span>
-            <p className="text-gray-400 font-black uppercase tracking-[0.2em] text-[12px]">No kingdom kids matched your criteria</p>
-          </div>
-        )}
+          )}
+        </div>
       </div>
 
       {showAddModal && (
