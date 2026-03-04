@@ -21,7 +21,7 @@ const LeaderboardPage: React.FC = () => {
   const [selectedRank, setSelectedRank] = useState<number>(0);
   const [isModalOpen, setIsModalOpen] = useState(false);
 
-  const sessionStr = localStorage.getItem('km_session');
+  const sessionStr = sessionStorage.getItem('km_session');
   const user = safeJsonParse<UserSession | null>(sessionStr, null);
   const isAdmin = user?.role === 'ADMIN';
 

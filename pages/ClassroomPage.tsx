@@ -42,7 +42,7 @@ const ClassroomPage: React.FC = () => {
   // Limit Popup State
   const [limitError, setLimitError] = useState<string | null>(null);
 
-  const sessionStr = localStorage.getItem('km_session');
+  const sessionStr = sessionStorage.getItem('km_session');
   const user = safeJsonParse<UserSession | null>(sessionStr, null);
 
   const loadClassroom = async () => {

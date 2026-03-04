@@ -29,7 +29,6 @@ import {
   Target,
   FileText,
   Calendar,
-  Sparkles,
   TreePine
 } from 'lucide-react';
 
@@ -152,14 +151,12 @@ const Sidebar: React.FC<SidebarProps> = ({ user, onLogout, isOpen, isDesktopOpen
     { label: 'MY CLASSROOM', icon: Star, path: '/admin/points' },
     { label: 'FAIRNESS MONITOR', icon: Scale, path: '/admin/fairness' },
     { label: 'LEADERBOARD', icon: Trophy, path: '/leaderboard' },
-    { label: 'DAILY QUEST', icon: Sparkles, path: '/daily-quest' },
     { label: 'FAITH LAND', icon: TreePine, path: '/side-quest' },
     { label: 'FAITH PATHWAY', icon: BookOpen, path: '/admin/faith-pathway' },
   ];
 
   const parentItems: SidebarItem[] = [
     { label: 'MY PORTAL', icon: LayoutDashboard, path: '/portal' },
-    { label: 'DAILY QUEST', icon: Sparkles, path: '/daily-quest' },
     { label: 'FAITH LAND', icon: TreePine, path: '/side-quest' },
     { label: 'LEADERBOARD', icon: Trophy, path: '/leaderboard' },
     { label: 'KIDSFLIX', icon: PlayCircle, path: '/kidsflix' },

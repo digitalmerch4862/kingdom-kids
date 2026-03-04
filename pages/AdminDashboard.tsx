@@ -57,7 +57,7 @@ const AdminDashboard: React.FC<{ activity: ActivitySchedule | null }> = ({ activ
   const [manualEntryType, setManualEntryType] = useState<'alumni' | 'guest'>('guest');
 
   const user: UserSession | null = useMemo(() => {
-    const sessionStr = localStorage.getItem('km_session');
+    const sessionStr = sessionStorage.getItem('km_session');
     if (!sessionStr) return null;
     try {
       return JSON.parse(sessionStr);

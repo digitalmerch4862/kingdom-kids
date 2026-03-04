@@ -29,31 +29,77 @@ import TeachersBoardPage from './pages/TeachersBoardPage';
 import DailyQuestPage from './pages/DailyQuestPage';
 import SideQuestPage from './pages/SideQuestPage';
 
+const SESSION_KEY = 'km_session';
+const INACTIVITY_TIMEOUT_MS = 5 * 60 * 1000;
+
 const App: React.FC = () => {
   const [user, setUser] = useState<UserSession | null>(null);
   const [activity, setActivity] = useState<ActivitySchedule | null>(null);
 
   useEffect(() => {
     MinistryService.getCurrentActivity().then(setActivity);
-    const saved = localStorage.getItem('km_session');
+    const saved = sessionStorage.getItem(SESSION_KEY) || localStorage.getItem(SESSION_KEY);
     if (saved) {
       try {
-        setUser(JSON.parse(saved));
+        const parsed = JSON.parse(saved);
+        setUser(parsed);
+        sessionStorage.setItem(SESSION_KEY, JSON.stringify(parsed));
+        localStorage.removeItem(SESSION_KEY);
       } catch {
-        localStorage.removeItem('km_session');
+        sessionStorage.removeItem(SESSION_KEY);
+        localStorage.removeItem(SESSION_KEY);
         setUser(null);
       }
     }
   }, []);
 
+  useEffect(() => {
+    if (!user) return;
+
+    let logoutTimer: ReturnType<typeof setTimeout>;
+
+    const resetTimer = () => {
+      clearTimeout(logoutTimer);
+      logoutTimer = setTimeout(() => {
+        sessionStorage.removeItem(SESSION_KEY);
+        localStorage.removeItem(SESSION_KEY);
+        setUser(null);
+      }, INACTIVITY_TIMEOUT_MS);
+    };
+
+    const activityEvents: Array<keyof WindowEventMap> = [
+      'mousemove',
+      'mousedown',
+      'keydown',
+      'scroll',
+      'touchstart',
+      'click'
+    ];
+
+    activityEvents.forEach((eventName) => {
+      window.addEventListener(eventName, resetTimer);
+    });
+
+    resetTimer();
+
+    return () => {
+      clearTimeout(logoutTimer);
+      activityEvents.forEach((eventName) => {
+        window.removeEventListener(eventName, resetTimer);
+      });
+    };
+  }, [user]);
+
   const handleLogin = (role: any, username: string, studentId?: string) => {
     const session = { role, username, studentId };
     setUser(session);
-    localStorage.setItem('km_session', JSON.stringify(session));
+    sessionStorage.setItem(SESSION_KEY, JSON.stringify(session));
+    localStorage.removeItem(SESSION_KEY);
   };
 
   const handleLogout = () => {
-    localStorage.removeItem('km_session');
+    sessionStorage.removeItem(SESSION_KEY);
+    localStorage.removeItem(SESSION_KEY);
     setUser(null);
   };
 

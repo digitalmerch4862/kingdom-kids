@@ -308,15 +308,6 @@ const getQuestionsForWave = (wave: number, usedQuestionIds: Set<number> = new Se
   return shuffled.slice(0, QUESTIONS_PER_WAVE);
 };
 
-// Tree stages - 5 stages based on 1000ml increments
-const treeStages = [
-  { image: '/stage1.png', name: 'Seedling', sizeClass: 'w-32 sm:w-36' },
-  { image: '/stage2.png', name: 'Sprout', sizeClass: 'w-40 sm:w-44' },
-  { image: '/stage3.png', name: 'Young Plant', sizeClass: 'w-48 sm:w-52' },
-  { image: '/stage4.png', name: 'Growing Tree', sizeClass: 'w-56 sm:w-64' },
-  { image: '/stage5.png', name: 'Mature Tree', sizeClass: 'w-64 sm:w-72' },
-];
-
 const SideQuestPage: React.FC<SideQuestPageProps> = ({ user }) => {
   const navigate = useNavigate();
 
@@ -630,41 +621,6 @@ const SideQuestPage: React.FC<SideQuestPageProps> = ({ user }) => {
   };
 
   const WATER_PER_CORRECT_ANSWER = 5; // 5ml per correct answer
-  const WATER_PER_WATERING = 50; // 50ml per watering click
-  const TREE_GROWTH_THRESHOLD = 1000; // 1000ml to grow tree to next stage
-
-  const handleWatering = async () => {
-    if (waterAmount >= WATER_PER_WATERING) {
-      const newWaterAmount = waterAmount - WATER_PER_WATERING;
-      const newTotalPoured = totalWaterPoured + WATER_PER_WATERING;
-
-      setWaterAmount(newWaterAmount);
-      setTotalWaterPoured(newTotalPoured);
-
-      // Check if tree should grow
-      const growthStage = Math.floor(newTotalPoured / TREE_GROWTH_THRESHOLD) + 1;
-      if (growthStage > treeStage && growthStage <= 5) {
-        setTreeStage(growthStage);
-      }
-
-      // Add points to leaderboard (total water earned, not poured)
-      if (user.studentId && user.studentId !== 'guest') {
-        try {
-          await MinistryService.addPoints(
-            user.studentId,
-            'Side Quest',
-            WATER_PER_WATERING,
-            'system',
-            `Watered tree with ${WATER_PER_WATERING}ml`
-          );
-        } catch (err) {
-          console.error('Failed to add points to leaderboard:', err);
-        }
-      }
-
-      audio.playYehey();
-    }
-  };
 
   const completeQuest = () => {
     // Add 5ml per correct answer to jar
@@ -703,7 +659,6 @@ const SideQuestPage: React.FC<SideQuestPageProps> = ({ user }) => {
   };
 
   const currentQuestion = questions[currentQuestionIndex];
-  const currentStage = treeStages[treeStage - 1] || treeStages[0];
   const currentDifficulty = getWaveDifficulty(currentWave);
 
   // Timer circle calculations
@@ -719,40 +674,8 @@ const SideQuestPage: React.FC<SideQuestPageProps> = ({ user }) => {
     return 'bg-red-100 text-red-600 border-red-400';
   };
 
-  const [showFloatingText, setShowFloatingText] = useState(false);
-  const [floatingText, setFloatingText] = useState('');
-  const [particles, setParticles] = useState<{ id: number, x: number, y: number }[]>([]);
-  const [isPouring, setIsPouring] = useState(false);
-
   // Main Garden View - Faith Land
   if (!activeMode) {
-    const handleWaterClick = async () => {
-      if (waterAmount < WATER_PER_WATERING) {
-        // Not enough water
-        setFloatingText('Need more water!');
-        setShowFloatingText(true);
-        setTimeout(() => setShowFloatingText(false), 1000);
-        return;
-      }
-
-      setIsPouring(true);
-      setTimeout(() => setIsPouring(false), 700);
-
-      await handleWatering();
-      setFloatingText(`-${WATER_PER_WATERING}ml`);
-      setShowFloatingText(true);
-      setTimeout(() => setShowFloatingText(false), 1000);
-
-      // Add particles
-      const newParticles = Array.from({ length: 5 }, (_, i) => ({
-        id: Date.now() + i,
-        x: Math.random() * 200 - 100,
-        y: Math.random() * -100 - 50
-      }));
-      setParticles(newParticles);
-      setTimeout(() => setParticles([]), 1000);
-    };
-
     return (
       <div className="min-h-screen flex flex-col relative overflow-hidden">
         <div className="absolute inset-0 z-0">
@@ -798,107 +721,8 @@ const SideQuestPage: React.FC<SideQuestPageProps> = ({ user }) => {
           </motion.button>
         </div>
 
-        <div className="relative z-10 flex-1 flex flex-col items-center justify-between px-4 sm:px-6 py-4 sm:py-6">
-          {/* Main scene with Tree and Watering Can */}
-          <div className="relative w-full flex-1 flex flex-col items-center justify-center">
-
-            {/* Floating Watering Can - Centered Above Tree */}
-            <motion.button
-              type="button"
-              onClick={handleWaterClick}
-              className="relative z-30 mb-2"
-              animate={{
-                y: [0, -6, 0],
-                rotate: [0, -2, 2, 0]
-              }}
-              transition={{
-                y: { repeat: Infinity, duration: 2.5, ease: "easeInOut" },
-                rotate: { repeat: Infinity, duration: 4, ease: "easeInOut" }
-              }}
-              whileHover={{ scale: 1.08 }}
-              whileTap={{ scale: 0.92 }}
-            >
-              {/* Water Badge */}
-              <div className="absolute -top-1 right-0 z-40 bg-gradient-to-br from-yellow-400 to-orange-500 text-white text-xs sm:text-sm font-black px-2 py-0.5 rounded-full shadow-lg border-2 border-white">
-                {waterAmount}ml
-              </div>
-
-              <motion.div
-                className="relative"
-                animate={isPouring ? { rotate: -25, x: -10 } : { rotate: 0, x: 0 }}
-                transition={{ duration: 0.3 }}
-              >
-                <img
-                  src="/jar.png"
-                  alt="Watering Can"
-                  className="block w-14 sm:w-20 h-auto drop-shadow-2xl"
-                />
-              </motion.div>
-
-              {/* Water particles */}
-              {particles.map((particle) => (
-                <motion.div
-                  key={particle.id}
-                  className="absolute top-full left-1/2 text-xl sm:text-2xl"
-                  initial={{ x: 0, y: 0, opacity: 1 }}
-                  animate={{ x: particle.x, y: particle.y, opacity: 0 }}
-                  transition={{ duration: 0.8 }}
-                >
-                  💧
-                </motion.div>
-              ))}
-
-              {/* Floating text */}
-              {showFloatingText && (
-                <motion.div
-                  className="absolute -top-8 left-1/2 -translate-x-1/2 text-yellow-400 text-xl sm:text-2xl font-black drop-shadow-lg whitespace-nowrap"
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: -20 }}
-                  exit={{ opacity: 0 }}
-                >
-                  {floatingText}
-                </motion.div>
-              )}
-            </motion.button>
-
-            {/* Life Tree */}
-            <div className="relative flex flex-col items-center mt-2">
-              {/* Pouring animation overlay */}
-              {isPouring && (
-                <motion.div
-                  className="absolute -top-8 left-1/2 -translate-x-1/2 z-20 pointer-events-none"
-                  initial={{ opacity: 0, scale: 0.8 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  exit={{ opacity: 0 }}
-                  transition={{ duration: 0.2 }}
-                >
-                  <img
-                    src="/pouring%20jar.png"
-                    alt="Pouring"
-                    className="w-20 sm:w-28 h-auto"
-                  />
-                </motion.div>
-              )}
-
-              <motion.img
-                src={currentStage.image}
-                alt={currentStage.name}
-                className={`w-36 sm:${currentStage.sizeClass} max-w-[65vw] sm:max-w-[78vw] origin-bottom drop-shadow-2xl`}
-                animate={{
-                  scale: [1, 1.02, 1],
-                  rotate: [0, 0.5, -0.5, 0]
-                }}
-                transition={{
-                  repeat: Infinity,
-                  duration: 4,
-                  ease: "easeInOut"
-                }}
-              />
-            </div>
-          </div>
-
-          {/* Bottom Navigation - Circular Buttons */}
-          <div className="w-full flex items-end justify-center gap-4 sm:gap-6 px-2">
+        <div className="relative z-10 flex-1 flex items-center justify-center px-4 sm:px-6 py-4 sm:py-6">
+          <div className="w-full max-w-3xl flex items-center justify-center gap-4 sm:gap-8">
             {/* Bible Story Button */}
             <motion.button
               onClick={() => startQuiz('bible')}
@@ -909,7 +733,7 @@ const SideQuestPage: React.FC<SideQuestPageProps> = ({ user }) => {
               <img
                 src="/bible%20story.png"
                 alt="Bible Story"
-                className="w-28 h-28 sm:w-36 sm:h-36 object-contain drop-shadow-lg"
+                className="w-28 h-28 sm:w-40 sm:h-40 object-contain drop-shadow-lg"
               />
             </motion.button>
 
@@ -923,7 +747,7 @@ const SideQuestPage: React.FC<SideQuestPageProps> = ({ user }) => {
               <img
                 src="/memmory%20verse.png"
                 alt="Memory Verse"
-                className="w-28 h-28 sm:w-36 sm:h-36 object-contain drop-shadow-lg"
+                className="w-28 h-28 sm:w-40 sm:h-40 object-contain drop-shadow-lg"
               />
             </motion.button>
           </div>

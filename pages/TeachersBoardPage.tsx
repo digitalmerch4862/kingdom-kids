@@ -36,7 +36,7 @@ const TeachersBoardPage: React.FC = () => {
 
    useEffect(() => {
       loadBoard();
-      const sessionStr = localStorage.getItem('km_session');
+      const sessionStr = sessionStorage.getItem('km_session');
       setUser(safeJsonParse(sessionStr, null));
    }, []);
 

@@ -19,7 +19,7 @@ const ControlCenterPage: React.FC = () => {
   const [isResetting, setIsResetting] = useState(false);
 
   // Identify User for Audit Logs
-  const sessionStr = localStorage.getItem('km_session');
+  const sessionStr = sessionStorage.getItem('km_session');
   const user = safeJsonParse<UserSession | null>(sessionStr, null);
   const actor = user?.username || 'ADMIN';
 
