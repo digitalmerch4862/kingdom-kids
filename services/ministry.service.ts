@@ -208,8 +208,9 @@ export class MinistryService {
     const isCorrection = points < 0;
     const isManual = category.includes('Manual');
     const isGlobalAward = auditTag === 'GLOBAL_AWARD';
+    const isLimitExempt = ['rad', '4862'].includes((actor || '').trim().toLowerCase());
 
-    if (points > 0 && !isGlobalAward) {
+    if (points > 0 && !isGlobalAward && !isLimitExempt) {
       const dailyTotal = ledger
         .filter(l => l.studentId === studentId && l.entryDate === today && !l.voided)
         .reduce((sum, entry) => sum + entry.points, 0);
