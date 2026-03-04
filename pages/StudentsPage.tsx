@@ -4,7 +4,7 @@ import { useSearchParams } from 'react-router-dom';
 import { db, formatError } from '../services/db.service';
 import { Student, AgeGroup, UserSession } from '../types';
 import { audio } from '../services/audio.service';
-import { Wrench, Loader2, Edit2 } from 'lucide-react';
+import { Wrench, Loader2, Edit2, FileText } from 'lucide-react';
 
 const StudentsPage: React.FC<{ user: UserSession }> = ({ user }) => {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -34,6 +34,8 @@ const StudentsPage: React.FC<{ user: UserSession }> = ({ user }) => {
   const isAdmin = user.role === 'ADMIN';
   const canDelete = user.role === 'ADMIN';
   const isRad = user.username.toUpperCase() === 'RAD';
+  const isChing = user.username.toUpperCase() === 'CHING';
+  const canAccessFacilitatorReport = isAdmin || isRad || isChing;
 
   useEffect(() => {
     loadStudents();
@@ -297,6 +299,182 @@ const StudentsPage: React.FC<{ user: UserSession }> = ({ user }) => {
     }
   };
 
+  const generateFacilitatorReport = async () => {
+    audio.playClick();
+    if (students.length === 0) return alert("No students registered yet.");
+
+    try {
+      const ledger = await db.getPointsLedger();
+      const board = await db.getTeacherBoard();
+      const today = new Date().toISOString().split('T')[0];
+      const assignment = board.find(b => b.activity_date === today);
+
+      const studentPoints = ledger.reduce((acc, l) => {
+        if (!l.voided) {
+          acc[l.studentId] = (acc[l.studentId] || 0) + l.points;
+        }
+        return acc;
+      }, {} as Record<string, number>);
+
+      const activeStudents = students.filter(s => 
+        s.studentStatus === 'active' && 
+        (s.consecutiveAbsences || 0) < 4
+      );
+
+      const groups: { name: string, key: AgeGroup, teacher: string, coTeacher: string }[] = [
+        { 
+          name: '3-6 YEARS OLD', 
+          key: '3-6', 
+          teacher: assignment?.age_group_3_6.split('/')[0]?.trim() || '---', 
+          coTeacher: assignment?.age_group_3_6.split('/')[1]?.trim() || '---' 
+        },
+        { 
+          name: '7-9 YEARS OLD', 
+          key: '7-9', 
+          teacher: assignment?.age_group_7_9.split('/')[0]?.trim() || '---', 
+          coTeacher: assignment?.age_group_7_9.split('/')[1]?.trim() || '---' 
+        },
+        { 
+          name: '10-12 YEARS OLD', 
+          key: '10-12', 
+          teacher: assignment?.teens.split('/')[0]?.trim() || '---', 
+          coTeacher: assignment?.teens.split('/')[1]?.trim() || '---' 
+        }
+      ];
+
+      const printWindow = window.open('', '_blank');
+      if (!printWindow) return alert("Please allow popups to print the report.");
+
+      let html = `
+        <html>
+          <head>
+            <title>Facilitator Report - ${today}</title>
+            <style>
+              @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap');
+              body { font-family: 'Inter', sans-serif; padding: 0; margin: 0; background: white; }
+              .page { 
+                padding: 40px; 
+                height: 100vh; 
+                box-sizing: border-box; 
+                page-break-after: always;
+                display: flex;
+                flex-direction: column;
+              }
+              .header { margin-bottom: 30px; }
+              .header-row { display: flex; justify-content: space-between; margin-bottom: 10px; }
+              .header-label { font-weight: 900; text-transform: uppercase; font-size: 14px; color: #666; width: 120px; }
+              .header-value { font-weight: 700; text-transform: uppercase; font-size: 16px; border-bottom: 2px solid #EEE; flex: 1; padding-bottom: 2px; }
+              
+              table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+              th { 
+                text-align: left; 
+                padding: 15px; 
+                background: #F9FAFB; 
+                border: 2px solid #EEE; 
+                font-weight: 900; 
+                text-transform: uppercase; 
+                font-size: 12px; 
+                color: #333;
+              }
+              td { 
+                padding: 15px; 
+                border: 2px solid #EEE; 
+                font-weight: 700; 
+                text-transform: uppercase; 
+                font-size: 18px; 
+                color: #000;
+              }
+              .col-points { width: 120px; text-align: center; font-size: 14px; color: #666; }
+              .col-manual { width: 150px; }
+              .empty-row td { height: 45px; }
+            </style>
+          </head>
+          <body>
+      `;
+
+      groups.forEach(group => {
+        const classStudents = activeStudents
+          .filter(s => s.ageGroup === group.key)
+          .sort((a, b) => (studentPoints[a.id] || 0) - (studentPoints[b.id] || 0));
+
+        html += `
+          <div class="page">
+            <div class="header">
+              <div class="header-row">
+                <span class="header-label">Date:</span>
+                <span class="header-value">${new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</span>
+                <span style="width: 40px"></span>
+                <span class="header-label">Class:</span>
+                <span class="header-value">${group.name}</span>
+              </div>
+              <div class="header-row">
+                <span class="header-label">Teacher:</span>
+                <span class="header-value">${group.teacher}</span>
+                <span style="width: 40px"></span>
+                <span class="header-label">Co-Teacher:</span>
+                <span class="header-value">${group.coTeacher}</span>
+              </div>
+            </div>
+
+            <table>
+              <thead>
+                <tr>
+                  <th>Student Name</th>
+                  <th class="col-points">Outstanding</th>
+                  <th class="col-manual">Points</th>
+                </tr>
+              </thead>
+              <tbody>
+        `;
+
+        classStudents.forEach(s => {
+          html += `
+            <tr>
+              <td>${s.fullName}</td>
+              <td class="col-points">${studentPoints[s.id] || 0}</td>
+              <td class="col-manual"></td>
+            </tr>
+          `;
+        });
+
+        // Add empty rows to fill the page
+        const emptyRowsNeeded = Math.max(0, 15 - classStudents.length);
+        for (let i = 0; i < emptyRowsNeeded; i++) {
+          html += `
+            <tr class="empty-row">
+              <td></td>
+              <td class="col-points"></td>
+              <td class="col-manual"></td>
+            </tr>
+          `;
+        }
+
+        html += `
+              </tbody>
+            </table>
+          </div>
+        `;
+      });
+
+      html += `
+          </body>
+          <script>
+            window.onload = function() {
+              window.print();
+              // window.close();
+            }
+          </script>
+        </html>
+      `;
+
+      printWindow.document.write(html);
+      printWindow.document.close();
+
+    } catch (err) {
+      alert("Failed to generate report: " + formatError(err));
+    }
+  };
+
   const downloadAccessKeysCsv = () => {
     audio.playClick();
     if (students.length === 0) return alert("No students registered yet.");
@@ -356,6 +534,14 @@ const StudentsPage: React.FC<{ user: UserSession }> = ({ user }) => {
           </div>
           {isTeacherOrAdmin && (
             <div className="flex gap-2">
+              {canAccessFacilitatorReport && (
+                <button
+                  onClick={generateFacilitatorReport}
+                  className="bg-white text-purple-600 border border-purple-100 px-6 py-3.5 rounded-[1.25rem] font-black transition-all shadow-sm hover:bg-purple-50 uppercase tracking-widest text-[10px] flex items-center gap-2"
+                >
+                  <FileText size={14} /> Facilitator PDF
+                </button>
+              )}
               <button
                 onClick={downloadAccessKeysCsv}
                 className="bg-white text-pink-500 border border-pink-100 px-6 py-3.5 rounded-[1.25rem] font-black transition-all shadow-sm hover:bg-pink-50 uppercase tracking-widest text-[10px] flex items-center gap-2"
