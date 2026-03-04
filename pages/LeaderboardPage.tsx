@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { MinistryService, LeaderboardEntry } from '../services/ministry.service';
 import { db, formatError } from '../services/db.service';
 import { AgeGroup, UserSession, Student } from '../types';
@@ -46,8 +46,8 @@ const LeaderboardPage: React.FC = () => {
       const ov = await MinistryService.getLeaderboard(ageFilter === 'ALL' ? undefined : ageFilter, undefined, selectedCategory);
       const mon = await MinistryService.getMonthlyLeaderboard(selectedMonth, selectedYear, ageFilter === 'ALL' ? undefined : ageFilter, selectedCategory);
 
-      setOverall(ov.filter(k => k.totalPoints > 0).slice(0, 10));
-      setMonthly(mon.filter(k => k.totalPoints > 0).slice(0, 5));
+      setOverall(ov.filter(k => k.totalPoints > 0));
+      setMonthly(mon.filter(k => k.totalPoints > 0));
     } catch (e) {
       console.error("Supabase connection failed, using mock data:", e);
       setUsingMockData(true);
@@ -98,7 +98,30 @@ const LeaderboardPage: React.FC = () => {
     }
   };
 
-  const maxPointsOverall = overall.length > 0 ? overall[0].totalPoints : 1;
+  const classSections = [
+    { key: '3-6' as AgeGroup, label: '3-6 Years' },
+    { key: '7-9' as AgeGroup, label: '7-9 Years' },
+    { key: '10-12' as AgeGroup, label: '10-12 Years' }
+  ];
+
+  const overallByClass = useMemo(() => {
+    return classSections.map(section => ({
+      ...section,
+      entries: overall.filter(k => k.ageGroup === section.key).slice(0, 10)
+    }));
+  }, [overall]);
+
+  const monthlyByClass = useMemo(() => {
+    return classSections.map(section => ({
+      ...section,
+      entries: monthly.filter(k => k.ageGroup === section.key).slice(0, 5)
+    }));
+  }, [monthly]);
+
+  const singleOverall = useMemo(() => overall.slice(0, 10), [overall]);
+  const singleMonthly = useMemo(() => monthly.slice(0, 5), [monthly]);
+
+  const maxPointsOverall = singleOverall.length > 0 ? singleOverall[0].totalPoints : 1;
 
   const handleStudentClick = (student: LeaderboardEntry, rank: number) => {
     // Convert LeaderboardEntry to Student type
@@ -183,54 +206,113 @@ const LeaderboardPage: React.FC = () => {
         <div className="space-y-6">
           <div className="flex items-center justify-between px-2">
             <h3 className="text-sm font-black text-gray-800 uppercase tracking-widest flex items-center gap-2">
-              <span className="text-xl">🏆</span> Overall Top 10
+              <span className="text-xl">🏆</span> {ageFilter === 'ALL' ? 'Overall Rank Per Class' : 'Overall Top 10'}
             </h3>
             <span className="px-3 py-1 bg-pink-50 text-pink-500 text-[10px] font-black rounded-full uppercase">{categoryFilter === 'ALL' ? 'All-time' : categoryFilter}</span>
           </div>
 
           <div className="bg-white rounded-[2rem] md:rounded-[2.5rem] shadow-sm border border-pink-50 overflow-hidden p-6 md:p-8 space-y-6">
-            {overall.map((kid, i) => (
-              <div 
-                key={kid.id} 
-                className="group relative cursor-pointer"
-                onClick={() => handleStudentClick(kid, i + 1)}
-              >
-                <div className="flex items-center justify-between mb-2">
-                  <div className="flex items-center gap-4">
-                    <span className={`w-6 md:w-8 font-black text-sm ${i < 3 ? 'text-pink-500' : 'text-gray-300'}`}>
-                      #{i + 1}
-                    </span>
-                    <button 
-                      className="font-black text-gray-800 uppercase tracking-tight text-xs truncate max-w-[120px] md:max-w-none hover:text-pink-500 transition-colors text-left"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleStudentClick(kid, i + 1);
-                      }}
-                    >
-                      {kid.fullName}
-                    </button>
-                    <span className="px-2 py-0.5 bg-gray-50 text-gray-400 text-[8px] font-black rounded uppercase">
-                      {kid.ageGroup}
-                    </span>
-                  </div>
-                  <span className="font-black text-gray-800 text-sm shrink-0">
-                    {kid.totalPoints} <span className="text-[9px] text-pink-400 uppercase">pts</span>
-                  </span>
-                </div>
-                <div className="w-full bg-gray-50 h-3 rounded-full overflow-hidden border border-gray-100 shadow-inner">
+            {ageFilter === 'ALL' ? (
+              <div className="space-y-8">
+                {overallByClass.map((section) => {
+                  const maxPerClass = section.entries.length > 0 ? section.entries[0].totalPoints : 1;
+                  return (
+                    <div key={section.key} className="space-y-4">
+                      <p className="text-[10px] font-black text-pink-500 uppercase tracking-widest">{section.label}</p>
+                      {section.entries.length === 0 ? (
+                        <div className="py-6 text-center text-gray-300 uppercase font-black text-[10px] tracking-widest italic">
+                          No participants yet
+                        </div>
+                      ) : (
+                        section.entries.map((kid, i) => (
+                          <div
+                            key={kid.id}
+                            className="group relative cursor-pointer"
+                            onClick={() => handleStudentClick(kid, i + 1)}
+                          >
+                            <div className="flex items-center justify-between mb-2">
+                              <div className="flex items-center gap-4">
+                                <span className={`w-6 md:w-8 font-black text-sm ${i < 3 ? 'text-pink-500' : 'text-gray-300'}`}>
+                                  #{i + 1}
+                                </span>
+                                <button
+                                  className="font-black text-gray-800 uppercase tracking-tight text-xs truncate max-w-[120px] md:max-w-none hover:text-pink-500 transition-colors text-left"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleStudentClick(kid, i + 1);
+                                  }}
+                                >
+                                  {kid.fullName}
+                                </button>
+                                <span className="px-2 py-0.5 bg-gray-50 text-gray-400 text-[8px] font-black rounded uppercase">
+                                  {kid.ageGroup}
+                                </span>
+                              </div>
+                              <span className="font-black text-gray-800 text-sm shrink-0">
+                                {kid.totalPoints} <span className="text-[9px] text-pink-400 uppercase">pts</span>
+                              </span>
+                            </div>
+                            <div className="w-full bg-gray-50 h-3 rounded-full overflow-hidden border border-gray-100 shadow-inner">
+                              <div
+                                className="h-full bg-gradient-to-r from-pink-400 to-pink-600 transition-all duration-1000 ease-out relative"
+                                style={{ width: `${(kid.totalPoints / maxPerClass) * 100}%` }}
+                              >
+                                <div className="absolute inset-0 bg-white/20 animate-pulse"></div>
+                              </div>
+                            </div>
+                          </div>
+                        ))
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            ) : (
+              <>
+                {singleOverall.map((kid, i) => (
                   <div
-                    className="h-full bg-gradient-to-r from-pink-400 to-pink-600 transition-all duration-1000 ease-out relative"
-                    style={{ width: `${(kid.totalPoints / maxPointsOverall) * 100}%` }}
+                    key={kid.id}
+                    className="group relative cursor-pointer"
+                    onClick={() => handleStudentClick(kid, i + 1)}
                   >
-                    <div className="absolute inset-0 bg-white/20 animate-pulse"></div>
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="flex items-center gap-4">
+                        <span className={`w-6 md:w-8 font-black text-sm ${i < 3 ? 'text-pink-500' : 'text-gray-300'}`}>
+                          #{i + 1}
+                        </span>
+                        <button
+                          className="font-black text-gray-800 uppercase tracking-tight text-xs truncate max-w-[120px] md:max-w-none hover:text-pink-500 transition-colors text-left"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleStudentClick(kid, i + 1);
+                          }}
+                        >
+                          {kid.fullName}
+                        </button>
+                        <span className="px-2 py-0.5 bg-gray-50 text-gray-400 text-[8px] font-black rounded uppercase">
+                          {kid.ageGroup}
+                        </span>
+                      </div>
+                      <span className="font-black text-gray-800 text-sm shrink-0">
+                        {kid.totalPoints} <span className="text-[9px] text-pink-400 uppercase">pts</span>
+                      </span>
+                    </div>
+                    <div className="w-full bg-gray-50 h-3 rounded-full overflow-hidden border border-gray-100 shadow-inner">
+                      <div
+                        className="h-full bg-gradient-to-r from-pink-400 to-pink-600 transition-all duration-1000 ease-out relative"
+                        style={{ width: `${(kid.totalPoints / maxPointsOverall) * 100}%` }}
+                      >
+                        <div className="absolute inset-0 bg-white/20 animate-pulse"></div>
+                      </div>
+                    </div>
                   </div>
-                </div>
-              </div>
-            ))}
-            {overall.length === 0 && (
-              <div className="py-20 text-center text-gray-300 uppercase font-black text-xs tracking-widest italic">
-                No participants with points yet
-              </div>
+                ))}
+                {singleOverall.length === 0 && (
+                  <div className="py-20 text-center text-gray-300 uppercase font-black text-xs tracking-widest italic">
+                    No participants with points yet
+                  </div>
+                )}
+              </>
             )}
           </div>
         </div>
@@ -239,7 +321,7 @@ const LeaderboardPage: React.FC = () => {
         <div className="space-y-6">
           <div className="flex items-center justify-between px-2">
             <h3 className="text-sm font-black text-gray-800 uppercase tracking-widest flex items-center gap-2">
-              <span className="text-xl">📅</span> Top 5 This Month
+              <span className="text-xl">📅</span> {ageFilter === 'ALL' ? 'Top 5 This Month Per Class' : 'Top 5 This Month'}
             </h3>
             <div className="flex gap-2">
               <select
@@ -263,35 +345,79 @@ const LeaderboardPage: React.FC = () => {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-pink-50/50">
-                  {monthly.map((kid, i) => (
-                    <tr key={kid.id} className="hover:bg-pink-50/20 transition-all group">
-                      <td className="px-6 md:px-8 py-6">
-                        <span className={`w-8 h-8 rounded-xl flex items-center justify-center font-black text-xs border-2 ${i === 0 ? 'bg-amber-400 border-amber-300 text-white shadow-lg shadow-amber-100' :
-                            i === 1 ? 'bg-gray-300 border-gray-200 text-white shadow-lg' :
-                              i === 2 ? 'bg-orange-300 border-orange-200 text-white shadow-lg' :
-                                'bg-white border-pink-50 text-pink-500'
-                          }`}>
-                          {i + 1}
-                        </span>
-                      </td>
-                      <td className="px-6 md:px-8 py-6">
-                        <div className="flex flex-col">
-                          <span className="font-black text-gray-800 uppercase tracking-tight text-xs truncate max-w-[100px] md:max-w-none">{kid.fullName}</span>
-                          <span className="text-[9px] font-bold text-gray-400 uppercase tracking-widest">{kid.ageGroup} Group</span>
-                        </div>
-                      </td>
-                      <td className="px-6 md:px-8 py-6 text-right">
-                        <span className="font-black text-gray-800 text-sm">{kid.totalPoints}</span>
-                      </td>
-                    </tr>
-                  ))}
-                  {monthly.length === 0 && (
-                    <tr>
-                        <td colSpan={3} className="px-8 py-20 text-center text-gray-300 uppercase font-black text-[10px] tracking-widest">
-                         No {categoryFilter === 'ALL' ? '' : `${categoryFilter} `}points earned in {months[selectedMonth]} {selectedYear}
-                       </td>
-                     </tr>
-                   )}
+                  {ageFilter === 'ALL' ? (
+                    monthlyByClass.map((section) => (
+                      <React.Fragment key={section.key}>
+                        <tr>
+                          <td colSpan={3} className="px-6 md:px-8 py-3 bg-pink-50/40 text-[10px] font-black text-pink-500 uppercase tracking-widest">
+                            {section.label}
+                          </td>
+                        </tr>
+                        {section.entries.length === 0 ? (
+                          <tr>
+                            <td colSpan={3} className="px-8 py-6 text-center text-gray-300 uppercase font-black text-[10px] tracking-widest">
+                              No points this month
+                            </td>
+                          </tr>
+                        ) : (
+                          section.entries.map((kid, i) => (
+                            <tr key={`${section.key}-${kid.id}`} className="hover:bg-pink-50/20 transition-all group">
+                              <td className="px-6 md:px-8 py-6">
+                                <span className={`w-8 h-8 rounded-xl flex items-center justify-center font-black text-xs border-2 ${i === 0 ? 'bg-amber-400 border-amber-300 text-white shadow-lg shadow-amber-100' :
+                                    i === 1 ? 'bg-gray-300 border-gray-200 text-white shadow-lg' :
+                                      i === 2 ? 'bg-orange-300 border-orange-200 text-white shadow-lg' :
+                                        'bg-white border-pink-50 text-pink-500'
+                                  }`}>
+                                  {i + 1}
+                                </span>
+                              </td>
+                              <td className="px-6 md:px-8 py-6">
+                                <div className="flex flex-col">
+                                  <span className="font-black text-gray-800 uppercase tracking-tight text-xs truncate max-w-[100px] md:max-w-none">{kid.fullName}</span>
+                                  <span className="text-[9px] font-bold text-gray-400 uppercase tracking-widest">{kid.ageGroup} Group</span>
+                                </div>
+                              </td>
+                              <td className="px-6 md:px-8 py-6 text-right">
+                                <span className="font-black text-gray-800 text-sm">{kid.totalPoints}</span>
+                              </td>
+                            </tr>
+                          ))
+                        )}
+                      </React.Fragment>
+                    ))
+                  ) : (
+                    <>
+                      {singleMonthly.map((kid, i) => (
+                        <tr key={kid.id} className="hover:bg-pink-50/20 transition-all group">
+                          <td className="px-6 md:px-8 py-6">
+                            <span className={`w-8 h-8 rounded-xl flex items-center justify-center font-black text-xs border-2 ${i === 0 ? 'bg-amber-400 border-amber-300 text-white shadow-lg shadow-amber-100' :
+                                i === 1 ? 'bg-gray-300 border-gray-200 text-white shadow-lg' :
+                                  i === 2 ? 'bg-orange-300 border-orange-200 text-white shadow-lg' :
+                                    'bg-white border-pink-50 text-pink-500'
+                              }`}>
+                              {i + 1}
+                            </span>
+                          </td>
+                          <td className="px-6 md:px-8 py-6">
+                            <div className="flex flex-col">
+                              <span className="font-black text-gray-800 uppercase tracking-tight text-xs truncate max-w-[100px] md:max-w-none">{kid.fullName}</span>
+                              <span className="text-[9px] font-bold text-gray-400 uppercase tracking-widest">{kid.ageGroup} Group</span>
+                            </div>
+                          </td>
+                          <td className="px-6 md:px-8 py-6 text-right">
+                            <span className="font-black text-gray-800 text-sm">{kid.totalPoints}</span>
+                          </td>
+                        </tr>
+                      ))}
+                      {singleMonthly.length === 0 && (
+                        <tr>
+                          <td colSpan={3} className="px-8 py-20 text-center text-gray-300 uppercase font-black text-[10px] tracking-widest">
+                            No {categoryFilter === 'ALL' ? '' : `${categoryFilter} `}points earned in {months[selectedMonth]} {selectedYear}
+                          </td>
+                        </tr>
+                      )}
+                    </>
+                  )}
                 </tbody>
               </table>
             </div>
