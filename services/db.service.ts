@@ -748,6 +748,56 @@ class DatabaseService {
       });
     }
   }
+
+  async resetAttendanceByDate(date: string): Promise<number> {
+    const { count, error: countError } = await supabase
+      .from('attendance_sessions')
+      .select('id', { count: 'exact', head: true })
+      .eq('session_date', date);
+
+    if (countError) throw new Error(formatError(countError));
+
+    const { error } = await supabase
+      .from('attendance_sessions')
+      .delete()
+      .eq('session_date', date);
+
+    if (error) throw new Error(formatError(error));
+    return count || 0;
+  }
+
+  async voidPointsByDate(date: string, reason: string, category?: string): Promise<number> {
+    let countQuery = supabase
+      .from('point_ledger')
+      .select('id', { count: 'exact', head: true })
+      .eq('entry_date', date)
+      .eq('voided', false);
+
+    if (category && category !== 'ALL') {
+      countQuery = countQuery.eq('category', category);
+    }
+
+    const { count, error: countError } = await countQuery;
+    if (countError) throw new Error(formatError(countError));
+
+    let updateQuery = supabase
+      .from('point_ledger')
+      .update({
+        voided: true,
+        void_reason: reason
+      })
+      .eq('entry_date', date)
+      .eq('voided', false);
+
+    if (category && category !== 'ALL') {
+      updateQuery = updateQuery.eq('category', category);
+    }
+
+    const { error } = await updateQuery;
+    if (error) throw new Error(formatError(error));
+
+    return count || 0;
+  }
 }
 
 export const db = new DatabaseService();

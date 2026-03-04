@@ -8,6 +8,7 @@ import { Settings, Save, AlertTriangle, Star, CheckCircle, Flame, RefreshCcw, Sh
 import { safeJsonParse } from '../utils/storage';
 
 const ControlCenterPage: React.FC = () => {
+  const todayStr = new Date().toISOString().split('T')[0];
   const [settings, setSettings] = useState<AppSettings | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -17,6 +18,21 @@ const ControlCenterPage: React.FC = () => {
   // Danger Zone States
   const [isSweeping, setIsSweeping] = useState(false);
   const [isResetting, setIsResetting] = useState(false);
+  const [manualResetDate, setManualResetDate] = useState(todayStr);
+  const [customResetAttendance, setCustomResetAttendance] = useState(true);
+  const [customResetPoints, setCustomResetPoints] = useState(true);
+  const [customPointsCategory, setCustomPointsCategory] = useState('ALL');
+  const [isManualResetting, setIsManualResetting] = useState(false);
+
+  const pointsCategories = [
+    'ALL',
+    'Attendance',
+    'Memory Verse',
+    'Recitation',
+    'Presentation',
+    'Worksheet / Activities',
+    'Manual Points'
+  ];
 
   // Identify User for Audit Logs
   const sessionStr = sessionStorage.getItem('km_session');
@@ -110,6 +126,128 @@ const ControlCenterPage: React.FC = () => {
     window.location.reload();
   };
 
+  const handleManualResetAttendance = async () => {
+    audio.playClick();
+    if (!window.confirm(`⚠️ RESET ATTENDANCE\n\nDate: ${manualResetDate}\n\nThis will delete all attendance sessions for the selected date.`)) {
+      return;
+    }
+
+    setIsManualResetting(true);
+    setError('');
+    setSuccess('');
+    try {
+      const affected = await db.resetAttendanceByDate(manualResetDate);
+      await db.log({
+        eventType: 'AUDIT_WIPE',
+        actor,
+        payload: {
+          action: 'MANUAL_RESET_ATTENDANCE',
+          date: manualResetDate,
+          affected,
+          timestamp: new Date().toISOString()
+        }
+      });
+
+      audio.playYehey();
+      setSuccess(`Attendance reset complete (${affected} sessions removed).`);
+    } catch (err: any) {
+      setError(formatError(err));
+    } finally {
+      setIsManualResetting(false);
+    }
+  };
+
+  const handleManualResetPoints = async () => {
+    audio.playClick();
+    if (!window.confirm(`⚠️ RESET POINTS\n\nDate: ${manualResetDate}\nCategory: ALL\n\nThis will void all points for the selected date.`)) {
+      return;
+    }
+
+    setIsManualResetting(true);
+    setError('');
+    setSuccess('');
+    try {
+      const affected = await db.voidPointsByDate(manualResetDate, `MANUAL RESET (${actor})`);
+      await db.log({
+        eventType: 'AUDIT_WIPE',
+        actor,
+        payload: {
+          action: 'MANUAL_RESET_POINTS',
+          date: manualResetDate,
+          category: 'ALL',
+          affected,
+          timestamp: new Date().toISOString()
+        }
+      });
+
+      audio.playYehey();
+      setSuccess(`Points reset complete (${affected} entries voided).`);
+    } catch (err: any) {
+      setError(formatError(err));
+    } finally {
+      setIsManualResetting(false);
+    }
+  };
+
+  const handleManualResetCustom = async () => {
+    audio.playClick();
+    if (!customResetAttendance && !customResetPoints) {
+      setError('Select at least one custom reset action.');
+      return;
+    }
+
+    const pointsLabel = customResetPoints
+      ? `Points: ${customPointsCategory === 'ALL' ? 'ALL categories' : customPointsCategory}`
+      : 'Points: No';
+
+    if (!window.confirm(`⚠️ RUN CUSTOM RESET\n\nDate: ${manualResetDate}\nAttendance: ${customResetAttendance ? 'Yes' : 'No'}\n${pointsLabel}\n\nContinue?`)) {
+      return;
+    }
+
+    setIsManualResetting(true);
+    setError('');
+    setSuccess('');
+
+    try {
+      let attendanceAffected = 0;
+      let pointsAffected = 0;
+
+      if (customResetAttendance) {
+        attendanceAffected = await db.resetAttendanceByDate(manualResetDate);
+      }
+
+      if (customResetPoints) {
+        pointsAffected = await db.voidPointsByDate(
+          manualResetDate,
+          `CUSTOM RESET (${actor})`,
+          customPointsCategory
+        );
+      }
+
+      await db.log({
+        eventType: 'AUDIT_WIPE',
+        actor,
+        payload: {
+          action: 'MANUAL_CUSTOM_RESET',
+          date: manualResetDate,
+          resetAttendance: customResetAttendance,
+          resetPoints: customResetPoints,
+          category: customResetPoints ? customPointsCategory : null,
+          attendanceAffected,
+          pointsAffected,
+          timestamp: new Date().toISOString()
+        }
+      });
+
+      audio.playYehey();
+      setSuccess(`Custom reset complete (attendance: ${attendanceAffected}, points: ${pointsAffected}).`);
+    } catch (err: any) {
+      setError(formatError(err));
+    } finally {
+      setIsManualResetting(false);
+    }
+  };
+
   if (loading) {
     return <div className="p-10 text-center animate-pulse uppercase font-black text-pink-300">Loading Configuration...</div>;
   }
@@ -176,11 +314,94 @@ const ControlCenterPage: React.FC = () => {
                   {isResetting ? 'ARCHIVING...' : 'RESET ALL STARS'}
                 </button>
              </div>
-          </div>
-          
-          <div className="relative z-10 pt-4 border-t border-red-50">
-             <button 
-               onClick={handleResetDashboard}
+           </div>
+
+           <div className="bg-amber-50 p-6 rounded-2xl border border-amber-100 relative z-10 space-y-4">
+             <div>
+               <h4 className="font-black text-gray-800 uppercase text-xs tracking-wide">Manual Reset Tools</h4>
+               <p className="text-[10px] text-gray-500 font-bold mt-1 leading-relaxed">
+                 Run targeted reset by date for attendance, points, or both using custom filters.
+               </p>
+             </div>
+
+             <div className="grid md:grid-cols-2 gap-3">
+               <div>
+                 <label className="block text-[10px] font-black text-gray-500 uppercase tracking-widest mb-2">Target Date</label>
+                 <input
+                   type="date"
+                   value={manualResetDate}
+                   onChange={(e) => setManualResetDate(e.target.value)}
+                   className="w-full px-4 py-3 bg-white border border-amber-200 rounded-xl outline-none focus:ring-2 focus:ring-amber-200 font-bold text-gray-700"
+                 />
+               </div>
+
+               <div className="grid grid-cols-2 gap-2 items-end">
+                 <button
+                   onClick={handleManualResetAttendance}
+                   disabled={isManualResetting}
+                   className="w-full py-3 bg-white border border-amber-200 text-amber-700 hover:bg-amber-500 hover:text-white rounded-xl font-black uppercase tracking-widest text-[10px] transition-all active:scale-95 disabled:opacity-50"
+                 >
+                   {isManualResetting ? 'PLEASE WAIT...' : 'RESET ATTENDANCE'}
+                 </button>
+                 <button
+                   onClick={handleManualResetPoints}
+                   disabled={isManualResetting}
+                   className="w-full py-3 bg-white border border-amber-200 text-amber-700 hover:bg-amber-500 hover:text-white rounded-xl font-black uppercase tracking-widest text-[10px] transition-all active:scale-95 disabled:opacity-50"
+                 >
+                   {isManualResetting ? 'PLEASE WAIT...' : 'RESET POINTS'}
+                 </button>
+               </div>
+             </div>
+
+             <div className="bg-white p-4 rounded-xl border border-amber-100 space-y-3">
+               <p className="text-[10px] font-black text-amber-700 uppercase tracking-widest">Custom Reset</p>
+
+               <div className="flex flex-wrap items-center gap-4">
+                 <label className="flex items-center gap-2 text-[10px] font-black text-gray-700 uppercase tracking-widest">
+                   <input
+                     type="checkbox"
+                     checked={customResetAttendance}
+                     onChange={(e) => setCustomResetAttendance(e.target.checked)}
+                     className="accent-amber-500"
+                   />
+                   Attendance
+                 </label>
+
+                 <label className="flex items-center gap-2 text-[10px] font-black text-gray-700 uppercase tracking-widest">
+                   <input
+                     type="checkbox"
+                     checked={customResetPoints}
+                     onChange={(e) => setCustomResetPoints(e.target.checked)}
+                     className="accent-amber-500"
+                   />
+                   Points
+                 </label>
+
+                 <select
+                   value={customPointsCategory}
+                   onChange={(e) => setCustomPointsCategory(e.target.value)}
+                   disabled={!customResetPoints}
+                   className="px-3 py-2 bg-white border border-amber-200 rounded-lg outline-none text-[10px] font-black uppercase tracking-widest text-gray-700 disabled:opacity-50"
+                 >
+                   {pointsCategories.map((cat) => (
+                     <option key={cat} value={cat}>{cat}</option>
+                   ))}
+                 </select>
+               </div>
+
+               <button
+                 onClick={handleManualResetCustom}
+                 disabled={isManualResetting || (!customResetAttendance && !customResetPoints)}
+                 className="w-full py-3 bg-amber-500 text-white hover:bg-amber-600 rounded-xl font-black uppercase tracking-widest text-[10px] transition-all active:scale-95 disabled:opacity-50"
+               >
+                 {isManualResetting ? 'RUNNING CUSTOM RESET...' : 'RUN CUSTOM RESET'}
+               </button>
+             </div>
+           </div>
+           
+           <div className="relative z-10 pt-4 border-t border-red-50">
+              <button 
+                onClick={handleResetDashboard}
                className="flex items-center gap-2 text-gray-400 hover:text-red-500 font-black uppercase tracking-widest text-[10px] transition-colors"
              >
                <RefreshCcw size={14} /> Refresh / Reset Dashboard View
