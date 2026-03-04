@@ -3,7 +3,7 @@ import { db, formatError } from '../services/db.service';
 import { MinistryService } from '../services/ministry.service';
 import { PointLedger, Student, UserSession, TeacherAssignmentRecord } from '../types';
 import { audio } from '../services/audio.service';
-import { Star, Users, Edit2 } from 'lucide-react';
+import { Star, Users, Edit2, Download } from 'lucide-react';
 import GlobalAwardModal from '../components/GlobalAwardModal';
 
 const PointsLedgerPage: React.FC<{ user: UserSession }> = ({ user }) => {
@@ -27,6 +27,7 @@ const PointsLedgerPage: React.FC<{ user: UserSession }> = ({ user }) => {
   const [manualNote, setManualNote] = useState('');
   const [manualError, setManualError] = useState('');
   const [isManualSaving, setIsManualSaving] = useState(false);
+  const [isExporting, setIsExporting] = useState(false);
 
   const ACTIONS = [
     { label: 'WORKSHEET / ACTIVITIES', pts: 5 },
@@ -261,6 +262,71 @@ const PointsLedgerPage: React.FC<{ user: UserSession }> = ({ user }) => {
     }
   };
 
+  const handleDownloadAllPoints = async () => {
+    audio.playClick();
+    setIsExporting(true);
+
+    try {
+      const allEntries = await db.getPointsLedger();
+
+      if (!allEntries.length) {
+        alert('No points records found to download.');
+        return;
+      }
+
+      const students = await db.getStudents();
+      const studentMap = new Map(students.map((s) => [s.id, s]));
+
+      const escapeCsv = (value: unknown) => {
+        const raw = value == null ? '' : String(value);
+        return `"${raw.replace(/"/g, '""')}"`;
+      };
+
+      const headers = [
+        'Date',
+        'Student Name',
+        'Age Group',
+        'Category',
+        'Points',
+        'Recorded By',
+        'Status',
+        'Void Reason',
+        'Notes'
+      ];
+
+      const rows = allEntries.map((entry) => {
+        const student = studentMap.get(entry.studentId);
+        return [
+          entry.entryDate,
+          student?.fullName || 'Unknown',
+          student?.ageGroup || '',
+          entry.category,
+          entry.points,
+          entry.recordedBy,
+          entry.voided ? 'VOIDED' : 'ACTIVE',
+          entry.voidReason || '',
+          entry.notes || ''
+        ].map(escapeCsv).join(',');
+      });
+
+      const csv = [headers.map(escapeCsv).join(','), ...rows].join('\n');
+      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `All_Points_Ledger_${new Date().toISOString().split('T')[0]}.csv`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+      audio.playYehey();
+    } catch (err: any) {
+      alert(`Download failed: ${formatError(err)}`);
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
   const filteredStudents = useMemo(() => {
     if (!assignedClass) return [];
     if (!classroomSearch.trim()) return assignedClass.students;
@@ -452,6 +518,16 @@ const PointsLedgerPage: React.FC<{ user: UserSession }> = ({ user }) => {
               className="bg-gray-100 px-6 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest text-gray-500 hover:bg-gray-200"
             >
               Switch View
+            </button>
+          )}
+          {viewMode === 'LEDGER' && (
+            <button
+              onClick={handleDownloadAllPoints}
+              disabled={isExporting}
+              className="bg-white border border-pink-100 px-4 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest text-pink-500 hover:bg-pink-50 disabled:opacity-50 flex items-center gap-2"
+              title="Download all points"
+            >
+              <Download size={14} /> {isExporting ? 'Exporting...' : 'DL'}
             </button>
           )}
           {viewMode === 'LEDGER' && (
