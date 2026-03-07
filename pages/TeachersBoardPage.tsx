@@ -7,9 +7,9 @@ import { Edit2, Save, X, Loader2, Calendar, ChevronLeft, ChevronRight, Plus, Tra
 import { safeJsonParse } from '../utils/storage';
 
 const COLUMNS = [
-   { key: 'age_group_3_6', label: '3-6 YEARS OLD', bg: 'bg-[#4DD0E1]', text: 'text-white' },
-   { key: 'age_group_7_9', label: '7-9 YEARS OLD', bg: 'bg-[#9575CD]', text: 'text-white' },
-   { key: 'teens', label: 'TEENS', bg: 'bg-[#AED581]', text: 'text-white' },
+   { key: 'age_group_3_6', label: '3 TO 6 YEARS OLD', bg: 'bg-[#4DD0E1]', text: 'text-white' },
+   { key: 'age_group_7_9', label: '7 TO 9 YEARS OLD', bg: 'bg-[#9575CD]', text: 'text-white' },
+   { key: 'teens', label: '10 TO 12 YEARS OLD', bg: 'bg-[#AED581]', text: 'text-white' },
    { key: 'security', label: 'SECURITY', bg: 'bg-[#4DB6AC]', text: 'text-white' },
    { key: 'facilitators', label: 'FACILITATORS', bg: 'bg-[#9FA8DA]', text: 'text-white' }
 ];

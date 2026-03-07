@@ -151,7 +151,7 @@ const App: React.FC = () => {
           } />
 
           <Route path="/admin/fairness" element={
-             !user ? <Navigate to="/login" replace /> : (isTeacherOrAdmin ? <TeacherFairnessPage /> : <Navigate to="/portal" replace />)
+              !user ? <Navigate to="/login" replace /> : (isTeacherOrAdmin ? <TeacherFairnessPage user={user} /> : <Navigate to="/portal" replace />)
           } />
 
           <Route path="/admin/follow-up" element={

@@ -1,10 +1,14 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
 import { db, formatError } from '../services/db.service';
-import { AgeGroup, Student } from '../types';
+import { AgeGroup, Student, UserSession, TeacherAssignmentRecord } from '../types';
 import { audio } from '../services/audio.service';
 
-const TeacherFairnessPage: React.FC = () => {
+interface TeacherFairnessPageProps {
+  user: UserSession;
+}
+
+const TeacherFairnessPage: React.FC<TeacherFairnessPageProps> = ({ user }) => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
@@ -12,6 +16,9 @@ const TeacherFairnessPage: React.FC = () => {
   const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth());
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
   const [selectedGroup, setSelectedGroup] = useState<AgeGroup | 'ALL'>('ALL');
+
+  // Teacher's assigned class
+  const [teacherClass, setTeacherClass] = useState<AgeGroup | 'ALL' | null>(null);
 
   // Data
   const [ledgerData, setLedgerData] = useState<any[]>([]);
@@ -23,8 +30,52 @@ const TeacherFairnessPage: React.FC = () => {
   ];
 
   useEffect(() => {
+    loadTeacherClass();
+  }, [user]);
+
+  useEffect(() => {
     loadData();
-  }, [selectedMonth, selectedYear, selectedGroup]);
+  }, [selectedMonth, selectedYear, selectedGroup, teacherClass]);
+
+  const loadTeacherClass = async () => {
+    if (!user || user.role === 'PARENTS') {
+      setTeacherClass('ALL');
+      return;
+    }
+
+    const isAdmin = user.role === 'ADMIN';
+    const universalAccessUsers = ['CHING', 'BETH', 'GIDEON', 'LEE', 'MAGI', 'MARGE'];
+    
+    if (isAdmin || universalAccessUsers.includes(user.username.toUpperCase())) {
+      setTeacherClass('ALL');
+      return;
+    }
+
+    try {
+      const today = new Date().toISOString().split('T')[0];
+      const board = await db.getTeacherBoard();
+      const todayAssignment = board.find(b => b.activity_date === today);
+      
+      if (!todayAssignment) {
+        setTeacherClass(null);
+        return;
+      }
+
+      const userName = user.username.toUpperCase();
+      if ((todayAssignment.age_group_3_6 || '').toUpperCase().includes(userName)) {
+        setTeacherClass('3-6');
+      } else if ((todayAssignment.age_group_7_9 || '').toUpperCase().includes(userName)) {
+        setTeacherClass('7-9');
+      } else if ((todayAssignment.teens || '').toUpperCase().includes(userName)) {
+        setTeacherClass('10-12');
+      } else {
+        setTeacherClass(null);
+      }
+    } catch (err) {
+      console.error('Error loading teacher class:', err);
+      setTeacherClass('ALL');
+    }
+  };
 
   const loadData = async () => {
     setLoading(true);
@@ -41,13 +92,20 @@ const TeacherFairnessPage: React.FC = () => {
         db.getStudents()
       ]);
 
-      // 3. Filter raw data if needed (DB filters by date, we filter by group in memory for flexibility)
+      // 3. Determine effective group filter
+      // If teacher has a class assignment, use that. Otherwise use selected group or all.
+      let effectiveGroup: AgeGroup | 'ALL' = selectedGroup;
+      if (teacherClass && teacherClass !== 'ALL') {
+        effectiveGroup = teacherClass;
+      }
+
+      // 4. Filter raw data if needed (DB filters by date, we filter by group in memory for flexibility)
       let filteredPoints = pointsData;
       let filteredStudents = studentsData;
 
-      if (selectedGroup !== 'ALL') {
-        filteredPoints = pointsData.filter((p: any) => p.student?.ageGroup === selectedGroup);
-        filteredStudents = studentsData.filter(s => s.ageGroup === selectedGroup);
+      if (effectiveGroup !== 'ALL') {
+        filteredPoints = pointsData.filter((p: any) => p.student?.ageGroup === effectiveGroup);
+        filteredStudents = studentsData.filter(s => s.ageGroup === effectiveGroup);
       }
 
       setLedgerData(filteredPoints);
@@ -110,12 +168,21 @@ const TeacherFairnessPage: React.FC = () => {
     return { average, weakLinks };
   }, [allStudents, ledgerData]);
 
+  const isTeacherWithClass = teacherClass !== null && teacherClass !== 'ALL';
+  const displayGroup = isTeacherWithClass ? (teacherClass as AgeGroup) : selectedGroup;
+
   return (
     <div className="space-y-8 animate-in fade-in duration-500 pb-20">
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
         <div>
           <h2 className="text-3xl font-black text-gray-800 uppercase tracking-tighter">Fairness Monitor</h2>
-          <p className="text-gray-400 font-medium uppercase tracking-widest text-[10px]">Teacher Engagement & Student Support</p>
+          {teacherClass === null && !loading ? (
+            <p className="text-orange-500 font-black uppercase tracking-widest text-[10px]">No class assigned for today</p>
+          ) : isTeacherWithClass ? (
+            <p className="text-green-600 font-black uppercase tracking-widest text-[10px]">Viewing: {teacherClass} Class Only</p>
+          ) : (
+            <p className="text-gray-400 font-medium uppercase tracking-widest text-[10px]">Teacher Engagement & Student Support</p>
+          )}
         </div>
 
         <div className="flex flex-wrap gap-3">
@@ -138,9 +205,10 @@ const TeacherFairnessPage: React.FC = () => {
           </select>
 
           <select
-            value={selectedGroup}
+            value={displayGroup}
             onChange={(e) => { audio.playClick(); setSelectedGroup(e.target.value as any); }}
-            className="px-4 py-3 bg-white border border-pink-50 rounded-2xl outline-none focus:ring-2 focus:ring-pink-200 text-[10px] font-black tracking-widest uppercase shadow-sm cursor-pointer"
+            disabled={isTeacherWithClass}
+            className={`px-4 py-3 bg-white border border-pink-50 rounded-2xl outline-none focus:ring-2 focus:ring-pink-200 text-[10px] font-black tracking-widest uppercase shadow-sm cursor-pointer ${isTeacherWithClass ? 'opacity-60 cursor-not-allowed' : ''}`}
           >
             <option value="ALL">All Groups</option>
             <option value="3-6">3-6 Years</option>
