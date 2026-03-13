@@ -27,6 +27,8 @@ const ControlCenterPage: React.FC = () => {
   const [isDeletingStudents, setIsDeletingStudents] = useState(false);
   const [massUploadInput, setMassUploadInput] = useState('');
   const [isUploadingStudents, setIsUploadingStudents] = useState(false);
+  const [massPointsInput, setMassPointsInput] = useState('');
+  const [isUploadingPoints, setIsUploadingPoints] = useState(false);
 
   const pointsCategories = [
     'ALL',
@@ -379,6 +381,67 @@ const ControlCenterPage: React.FC = () => {
     }
   };
 
+  const parseMassPointsRows = (raw: string): { fullName: string; points: number }[] => {
+    const lines = raw
+      .split(/\r?\n/)
+      .map(line => line.trim())
+      .filter(Boolean);
+
+    const rows: { fullName: string; points: number }[] = [];
+
+    lines.forEach((line) => {
+      const cells = line.includes('\t')
+        ? line.split('\t').map(c => c.trim())
+        : line.split(',').map(c => c.trim());
+
+      if (!cells.length) return;
+      const firstName = cells[0] || '';
+      const lastName = cells[1] || '';
+      const pointsCell = cells[2] || '';
+
+      if (/^first\s*name$/i.test(firstName) || /^last\s*name$/i.test(lastName)) return;
+      if (!firstName && !lastName) return;
+
+      const parsedPoints = /^\d+$/.test(pointsCell) ? Number(pointsCell) : 0;
+      rows.push({
+        fullName: `${firstName} ${lastName}`.trim(),
+        points: parsedPoints
+      });
+    });
+
+    return rows;
+  };
+
+  const handleMassUploadPoints = async () => {
+    audio.playClick();
+    if (!isAdmin) {
+      setError('Only ADMIN can run mass points upload.');
+      return;
+    }
+
+    const rows = parseMassPointsRows(massPointsInput);
+    if (!rows.length) {
+      setError('Paste student points rows first.');
+      return;
+    }
+
+    if (!window.confirm(`Upload points for ${rows.length} rows now?`)) return;
+
+    setIsUploadingPoints(true);
+    setError('');
+    setSuccess('');
+    try {
+      const result = await db.bulkUploadStudentPoints(rows, actor);
+      const errSummary = result.errors.length ? ` | Errors: ${result.errors.length}` : '';
+      setSuccess(`Points upload synced. Updated: ${result.updated}, Not Found: ${result.notFound}, Skipped: ${result.skipped}, Points Added: ${result.pointsAdded}${errSummary}`);
+      audio.playYehey();
+    } catch (err: any) {
+      setError(formatError(err));
+    } finally {
+      setIsUploadingPoints(false);
+    }
+  };
+
   if (loading) {
     return <div className="p-10 text-center animate-pulse uppercase font-black text-pink-300">Loading Configuration...</div>;
   }
@@ -588,37 +651,6 @@ const ControlCenterPage: React.FC = () => {
           </div>
         </div>
 
-        {/* Face Recognition Settings */}
-        <div className="bg-white p-8 rounded-[2.5rem] border border-pink-50 shadow-sm space-y-6">
-          <div className="flex items-center gap-3 border-b border-pink-50 pb-4">
-             <div className="w-10 h-10 bg-pink-100 rounded-xl flex items-center justify-center text-pink-500">
-               <Settings size={20} />
-             </div>
-             <h3 className="text-lg font-black text-gray-800 uppercase tracking-tight">AI & Face Recognition</h3>
-          </div>
-
-          <div className="space-y-4">
-             <div>
-               <div className="flex justify-between items-center mb-2">
-                 <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Match Threshold (Sensitivity)</label>
-                 <span className="text-xs font-black text-pink-500 bg-pink-50 px-2 py-1 rounded-lg">{(settings.matchThreshold * 100).toFixed(0)}%</span>
-               </div>
-               <input 
-                 type="range" 
-                 min="0.5" 
-                 max="0.99" 
-                 step="0.01" 
-                 value={settings.matchThreshold}
-                 onChange={(e) => setSettings({ ...settings, matchThreshold: parseFloat(e.target.value) })}
-                 className="w-full h-3 bg-gray-100 rounded-full appearance-none cursor-pointer accent-pink-500"
-               />
-               <p className="text-[9px] text-gray-300 font-bold uppercase tracking-widest mt-2 leading-relaxed">
-                 Higher values require a more precise face match but may fail in poor lighting. Lower values are more forgiving but may cause false positives. Recommended: 75-80%.
-               </p>
-             </div>
-          </div>
-        </div>
-
         {/* Attendance Automation */}
         <div className="bg-white p-8 rounded-[2.5rem] border border-pink-50 shadow-sm space-y-6">
           <div className="flex items-center gap-3 border-b border-pink-50 pb-4">
@@ -642,6 +674,36 @@ const ControlCenterPage: React.FC = () => {
                </p>
              </div>
           </div>
+        </div>
+
+        <div className="bg-white p-8 rounded-[2.5rem] border border-pink-50 shadow-sm space-y-6">
+          <div className="flex items-center gap-3 border-b border-pink-50 pb-4">
+             <div className="w-10 h-10 bg-blue-100 rounded-xl flex items-center justify-center text-blue-500">
+               <Upload size={20} />
+             </div>
+             <h3 className="text-lg font-black text-gray-800 uppercase tracking-tight">Mass Upload Students Points</h3>
+          </div>
+
+          <p className="text-[10px] text-gray-500 font-bold leading-relaxed">
+            Paste rows using: First Name, Last Name, MMM-## (points). Blank points are skipped.
+          </p>
+
+          <textarea
+            value={massPointsInput}
+            onChange={(e) => setMassPointsInput(e.target.value)}
+            rows={8}
+            placeholder={`First Name\tLast Name\tMMM-##\nHailey\tAbunio\t\nNasya\tAgustin\t10\nSelena\tBuen\t`}
+            className="w-full px-4 py-3 bg-blue-50 border border-blue-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-200 font-bold text-[11px] text-gray-700"
+          />
+
+          <button
+            onClick={handleMassUploadPoints}
+            disabled={isUploadingPoints}
+            className="w-full py-3 bg-blue-500 text-white hover:bg-blue-600 rounded-xl font-black uppercase tracking-widest text-[10px] transition-all active:scale-95 disabled:opacity-50 flex items-center justify-center gap-2"
+          >
+            <Upload size={14} />
+            {isUploadingPoints ? 'UPLOADING STUDENT POINTS...' : 'RUN MASS POINTS UPLOAD'}
+          </button>
         </div>
 
         {/* Points & Rewards */}

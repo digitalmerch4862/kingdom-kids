@@ -1018,6 +1018,72 @@ class DatabaseService {
 
     return { created, updated, pointsAdded, skipped, errors };
   }
+
+  async bulkUploadStudentPoints(rows: Array<{ fullName: string; points: number }>, actor: string): Promise<{ updated: number; pointsAdded: number; skipped: number; notFound: number; errors: string[]; }> {
+    if (!rows.length) return { updated: 0, pointsAdded: 0, skipped: 0, notFound: 0, errors: [] };
+
+    const students = await this.getStudents();
+    const studentByName = new Map(students.map(s => [this.normalizeStudentFullName(s.fullName), s]));
+    const today = new Date().toISOString().split('T')[0];
+
+    let updated = 0;
+    let pointsAdded = 0;
+    let skipped = 0;
+    let notFound = 0;
+    const errors: string[] = [];
+
+    for (const row of rows) {
+      const normalizedName = this.normalizeStudentFullName(row.fullName || '');
+      const points = Number(row.points || 0);
+
+      if (!normalizedName || points <= 0) {
+        skipped++;
+        continue;
+      }
+
+      const student = studentByName.get(normalizedName);
+      if (!student) {
+        notFound++;
+        errors.push(`Student not found: ${normalizedName}`);
+        continue;
+      }
+
+      const { error } = await supabase.from('point_ledger').insert([{
+        student_id: student.id,
+        entry_date: today,
+        category: 'Manual Points',
+        points,
+        notes: 'MASS UPLOAD POINTS',
+        recorded_by: actor,
+        voided: false
+      }]);
+
+      if (error) {
+        errors.push(`Failed points upload for ${normalizedName}: ${formatError(error)}`);
+        continue;
+      }
+
+      updated++;
+      pointsAdded += points;
+    }
+
+    await this.log({
+      eventType: 'AUDIT_WIPE',
+      actor,
+      payload: {
+        action: 'MASS_UPLOAD_STUDENT_POINTS',
+        attempted: rows.length,
+        updated,
+        pointsAdded,
+        skipped,
+        notFound,
+        errors: errors.slice(0, 20),
+        timestamp: new Date().toISOString()
+      }
+    });
+
+    return { updated, pointsAdded, skipped, notFound, errors };
+  }
 }
 
 export const db = new DatabaseService();
