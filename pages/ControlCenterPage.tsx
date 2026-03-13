@@ -367,7 +367,7 @@ const ControlCenterPage: React.FC = () => {
     try {
       const result = await db.bulkImportStudents(rows, actor);
       const errSummary = result.errors.length ? ` | Errors: ${result.errors.length}` : '';
-      setSuccess(`Mass upload complete. Created: ${result.created}, Skipped: ${result.skipped}, Points Added: ${result.pointsAdded}${errSummary}`);
+      setSuccess(`Mass upload synced. Created: ${result.created}, Updated: ${result.updated}, Skipped: ${result.skipped}, Points Added: ${result.pointsAdded}${errSummary}`);
       if (result.errors.length) {
         console.warn('Mass upload errors:', result.errors);
       }

@@ -906,16 +906,17 @@ class DatabaseService {
     };
   }
 
-  async bulkImportStudents(rows: Array<{ fullName: string; classLabel?: string; guardianName?: string; guardianPhone?: string; points?: number }>, actor: string): Promise<{ created: number; pointsAdded: number; skipped: number; errors: string[]; }> {
-    if (!rows.length) return { created: 0, pointsAdded: 0, skipped: 0, errors: [] };
+  async bulkImportStudents(rows: Array<{ fullName: string; classLabel?: string; guardianName?: string; guardianPhone?: string; points?: number }>, actor: string): Promise<{ created: number; updated: number; pointsAdded: number; skipped: number; errors: string[]; }> {
+    if (!rows.length) return { created: 0, updated: 0, pointsAdded: 0, skipped: 0, errors: [] };
 
     const existing = await this.getStudents();
-    const existingNameSet = new Set(existing.map(s => this.normalizeStudentFullName(s.fullName)));
+    const existingByName = new Map(existing.map(s => [this.normalizeStudentFullName(s.fullName), s]));
     const keys = await this.getNextDashedAccessKeys(rows.length);
     const today = new Date().toISOString().split('T')[0];
 
     let keyIndex = 0;
     let created = 0;
+    let updated = 0;
     let pointsAdded = 0;
     let skipped = 0;
     const errors: string[] = [];
@@ -927,42 +928,64 @@ class DatabaseService {
         errors.push('Skipped row with empty name.');
         continue;
       }
-      if (existingNameSet.has(normalizedName)) {
-        skipped++;
-        errors.push(`Skipped duplicate name: ${normalizedName}`);
-        continue;
-      }
-
-      const accessKey = keys[keyIndex++];
       const ageGroup = this.mapClassToAgeGroup(row.classLabel);
       const guardianName = String(row.guardianName || '').trim().toUpperCase();
       const guardianPhone = String(row.guardianPhone || '').replace(/\D/g, '').slice(0, 11);
+      const existingStudent = existingByName.get(normalizedName);
+      let studentId = existingStudent?.id || '';
 
-      const { data: inserted, error: insertErr } = await supabase.from('students').insert([{
-        full_name: normalizedName,
-        age_group: ageGroup,
-        access_key: accessKey,
-        guardian_name: guardianName,
-        guardian_phone: guardianPhone,
-        notes: 'MASS UPLOAD',
-        is_enrolled: false,
-        consecutive_absences: 0,
-        student_status: 'active'
-      }]).select('id').single();
+      if (existingStudent) {
+        const payload: any = {
+          full_name: normalizedName,
+          age_group: ageGroup,
+          updated_at: new Date().toISOString()
+        };
+        if (guardianName) payload.guardian_name = guardianName;
+        if (guardianPhone) payload.guardian_phone = guardianPhone;
 
-      if (insertErr || !inserted) {
-        skipped++;
-        errors.push(`Failed to create ${normalizedName}: ${formatError(insertErr)}`);
-        continue;
+        const { error: updateErr } = await supabase.from('students').update(payload).eq('id', existingStudent.id);
+        if (updateErr) {
+          skipped++;
+          errors.push(`Failed to update ${normalizedName}: ${formatError(updateErr)}`);
+          continue;
+        }
+        updated++;
+      } else {
+        const accessKey = keys[keyIndex++];
+        const { data: inserted, error: insertErr } = await supabase.from('students').insert([{
+          full_name: normalizedName,
+          age_group: ageGroup,
+          access_key: accessKey,
+          guardian_name: guardianName,
+          guardian_phone: guardianPhone,
+          notes: 'MASS UPLOAD',
+          is_enrolled: false,
+          consecutive_absences: 0,
+          student_status: 'active'
+        }]).select('id').single();
+
+        if (insertErr || !inserted) {
+          skipped++;
+          errors.push(`Failed to create ${normalizedName}: ${formatError(insertErr)}`);
+          continue;
+        }
+        studentId = inserted.id;
+        created++;
       }
-
-      existingNameSet.add(normalizedName);
-      created++;
+      if (!studentId) {
+        const refreshed = existingByName.get(normalizedName);
+        studentId = refreshed?.id || '';
+      }
+      existingByName.set(normalizedName, {
+        ...(existingStudent || ({} as any)),
+        id: studentId,
+        fullName: normalizedName
+      });
 
       const points = Number(row.points || 0);
-      if (points > 0) {
+      if (points > 0 && studentId) {
         const { error: pointsErr } = await supabase.from('point_ledger').insert([{
-          student_id: inserted.id,
+          student_id: studentId,
           entry_date: today,
           category: 'Manual Points',
           points,
@@ -985,6 +1008,7 @@ class DatabaseService {
         action: 'MASS_UPLOAD_STUDENTS',
         attempted: rows.length,
         created,
+        updated,
         skipped,
         pointsAdded,
         errors: errors.slice(0, 20),
@@ -992,7 +1016,7 @@ class DatabaseService {
       }
     });
 
-    return { created, pointsAdded, skipped, errors };
+    return { created, updated, pointsAdded, skipped, errors };
   }
 }
 
