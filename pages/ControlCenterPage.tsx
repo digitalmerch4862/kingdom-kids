@@ -4,7 +4,7 @@ import { db, formatError } from '../services/db.service';
 import { MinistryService } from '../services/ministry.service';
 import { AppSettings, UserSession } from '../types';
 import { audio } from '../services/audio.service';
-import { Settings, Save, AlertTriangle, Star, CheckCircle, Flame, RefreshCcw, ShieldCheck, FileText, Info } from 'lucide-react';
+import { Settings, Save, AlertTriangle, Star, CheckCircle, Flame, RefreshCcw, ShieldCheck, FileText, Info, Trash2, Upload } from 'lucide-react';
 import { safeJsonParse } from '../utils/storage';
 
 const ControlCenterPage: React.FC = () => {
@@ -23,6 +23,10 @@ const ControlCenterPage: React.FC = () => {
   const [customResetPoints, setCustomResetPoints] = useState(true);
   const [customPointsCategory, setCustomPointsCategory] = useState('ALL');
   const [isManualResetting, setIsManualResetting] = useState(false);
+  const [deleteConfirmText, setDeleteConfirmText] = useState('');
+  const [isDeletingStudents, setIsDeletingStudents] = useState(false);
+  const [massUploadInput, setMassUploadInput] = useState('');
+  const [isUploadingStudents, setIsUploadingStudents] = useState(false);
 
   const pointsCategories = [
     'ALL',
@@ -38,6 +42,7 @@ const ControlCenterPage: React.FC = () => {
   const sessionStr = sessionStorage.getItem('km_session');
   const user = safeJsonParse<UserSession | null>(sessionStr, null);
   const actor = user?.username || 'ADMIN';
+  const isAdmin = user?.role === 'ADMIN';
 
   useEffect(() => {
     loadSettings();
@@ -248,6 +253,112 @@ const ControlCenterPage: React.FC = () => {
     }
   };
 
+  const parseMassUploadRows = (raw: string): { fullName: string; classLabel?: string; points?: number }[] => {
+    const lines = raw
+      .split(/\r?\n/)
+      .map(line => line.trim())
+      .filter(Boolean);
+
+    const rows: { fullName: string; classLabel?: string; points?: number }[] = [];
+
+    lines.forEach((line) => {
+      const cells = line.includes('\t')
+        ? line.split('\t').map(c => c.trim())
+        : line.split(',').map(c => c.trim());
+
+      if (!cells.length) return;
+
+      const maybeClass = cells[0] || '';
+      const classLike = /^\d+\s*-\s*\d+$/.test(maybeClass);
+      let maybeName = cells.length > 1 ? cells[1] : cells[0];
+      let classLabel = cells.length > 1 ? maybeClass : '';
+
+      // If CSV is "Lastname, Firstname" with no class column, rebuild full name.
+      if (!line.includes('\t') && cells.length === 2 && !classLike) {
+        maybeName = `${cells[0]}, ${cells[1]}`;
+        classLabel = '';
+      }
+
+      const maybePointsCell = cells.find(c => /^\d+$/.test(c)) || '';
+      const points = maybePointsCell ? Number(maybePointsCell) : 0;
+
+      // Skip common header rows from spreadsheet paste.
+      if (/^class$/i.test(maybeClass) || /^full\s*name$/i.test(maybeName)) return;
+
+      rows.push({
+        fullName: maybeName,
+        classLabel,
+        points
+      });
+    });
+
+    return rows;
+  };
+
+  const handleDeleteAllStudents = async () => {
+    audio.playClick();
+    if (!isAdmin) {
+      setError('Only ADMIN can delete all students.');
+      return;
+    }
+    if (deleteConfirmText.trim().toUpperCase() !== 'DELETE ALL STUDENTS') {
+      setError('Type DELETE ALL STUDENTS to confirm wipe action.');
+      return;
+    }
+    if (!window.confirm('⚠️ DELETE ALL STUDENTS?\n\nThis will permanently remove all students and related attendance, points, embeddings, stories, and profiles.')) {
+      return;
+    }
+
+    setIsDeletingStudents(true);
+    setError('');
+    setSuccess('');
+    try {
+      const summary = await db.deleteAllStudents(actor);
+      audio.playYehey();
+      setSuccess(`Deleted all students (${summary.students}) and related records.`);
+      setDeleteConfirmText('');
+    } catch (err: any) {
+      setError(formatError(err));
+    } finally {
+      setIsDeletingStudents(false);
+    }
+  };
+
+  const handleMassUploadStudents = async () => {
+    audio.playClick();
+    if (!isAdmin) {
+      setError('Only ADMIN can run mass upload.');
+      return;
+    }
+
+    const rows = parseMassUploadRows(massUploadInput);
+    if (!rows.length) {
+      setError('Paste student rows first.');
+      return;
+    }
+
+    if (!window.confirm(`Import ${rows.length} student rows now?\n\nAccess key format: YYYY-###`)) {
+      return;
+    }
+
+    setIsUploadingStudents(true);
+    setError('');
+    setSuccess('');
+    try {
+      const result = await db.bulkImportStudents(rows, actor);
+      const errSummary = result.errors.length ? ` | Errors: ${result.errors.length}` : '';
+      setSuccess(`Mass upload complete. Created: ${result.created}, Skipped: ${result.skipped}, Points Added: ${result.pointsAdded}${errSummary}`);
+      if (result.errors.length) {
+        console.warn('Mass upload errors:', result.errors);
+      }
+      audio.playYehey();
+    } catch (err: any) {
+      setError(formatError(err));
+    } finally {
+      setIsUploadingStudents(false);
+    }
+  };
+
   if (loading) {
     return <div className="p-10 text-center animate-pulse uppercase font-black text-pink-300">Loading Configuration...</div>;
   }
@@ -406,6 +517,54 @@ const ControlCenterPage: React.FC = () => {
              >
                <RefreshCcw size={14} /> Refresh / Reset Dashboard View
              </button>
+          </div>
+
+          <div className="bg-red-50 p-6 rounded-2xl border border-red-100 relative z-10 space-y-4">
+            <div>
+              <h4 className="font-black text-gray-800 uppercase text-xs tracking-wide">Delete All Students</h4>
+              <p className="text-[10px] text-gray-500 font-bold mt-1 leading-relaxed">
+                Permanent wipe for all students and linked records. Type confirmation phrase before running.
+              </p>
+            </div>
+            <input
+              type="text"
+              placeholder="TYPE: DELETE ALL STUDENTS"
+              value={deleteConfirmText}
+              onChange={(e) => setDeleteConfirmText(e.target.value)}
+              className="w-full px-4 py-3 bg-white border border-red-200 rounded-xl outline-none focus:ring-2 focus:ring-red-200 font-black uppercase tracking-widest text-[10px] text-gray-700"
+            />
+            <button
+              onClick={handleDeleteAllStudents}
+              disabled={isDeletingStudents}
+              className="w-full py-3 bg-white border border-red-200 text-red-500 hover:bg-red-500 hover:text-white rounded-xl font-black uppercase tracking-widest text-[10px] transition-all active:scale-95 disabled:opacity-50 flex items-center justify-center gap-2"
+            >
+              <Trash2 size={14} />
+              {isDeletingStudents ? 'DELETING ALL STUDENTS...' : 'DELETE ALL STUDENTS'}
+            </button>
+          </div>
+
+          <div className="bg-blue-50 p-6 rounded-2xl border border-blue-100 relative z-10 space-y-4">
+            <div>
+              <h4 className="font-black text-gray-800 uppercase text-xs tracking-wide">Mass Upload Students</h4>
+              <p className="text-[10px] text-gray-500 font-bold mt-1 leading-relaxed">
+                Paste rows from sheet. Supported: "Class, Full Name" or "Class, Full Name, Points". Access keys auto-generate as YYYY-###.
+              </p>
+            </div>
+            <textarea
+              value={massUploadInput}
+              onChange={(e) => setMassUploadInput(e.target.value)}
+              rows={8}
+              placeholder={`Class\tFull Name\tPoints\n4-6\tAbunio, Hailey\t0\n4-6\tAgustin, Nasya Zoey S.\t10`}
+              className="w-full px-4 py-3 bg-white border border-blue-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-200 font-bold text-[11px] text-gray-700"
+            />
+            <button
+              onClick={handleMassUploadStudents}
+              disabled={isUploadingStudents}
+              className="w-full py-3 bg-blue-500 text-white hover:bg-blue-600 rounded-xl font-black uppercase tracking-widest text-[10px] transition-all active:scale-95 disabled:opacity-50 flex items-center justify-center gap-2"
+            >
+              <Upload size={14} />
+              {isUploadingStudents ? 'IMPORTING STUDENTS...' : 'RUN MASS UPLOAD'}
+            </button>
           </div>
         </div>
 

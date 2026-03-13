@@ -21,6 +21,51 @@ export const formatError = (err: any): string => {
 };
 
 class DatabaseService {
+  private normalizeStudentFullName(raw: string): string {
+    return raw
+      .trim()
+      .replace(/\s+/g, ' ')
+      .toUpperCase();
+  }
+
+  private mapClassToAgeGroup(classLabel?: string): AgeGroup {
+    const clean = String(classLabel || '').trim();
+    if (!clean) return 'General';
+    if (clean.includes('3-6') || clean.includes('4-6')) return '3-6';
+    if (clean.includes('7-9')) return '7-9';
+    if (clean.includes('10-12')) return '10-12';
+    return 'General';
+  }
+
+  private async getNextDashedAccessKeys(count: number): Promise<string[]> {
+    const year = String(new Date().getFullYear());
+    const { data, error } = await supabase
+      .from('students')
+      .select('access_key')
+      .like('access_key', `${year}%`);
+
+    if (error) throw new Error(formatError(error));
+
+    let maxSequence = 0;
+    for (const row of data || []) {
+      const key = String(row.access_key || '').trim();
+      const digitsOnly = key.replace(/[^0-9]/g, '');
+      if (/^\d{7}$/.test(digitsOnly) && digitsOnly.startsWith(year)) {
+        const sequence = Number(digitsOnly.slice(4));
+        if (!Number.isNaN(sequence)) maxSequence = Math.max(maxSequence, sequence);
+      }
+    }
+
+    if (maxSequence + count > 999) {
+      throw new Error(`Student key limit reached for ${year}.`);
+    }
+
+    return Array.from({ length: count }, (_, i) => {
+      const sequence = String(maxSequence + i + 1).padStart(3, '0');
+      return `${year}-${sequence}`;
+    });
+  }
+
   private async generateStudentAccessKey(): Promise<string> {
     const year = String(new Date().getFullYear());
     const { data, error } = await supabase
@@ -797,6 +842,154 @@ class DatabaseService {
     if (error) throw new Error(formatError(error));
 
     return count || 0;
+  }
+
+  async deleteAllStudents(actor: string): Promise<{ students: number; attendance: number; points: number; embeddings: number; stories: number; profiles: number; }> {
+    const [
+      studentsCount,
+      attendanceCount,
+      pointsCount,
+      embeddingsCount,
+      storiesCount,
+      profilesCount
+    ] = await Promise.all([
+      supabase.from('students').select('id', { count: 'exact', head: true }),
+      supabase.from('attendance_sessions').select('id', { count: 'exact', head: true }),
+      supabase.from('point_ledger').select('id', { count: 'exact', head: true }),
+      supabase.from('face_embeddings').select('id', { count: 'exact', head: true }),
+      supabase.from('story_history').select('id', { count: 'exact', head: true }),
+      supabase.from('kingdom_kids_profiles').select('id', { count: 'exact', head: true })
+    ]);
+
+    // Delete dependent records first to avoid FK violations across varied environments.
+    const { error: attendanceErr } = await supabase.from('attendance_sessions').delete().neq('id', '');
+    if (attendanceErr) throw new Error(formatError(attendanceErr));
+
+    const { error: pointsErr } = await supabase.from('point_ledger').delete().neq('id', '');
+    if (pointsErr) throw new Error(formatError(pointsErr));
+
+    const { error: embeddingsErr } = await supabase.from('face_embeddings').delete().neq('id', '');
+    if (embeddingsErr) throw new Error(formatError(embeddingsErr));
+
+    const { error: storiesErr } = await supabase.from('story_history').delete().neq('id', '');
+    if (storiesErr) throw new Error(formatError(storiesErr));
+
+    const { error: profilesErr } = await supabase.from('kingdom_kids_profiles').delete().neq('id', '');
+    if (profilesErr) throw new Error(formatError(profilesErr));
+
+    const { error: studentsErr } = await supabase.from('students').delete().neq('id', '');
+    if (studentsErr) throw new Error(formatError(studentsErr));
+
+    await this.log({
+      eventType: 'AUDIT_WIPE',
+      actor,
+      payload: {
+        action: 'DELETE_ALL_STUDENTS',
+        students: studentsCount.count || 0,
+        attendance: attendanceCount.count || 0,
+        points: pointsCount.count || 0,
+        embeddings: embeddingsCount.count || 0,
+        stories: storiesCount.count || 0,
+        profiles: profilesCount.count || 0,
+        timestamp: new Date().toISOString()
+      }
+    });
+
+    return {
+      students: studentsCount.count || 0,
+      attendance: attendanceCount.count || 0,
+      points: pointsCount.count || 0,
+      embeddings: embeddingsCount.count || 0,
+      stories: storiesCount.count || 0,
+      profiles: profilesCount.count || 0
+    };
+  }
+
+  async bulkImportStudents(rows: Array<{ fullName: string; classLabel?: string; points?: number }>, actor: string): Promise<{ created: number; pointsAdded: number; skipped: number; errors: string[]; }> {
+    if (!rows.length) return { created: 0, pointsAdded: 0, skipped: 0, errors: [] };
+
+    const existing = await this.getStudents();
+    const existingNameSet = new Set(existing.map(s => this.normalizeStudentFullName(s.fullName)));
+    const keys = await this.getNextDashedAccessKeys(rows.length);
+    const today = new Date().toISOString().split('T')[0];
+
+    let keyIndex = 0;
+    let created = 0;
+    let pointsAdded = 0;
+    let skipped = 0;
+    const errors: string[] = [];
+
+    for (const row of rows) {
+      const normalizedName = this.normalizeStudentFullName(row.fullName || '');
+      if (!normalizedName) {
+        skipped++;
+        errors.push('Skipped row with empty name.');
+        continue;
+      }
+      if (existingNameSet.has(normalizedName)) {
+        skipped++;
+        errors.push(`Skipped duplicate name: ${normalizedName}`);
+        continue;
+      }
+
+      const accessKey = keys[keyIndex++];
+      const ageGroup = this.mapClassToAgeGroup(row.classLabel);
+
+      const { data: inserted, error: insertErr } = await supabase.from('students').insert([{
+        full_name: normalizedName,
+        age_group: ageGroup,
+        access_key: accessKey,
+        guardian_name: '',
+        guardian_phone: '',
+        notes: 'MASS UPLOAD',
+        is_enrolled: false,
+        consecutive_absences: 0,
+        student_status: 'active'
+      }]).select('id').single();
+
+      if (insertErr || !inserted) {
+        skipped++;
+        errors.push(`Failed to create ${normalizedName}: ${formatError(insertErr)}`);
+        continue;
+      }
+
+      existingNameSet.add(normalizedName);
+      created++;
+
+      const points = Number(row.points || 0);
+      if (points > 0) {
+        const { error: pointsErr } = await supabase.from('point_ledger').insert([{
+          student_id: inserted.id,
+          entry_date: today,
+          category: 'Manual Points',
+          points,
+          notes: 'MASS UPLOAD',
+          recorded_by: actor,
+          voided: false
+        }]);
+        if (pointsErr) {
+          errors.push(`Created ${normalizedName} but failed points insert: ${formatError(pointsErr)}`);
+        } else {
+          pointsAdded += points;
+        }
+      }
+    }
+
+    await this.log({
+      eventType: 'AUDIT_WIPE',
+      actor,
+      payload: {
+        action: 'MASS_UPLOAD_STUDENTS',
+        attempted: rows.length,
+        created,
+        skipped,
+        pointsAdded,
+        errors: errors.slice(0, 20),
+        timestamp: new Date().toISOString()
+      }
+    });
+
+    return { created, pointsAdded, skipped, errors };
   }
 }
 
