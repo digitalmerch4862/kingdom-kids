@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
-import { Play, X, Info, ChevronRight, Plus, Search } from 'lucide-react';
+import { Play, X, Info, ChevronRight, Plus } from 'lucide-react';
 import { audio } from '../services/audio.service';
 import { safeJsonParse } from '../utils/storage';
 
@@ -263,17 +263,7 @@ const CinemaPage: React.FC = () => {
   const [selectedVideo, setSelectedVideo] = useState<string | null>(null);
   const [selectedCandidate, setSelectedCandidate] = useState<VideoData | null>(null);
   const [selectedCategoryId, setSelectedCategoryId] = useState(CATEGORIES[0]?.id || 'pentateuch');
-  const [isSearchOpen, setIsSearchOpen] = useState(false);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [manualVideoInput, setManualVideoInput] = useState('');
   const { getNextVideoId } = usePlaylistManager();
-  const allVideos = useMemo(() => CATEGORIES.flatMap(c => c.videos), []);
-
-  const filteredVideos = useMemo(() => {
-    const q = searchQuery.trim().toLowerCase();
-    if (!q) return allVideos;
-    return allVideos.filter(v => v.title.toLowerCase().includes(q));
-  }, [allVideos, searchQuery]);
   const selectedCategory = useMemo(
     () => CATEGORIES.find(c => c.id === selectedCategoryId) || CATEGORIES[0],
     [selectedCategoryId]
@@ -282,38 +272,6 @@ const CinemaPage: React.FC = () => {
   const openVideo = (youtubeId: string) => {
     audio.playClick();
     setSelectedVideo(youtubeId);
-  };
-
-  const extractYoutubeId = (input: string): string | null => {
-    const raw = input.trim();
-    if (!raw) return null;
-    if (/^[a-zA-Z0-9_-]{11}$/.test(raw)) return raw;
-    const shortMatch = raw.match(/youtu\.be\/([a-zA-Z0-9_-]{11})/);
-    if (shortMatch) return shortMatch[1];
-    const watchMatch = raw.match(/[?&]v=([a-zA-Z0-9_-]{11})/);
-    if (watchMatch) return watchMatch[1];
-    const embedMatch = raw.match(/embed\/([a-zA-Z0-9_-]{11})/);
-    if (embedMatch) return embedMatch[1];
-    return null;
-  };
-
-  const playSelectedCandidate = () => {
-    if (!selectedCandidate) return;
-    openVideo(selectedCandidate.youtubeId);
-  };
-
-  const playManualVideo = () => {
-    const id = extractYoutubeId(manualVideoInput);
-    if (!id) return;
-    setSelectedCandidate({
-      id: `manual-${id}`,
-      title: 'Manual Video',
-      youtubeId: id,
-      duration: ''
-    });
-    openVideo(id);
-    setManualVideoInput('');
-    setIsSearchOpen(false);
   };
 
   const closeVideo = () => {
@@ -375,13 +333,7 @@ const CinemaPage: React.FC = () => {
           <h3 className="text-[11px] md:text-xs font-black uppercase tracking-[0.2em] text-violet-100">
             {selectedCategory.title}
           </h3>
-          <button
-            onClick={playSelectedCandidate}
-            disabled={!selectedCandidate}
-            className="flex items-center gap-2 px-4 py-2 rounded-lg bg-pink-500 text-white text-[10px] font-black uppercase tracking-widest disabled:opacity-40"
-          >
-            <Play size={14} fill="currentColor" /> {selectedCandidate ? 'Play' : 'Select'}
-          </button>
+          <span className="text-[10px] text-violet-200/70 font-black uppercase tracking-widest">Tap card to play</span>
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 md:gap-4">
@@ -391,6 +343,7 @@ const CinemaPage: React.FC = () => {
               onClick={() => {
                 audio.playClick();
                 setSelectedCandidate(video);
+                openVideo(video.youtubeId);
               }}
               className={`relative rounded-xl p-[1px] transition-all cursor-pointer ${
                 selectedCandidate?.youtubeId === video.youtubeId
@@ -399,7 +352,7 @@ const CinemaPage: React.FC = () => {
               }`}
             >
               <div className="rounded-xl bg-[#110c2a] min-h-[210px] p-4 flex flex-col">
-                <div className="aspect-video rounded-lg overflow-hidden border border-white/10 mb-3">
+                <div className="relative aspect-video rounded-lg overflow-hidden border border-white/10 mb-3">
                   <img
                     src={`https://img.youtube.com/vi/${video.youtubeId}/mqdefault.jpg`}
                     alt={video.title}
@@ -409,6 +362,11 @@ const CinemaPage: React.FC = () => {
                       target.src = 'https://placehold.co/640x360/1f2937/white?text=No+Image';
                     }}
                   />
+                  <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                    <div className="w-12 h-12 rounded-full bg-black/55 border border-white/30 flex items-center justify-center">
+                      <Play size={20} fill="white" className="ml-0.5 text-white" />
+                    </div>
+                  </div>
                 </div>
                 <p className="text-sm font-black uppercase tracking-tight text-white leading-tight">{video.title}</p>
                 <p className="text-[11px] text-violet-200/80 mt-1">{video.duration || '4m'}</p>
@@ -417,6 +375,7 @@ const CinemaPage: React.FC = () => {
                     onClick={(e) => {
                       e.stopPropagation();
                       setSelectedCandidate(video);
+                      openVideo(video.youtubeId);
                     }}
                     className={`w-full py-2 rounded-lg text-[10px] font-black uppercase tracking-widest ${
                       selectedCandidate?.youtubeId === video.youtubeId
@@ -424,7 +383,7 @@ const CinemaPage: React.FC = () => {
                         : 'bg-white/10 text-white hover:bg-white/20'
                     }`}
                   >
-                    {selectedCandidate?.youtubeId === video.youtubeId ? 'Selected' : 'Select'}
+                    {selectedCandidate?.youtubeId === video.youtubeId ? 'Playing Selected' : 'Play Now'}
                   </button>
                 </div>
               </div>
@@ -432,63 +391,6 @@ const CinemaPage: React.FC = () => {
           ))}
         </div>
       </div>
-
-      {/* Floating Search */}
-      <button
-        onClick={() => setIsSearchOpen((v) => !v)}
-        className="fixed bottom-8 right-8 z-[60] w-14 h-14 rounded-full bg-black/80 border border-white/20 text-white shadow-2xl flex items-center justify-center hover:scale-105 transition-all"
-        title="Search and Pick Movie"
-      >
-        <Search size={22} />
-      </button>
-
-      {isSearchOpen && (
-        <div className="fixed bottom-24 right-6 z-[70] w-[92vw] max-w-md bg-[#0f0f10] border border-white/10 rounded-2xl p-4 shadow-2xl">
-          <div className="flex items-center justify-between mb-3">
-            <h4 className="text-xs font-black uppercase tracking-widest text-white">Movie Picker</h4>
-            <button onClick={() => setIsSearchOpen(false)} className="text-gray-400 hover:text-white"><X size={16} /></button>
-          </div>
-          <input
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Search available movies..."
-            className="w-full px-3 py-2 rounded-lg bg-white/10 border border-white/10 text-white text-sm outline-none"
-          />
-          <div className="mt-3 max-h-48 overflow-y-auto space-y-2">
-            {filteredVideos.slice(0, 20).map((video) => (
-              <button
-                key={`search-${video.id}`}
-                onClick={() => {
-                  setSelectedCandidate(video);
-                  setIsSearchOpen(false);
-                }}
-                className="w-full text-left px-3 py-2 rounded-lg bg-white/5 hover:bg-white/10 transition-colors"
-              >
-                <p className="text-[11px] font-bold text-white uppercase">{video.title}</p>
-                <p className="text-[10px] text-gray-400">{video.duration || '-'}</p>
-              </button>
-            ))}
-          </div>
-          <div className="mt-3 border-t border-white/10 pt-3 space-y-2">
-            <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">Manual type (YouTube URL or ID)</p>
-            <div className="flex gap-2">
-              <input
-                value={manualVideoInput}
-                onChange={(e) => setManualVideoInput(e.target.value)}
-                placeholder="e.g. https://youtu.be/FAzQIA_rF1s"
-                className="flex-1 px-3 py-2 rounded-lg bg-white/10 border border-white/10 text-white text-sm outline-none"
-              />
-              <button
-                onClick={playManualVideo}
-                disabled={!manualVideoInput.trim()}
-                className="px-3 py-2 rounded-lg bg-pink-500 text-white text-xs font-black uppercase tracking-widest disabled:opacity-40"
-              >
-                Play
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* Video Player Modal */}
       {selectedVideo && (
