@@ -253,13 +253,13 @@ const ControlCenterPage: React.FC = () => {
     }
   };
 
-  const parseMassUploadRows = (raw: string): { fullName: string; classLabel?: string; points?: number }[] => {
+  const parseMassUploadRows = (raw: string): { fullName: string; classLabel?: string; guardianName?: string; guardianPhone?: string; points?: number }[] => {
     const lines = raw
       .split(/\r?\n/)
       .map(line => line.trim())
       .filter(Boolean);
 
-    const rows: { fullName: string; classLabel?: string; points?: number }[] = [];
+    const rows: { fullName: string; classLabel?: string; guardianName?: string; guardianPhone?: string; points?: number }[] = [];
 
     lines.forEach((line) => {
       const cells = line.includes('\t')
@@ -269,25 +269,45 @@ const ControlCenterPage: React.FC = () => {
       if (!cells.length) return;
 
       const maybeClass = cells[0] || '';
-      const classLike = /^\d+\s*-\s*\d+$/.test(maybeClass);
-      let maybeName = cells.length > 1 ? cells[1] : cells[0];
-      let classLabel = cells.length > 1 ? maybeClass : '';
+      const firstName = cells[1] || '';
+      const lastName = cells[2] || '';
+      const guardianName = cells[3] || '';
+      const guardianPhone = cells[4] || '';
+      const maybePointsCell = cells.find((c, i) => i >= 5 && /^\d+$/.test(c)) || '';
+      const points = maybePointsCell ? Number(maybePointsCell) : 0;
 
-      // If CSV is "Lastname, Firstname" with no class column, rebuild full name.
-      if (!line.includes('\t') && cells.length === 2 && !classLike) {
-        maybeName = `${cells[0]}, ${cells[1]}`;
+      // Skip common header rows.
+      if (
+        /^class$/i.test(maybeClass) ||
+        /^first\s*name$/i.test(firstName) ||
+        /^last\s*name$/i.test(lastName)
+      ) return;
+
+      let maybeName = '';
+      let classLabel = maybeClass;
+      let parsedGuardian = guardianName;
+      let parsedPhone = guardianPhone;
+
+      if (firstName || lastName) {
+        maybeName = `${firstName} ${lastName}`.trim();
+      } else if (cells.length >= 2) {
+        // fallback older formats
+        maybeName = cells[1];
+      } else {
+        maybeName = cells[0];
         classLabel = '';
       }
 
-      const maybePointsCell = cells.find(c => /^\d+$/.test(c)) || '';
-      const points = maybePointsCell ? Number(maybePointsCell) : 0;
-
-      // Skip common header rows from spreadsheet paste.
-      if (/^class$/i.test(maybeClass) || /^full\s*name$/i.test(maybeName)) return;
+      if (!firstName && !lastName && cells.length >= 5) {
+        parsedGuardian = cells[3] || '';
+        parsedPhone = cells[4] || '';
+      }
 
       rows.push({
         fullName: maybeName,
         classLabel,
+        guardianName: parsedGuardian,
+        guardianPhone: parsedPhone,
         points
       });
     });
@@ -547,14 +567,14 @@ const ControlCenterPage: React.FC = () => {
             <div>
               <h4 className="font-black text-gray-800 uppercase text-xs tracking-wide">Mass Upload Students</h4>
               <p className="text-[10px] text-gray-500 font-bold mt-1 leading-relaxed">
-                Paste rows from sheet. Supported: "Class, Full Name" or "Class, Full Name, Points". Access keys auto-generate as YYYY-###.
+                Paste rows from sheet using: Class, First Name, Last Name, Guardian Name, Contact No (optional points at column 6+). Access keys auto-generate as YYYY-###.
               </p>
             </div>
             <textarea
               value={massUploadInput}
               onChange={(e) => setMassUploadInput(e.target.value)}
               rows={8}
-              placeholder={`Class\tFull Name\tPoints\n4-6\tAbunio, Hailey\t0\n4-6\tAgustin, Nasya Zoey S.\t10`}
+              placeholder={`Class\tFirst Name\tLast Name\tGuardian Name\tContact No\n4-6\tHailey\tAbunio\t\t\n4-6\tNasya\tAgustin\tLuchie\t9770620616`}
               className="w-full px-4 py-3 bg-white border border-blue-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-200 font-bold text-[11px] text-gray-700"
             />
             <button

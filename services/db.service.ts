@@ -845,67 +845,68 @@ class DatabaseService {
   }
 
   async deleteAllStudents(actor: string): Promise<{ students: number; attendance: number; points: number; embeddings: number; stories: number; profiles: number; }> {
+    const { data: studentRows, error: studentsReadErr } = await supabase.from('students').select('id');
+    if (studentsReadErr) throw new Error(formatError(studentsReadErr));
+    const studentIds = (studentRows || []).map((r: any) => r.id).filter(Boolean);
+
     const [
-      studentsCount,
       attendanceCount,
       pointsCount,
-      embeddingsCount,
-      storiesCount,
-      profilesCount
+      embeddingsCount
     ] = await Promise.all([
-      supabase.from('students').select('id', { count: 'exact', head: true }),
-      supabase.from('attendance_sessions').select('id', { count: 'exact', head: true }),
-      supabase.from('point_ledger').select('id', { count: 'exact', head: true }),
-      supabase.from('face_embeddings').select('id', { count: 'exact', head: true }),
-      supabase.from('story_history').select('id', { count: 'exact', head: true }),
-      supabase.from('kingdom_kids_profiles').select('id', { count: 'exact', head: true })
+      studentIds.length ? supabase.from('attendance_sessions').select('id', { count: 'exact', head: true }).in('student_id', studentIds) : Promise.resolve({ count: 0 } as any),
+      studentIds.length ? supabase.from('point_ledger').select('id', { count: 'exact', head: true }).in('student_id', studentIds) : Promise.resolve({ count: 0 } as any),
+      studentIds.length ? supabase.from('face_embeddings').select('id', { count: 'exact', head: true }).in('student_id', studentIds) : Promise.resolve({ count: 0 } as any)
     ]);
 
-    // Delete dependent records first to avoid FK violations across varied environments.
-    const { error: attendanceErr } = await supabase.from('attendance_sessions').delete().neq('id', '');
-    if (attendanceErr) throw new Error(formatError(attendanceErr));
+    // Delete linked records by student_id/user_id/id to avoid schema differences.
+    if (studentIds.length) {
+      const { error: attendanceErr } = await supabase.from('attendance_sessions').delete().in('student_id', studentIds);
+      if (attendanceErr) throw new Error(formatError(attendanceErr));
 
-    const { error: pointsErr } = await supabase.from('point_ledger').delete().neq('id', '');
-    if (pointsErr) throw new Error(formatError(pointsErr));
+      const { error: pointsErr } = await supabase.from('point_ledger').delete().in('student_id', studentIds);
+      if (pointsErr) throw new Error(formatError(pointsErr));
 
-    const { error: embeddingsErr } = await supabase.from('face_embeddings').delete().neq('id', '');
-    if (embeddingsErr) throw new Error(formatError(embeddingsErr));
+      const { error: embeddingsErr } = await supabase.from('face_embeddings').delete().in('student_id', studentIds);
+      if (embeddingsErr) throw new Error(formatError(embeddingsErr));
 
-    const { error: storiesErr } = await supabase.from('story_history').delete().neq('id', '');
-    if (storiesErr) throw new Error(formatError(storiesErr));
+      // Best-effort optional tables.
+      await supabase.from('story_history').delete().in('user_id', studentIds);
+      await supabase.from('kingdom_kids_profiles').delete().in('id', studentIds);
 
-    const { error: profilesErr } = await supabase.from('kingdom_kids_profiles').delete().neq('id', '');
-    if (profilesErr) throw new Error(formatError(profilesErr));
+      const { error: studentsErr } = await supabase.from('students').delete().in('id', studentIds);
+      if (studentsErr) throw new Error(formatError(studentsErr));
+    }
 
-    const { error: studentsErr } = await supabase.from('students').delete().neq('id', '');
-    if (studentsErr) throw new Error(formatError(studentsErr));
+    const storiesCount = studentIds.length;
+    const profilesCount = studentIds.length;
 
     await this.log({
       eventType: 'AUDIT_WIPE',
       actor,
       payload: {
         action: 'DELETE_ALL_STUDENTS',
-        students: studentsCount.count || 0,
+        students: studentIds.length,
         attendance: attendanceCount.count || 0,
         points: pointsCount.count || 0,
         embeddings: embeddingsCount.count || 0,
-        stories: storiesCount.count || 0,
-        profiles: profilesCount.count || 0,
+        stories: storiesCount,
+        profiles: profilesCount,
         timestamp: new Date().toISOString()
       }
     });
 
     return {
-      students: studentsCount.count || 0,
+      students: studentIds.length,
       attendance: attendanceCount.count || 0,
       points: pointsCount.count || 0,
       embeddings: embeddingsCount.count || 0,
-      stories: storiesCount.count || 0,
-      profiles: profilesCount.count || 0
+      stories: storiesCount,
+      profiles: profilesCount
     };
   }
 
-  async bulkImportStudents(rows: Array<{ fullName: string; classLabel?: string; points?: number }>, actor: string): Promise<{ created: number; pointsAdded: number; skipped: number; errors: string[]; }> {
+  async bulkImportStudents(rows: Array<{ fullName: string; classLabel?: string; guardianName?: string; guardianPhone?: string; points?: number }>, actor: string): Promise<{ created: number; pointsAdded: number; skipped: number; errors: string[]; }> {
     if (!rows.length) return { created: 0, pointsAdded: 0, skipped: 0, errors: [] };
 
     const existing = await this.getStudents();
@@ -934,13 +935,15 @@ class DatabaseService {
 
       const accessKey = keys[keyIndex++];
       const ageGroup = this.mapClassToAgeGroup(row.classLabel);
+      const guardianName = String(row.guardianName || '').trim().toUpperCase();
+      const guardianPhone = String(row.guardianPhone || '').replace(/\D/g, '').slice(0, 11);
 
       const { data: inserted, error: insertErr } = await supabase.from('students').insert([{
         full_name: normalizedName,
         age_group: ageGroup,
         access_key: accessKey,
-        guardian_name: '',
-        guardian_phone: '',
+        guardian_name: guardianName,
+        guardian_phone: guardianPhone,
         notes: 'MASS UPLOAD',
         is_enrolled: false,
         consecutive_absences: 0,
