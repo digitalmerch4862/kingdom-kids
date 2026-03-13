@@ -28,6 +28,10 @@ interface StudentAnalyticsData {
   categoryBreakdown: CategoryBreakdown[];
   recentActivity: PointLedger[];
   totalPoints: number;
+  sundayScores: Array<{ label: string; points: number }>;
+  monthlyScores: Array<{ label: string; points: number }>;
+  quarterlyScores: Array<{ label: string; points: number }>;
+  yearlyScores: Array<{ label: string; points: number }>;
 }
 
 // Category colors matching the app's pink theme
@@ -43,6 +47,13 @@ const CATEGORY_COLORS: Record<string, string> = {
 const getCategoryColor = (category: string): string => {
   return CATEGORY_COLORS[category] || '#ec4899';
 };
+
+const toLocalDate = (dateStr: string) => {
+  const [y, m, d] = dateStr.split('-').map(Number);
+  return new Date(y, (m || 1) - 1, d || 1);
+};
+
+const getQuarter = (monthIndex: number) => Math.floor(monthIndex / 3) + 1;
 
 export const StudentAnalyticsModal: React.FC<StudentAnalyticsModalProps> = ({
   student,
@@ -77,7 +88,35 @@ export const StudentAnalyticsModal: React.FC<StudentAnalyticsModalProps> = ({
       
       // Fetch recent activity (last 5 entries)
       const recentActivity = await db.getStudentLedger(student.id, 5);
-      
+
+      // Fetch all ledger entries for period analytics
+      const allLedger = await db.getPointsLedger();
+      const studentLedger = allLedger
+        .filter((l) => l.studentId === student.id && !l.voided)
+        .sort((a, b) => a.entryDate.localeCompare(b.entryDate));
+
+      const sundayMap = new Map<string, number>();
+      const monthMap = new Map<string, number>();
+      const quarterMap = new Map<string, number>();
+      const yearMap = new Map<string, number>();
+
+      studentLedger.forEach((entry) => {
+        const d = toLocalDate(entry.entryDate);
+        const sundayLabel = d.toLocaleDateString('en-US', {
+          month: 'short',
+          day: 'numeric',
+          year: 'numeric'
+        });
+        const monthLabel = d.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
+        const quarterLabel = `Q${getQuarter(d.getMonth())} ${d.getFullYear()}`;
+        const yearLabel = String(d.getFullYear());
+
+        sundayMap.set(sundayLabel, (sundayMap.get(sundayLabel) || 0) + entry.points);
+        monthMap.set(monthLabel, (monthMap.get(monthLabel) || 0) + entry.points);
+        quarterMap.set(quarterLabel, (quarterMap.get(quarterLabel) || 0) + entry.points);
+        yearMap.set(yearLabel, (yearMap.get(yearLabel) || 0) + entry.points);
+      });
+
       // Calculate total points
       const totalPoints = categoryData.reduce((sum: number, cat: CategoryBreakdown) => sum + cat.points, 0);
 
@@ -85,7 +124,11 @@ export const StudentAnalyticsModal: React.FC<StudentAnalyticsModalProps> = ({
         dailyPoints: dailyPointsData,
         categoryBreakdown: categoryData,
         recentActivity,
-        totalPoints
+        totalPoints,
+        sundayScores: Array.from(sundayMap, ([label, points]) => ({ label, points })).reverse(),
+        monthlyScores: Array.from(monthMap, ([label, points]) => ({ label, points })).reverse(),
+        quarterlyScores: Array.from(quarterMap, ([label, points]) => ({ label, points })).reverse(),
+        yearlyScores: Array.from(yearMap, ([label, points]) => ({ label, points })).reverse()
       });
     } catch (err) {
       setError('Failed to load analytics data');
@@ -262,6 +305,22 @@ export const StudentAnalyticsModal: React.FC<StudentAnalyticsModalProps> = ({
                       <p className="text-xs font-black uppercase tracking-widest">No recent activity</p>
                     </div>
                   )}
+                </div>
+              </div>
+
+              {/* Period Analytics */}
+              <div>
+                <div className="flex items-center gap-2 mb-4">
+                  <Calendar size={18} className="text-pink-500" />
+                  <h3 className="text-xs font-black uppercase tracking-widest text-gray-800">
+                    Score by Sunday / Month / Quarter / Year
+                  </h3>
+                </div>
+                <div className="grid md:grid-cols-2 gap-4">
+                  <PeriodScoreCard title="Per Sunday" rows={data.sundayScores} />
+                  <PeriodScoreCard title="Per Month" rows={data.monthlyScores} />
+                  <PeriodScoreCard title="Per Quarter" rows={data.quarterlyScores} />
+                  <PeriodScoreCard title="Per Year" rows={data.yearlyScores} />
                 </div>
               </div>
             </>
@@ -461,3 +520,23 @@ const CategoryBreakdownChart: React.FC<{ data: CategoryBreakdown[] }> = ({ data 
 };
 
 export default StudentAnalyticsModal;
+
+const PeriodScoreCard: React.FC<{ title: string; rows: Array<{ label: string; points: number }> }> = ({ title, rows }) => {
+  return (
+    <div className="bg-gray-50 rounded-2xl p-4 border border-pink-50">
+      <h4 className="text-[10px] font-black uppercase tracking-widest text-gray-700 mb-3">{title}</h4>
+      <div className="space-y-2 max-h-44 overflow-y-auto pr-1">
+        {rows.length > 0 ? rows.map((row) => (
+          <div key={`${title}-${row.label}`} className="flex items-center justify-between bg-white rounded-xl px-3 py-2 border border-pink-50">
+            <span className="text-[11px] font-bold text-gray-700 uppercase">{row.label}</span>
+            <span className="text-[12px] font-black text-pink-500">{row.points}</span>
+          </div>
+        )) : (
+          <div className="text-[10px] font-black uppercase tracking-widest text-gray-400 py-3 text-center">
+            No data
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
