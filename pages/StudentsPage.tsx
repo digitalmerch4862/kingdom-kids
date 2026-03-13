@@ -360,7 +360,7 @@ const StudentsPage: React.FC<{ user: UserSession }> = ({ user }) => {
       let html = `
         <html>
           <head>
-            <title>Facilitator Report - ${incomingSundayKey}</title>
+            <title></title>
             <style>
               @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap');
               @page { size: A4 portrait; margin: 10mm; }
@@ -373,6 +373,14 @@ const StudentsPage: React.FC<{ user: UserSession }> = ({ user }) => {
               }
               .page:last-child { page-break-after: auto; break-after: auto; }
               .header { margin-bottom: 30px; }
+              .report-title {
+                font-weight: 900;
+                text-transform: uppercase;
+                font-size: 24px;
+                letter-spacing: 0.03em;
+                margin: 0 0 18px 0;
+                text-align: center;
+              }
               .header-row { display: flex; justify-content: space-between; margin-bottom: 10px; }
               .header-label { font-weight: 900; text-transform: uppercase; font-size: 14px; color: #666; width: 120px; }
               .header-value { font-weight: 700; text-transform: uppercase; font-size: 15px; border-bottom: 2px solid #EEE; flex: 1; padding-bottom: 2px; min-height: 26px; line-height: 1.25; }
@@ -422,6 +430,7 @@ const StudentsPage: React.FC<{ user: UserSession }> = ({ user }) => {
 
         html += `
           <div class="page">
+            <h1 class="report-title">Kingdom Kids Attendance Sheet</h1>
             <div class="header">
               <div class="header-row">
                 <span class="header-label">Date:</span>
