@@ -104,7 +104,12 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
       const student = await db.getStudentByNo(cleanKey);
       if (student) {
         audio.playYehey();
-        await db.ensureProfile(student.id, student.fullName);
+        // Do not block login if profile table has restricted policy.
+        try {
+          await db.ensureProfile(student.id, student.fullName);
+        } catch (profileErr) {
+          console.warn('Profile sync skipped during login:', profileErr);
+        }
         onLogin('PARENTS', getFirstName(student.fullName).toUpperCase(), student.id);
       } else {
         audio.playClick();
