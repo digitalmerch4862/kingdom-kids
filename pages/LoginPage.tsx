@@ -34,6 +34,7 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
 
   // Registration Modal State
   const [showRegisterModal, setShowRegisterModal] = useState(false);
+  const [isOpeningRegister, setIsOpeningRegister] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [regError, setRegError] = useState('');
   const [newAccessKey, setNewAccessKey] = useState<string | null>(null);
@@ -237,8 +238,18 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
     }
   };
 
+  const openRegisterModal = () => {
+    if (isOpeningRegister) return;
+    audio.playClick();
+    setIsOpeningRegister(true);
+    setTimeout(() => {
+      setShowRegisterModal(true);
+      setIsOpeningRegister(false);
+    }, 120);
+  };
+
   return (
-    <div className="min-h-screen w-full flex items-center justify-center p-4 bg-[#fdf2f8] relative">
+    <div className="min-h-screen min-h-[100svh] w-full flex items-center justify-center p-2 sm:p-4 bg-[#fdf2f8] relative overflow-hidden">
       {showSplash && (
         <div className={`fixed inset-0 z-[9999] bg-white flex flex-col items-center justify-center transition-opacity duration-500 ease-in-out ${isFading ? 'opacity-0' : 'opacity-100'}`}>
           <img src="/apple-touch-icon.png" alt="Kingdom Kids" className="w-64 md:w-80 mb-8 animate-in zoom-in duration-700 object-contain" />
@@ -250,18 +261,18 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
         </div>
       )}
 
-      <div className="max-w-md w-full">
-        <div className="bg-white p-10 rounded-[3rem] shadow-2xl shadow-pink-200/50 border border-pink-50 text-center animate-in fade-in zoom-in-95 duration-500">
-          <img src="/apple-touch-icon.png" alt="Kingdom Kids" className="w-48 mx-auto mb-4 object-contain" />
-          <p className="text-gray-400 font-bold uppercase tracking-widest text-[10px] mb-8">Access Portal</p>
+      <div className="max-w-md w-full h-[calc(100svh-16px)] sm:h-auto">
+        <div className="bg-white p-6 sm:p-10 rounded-[2.5rem] sm:rounded-[3rem] shadow-2xl shadow-pink-200/50 border border-pink-50 text-center animate-in fade-in zoom-in-95 duration-500 h-full sm:h-auto overflow-hidden flex flex-col">
+          <img src="/apple-touch-icon.png" alt="Kingdom Kids" className="w-36 sm:w-48 mx-auto mb-2 sm:mb-4 object-contain" />
+          <p className="text-gray-400 font-bold uppercase tracking-widest text-[10px] mb-4 sm:mb-8">Access Portal</p>
 
-          <div className="flex bg-gray-50 p-1 rounded-2xl mb-8 border border-gray-100">
-            <button type="button" className={`flex-1 py-3 rounded-xl text-xs font-black transition-all tracking-widest uppercase ${role === 'PARENTS' ? 'bg-pink-500 text-white shadow-lg' : 'text-gray-400 hover:text-pink-400'}`} onClick={() => setRole('PARENTS')}>Parents/Student</button>
-            <button type="button" className={`flex-1 py-3 rounded-xl text-xs font-black transition-all tracking-widest uppercase ${role === 'TEACHER' ? 'bg-pink-500 text-white shadow-lg' : 'text-gray-400 hover:text-pink-400'}`} onClick={() => setRole('TEACHER')}>Teacher</button>
+          <div className="flex bg-gray-50 p-1 rounded-2xl mb-4 sm:mb-8 border border-gray-100">
+            <button type="button" className={`flex-1 py-2.5 sm:py-3 rounded-xl text-[11px] sm:text-xs font-black transition-all tracking-wide sm:tracking-widest uppercase ${role === 'PARENTS' ? 'bg-pink-500 text-white shadow-lg' : 'text-gray-400 hover:text-pink-400'}`} onClick={() => setRole('PARENTS')}>Parents/Student</button>
+            <button type="button" className={`flex-1 py-2.5 sm:py-3 rounded-xl text-[11px] sm:text-xs font-black transition-all tracking-wide sm:tracking-widest uppercase ${role === 'TEACHER' ? 'bg-pink-500 text-white shadow-lg' : 'text-gray-400 hover:text-pink-400'}`} onClick={() => setRole('TEACHER')}>Teacher</button>
           </div>
 
           {role === 'TEACHER' ? (
-            <form onSubmit={handleSubmit} className="space-y-5 text-left animate-in fade-in duration-300">
+            <form onSubmit={handleSubmit} className="space-y-4 sm:space-y-5 text-left animate-in fade-in duration-300">
               <div className="space-y-1">
                 <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Username</label>
                 <input
@@ -283,18 +294,18 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
                 />
               </div>
               {error && <p className="text-red-500 text-[10px] font-black uppercase tracking-widest text-center mt-2 animate-in shake">{error}</p>}
-              <button type="submit" className="w-full bg-pink-500 hover:bg-pink-600 text-white font-black py-5 rounded-2xl transition-all shadow-xl shadow-pink-100 uppercase tracking-widest text-xs mt-6 active:scale-[0.98]">Login to Portal</button>
+              <button type="submit" className="w-full bg-pink-500 hover:bg-pink-600 text-white font-black py-4 sm:py-5 rounded-2xl transition-all shadow-xl shadow-pink-100 uppercase tracking-widest text-xs mt-4 sm:mt-6 active:scale-[0.98]">Login to Portal</button>
             </form>
           ) : (
-            <div className="space-y-6">
-              <form onSubmit={handleParentLoginSubmit} className="space-y-5 animate-in fade-in duration-300">
-                <div className="space-y-2">
+            <div className="space-y-3 sm:space-y-6 flex-1 flex flex-col min-h-0">
+              <form onSubmit={handleParentLoginSubmit} className="space-y-3 sm:space-y-5 animate-in fade-in duration-300">
+                <div className="space-y-1 sm:space-y-2">
                   <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest block text-center">Your Access Key</label>
                   <input
                     type="text"
                     required
                     disabled={isVerifying}
-                    className="w-full px-6 py-4 bg-gray-50 border border-gray-100 rounded-2xl outline-none focus:ring-2 focus:ring-pink-300 transition-all uppercase font-black text-gray-700 placeholder:text-gray-300 text-center tracking-[0.25em] text-lg disabled:opacity-50"
+                    className="w-full px-6 py-3.5 sm:py-4 bg-gray-50 border border-gray-100 rounded-2xl outline-none focus:ring-2 focus:ring-pink-300 transition-all uppercase font-black text-gray-700 placeholder:text-gray-300 text-center tracking-[0.2em] sm:tracking-[0.25em] text-base sm:text-lg disabled:opacity-50"
                     value={accessKey}
                     onChange={handleAccessKeyChange}
                     placeholder="YYYY### or KK-..."
@@ -309,14 +320,22 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
                 <button
                   type="submit"
                   disabled={isVerifying || accessKey.length < 3}
-                  className="w-full bg-pink-500 hover:bg-pink-600 text-white font-black py-5 rounded-2xl transition-all shadow-xl shadow-pink-100 uppercase tracking-widest text-xs mt-4 active:scale-[0.98] disabled:opacity-50 disabled:bg-gray-300 disabled:shadow-none"
+                  className="w-full bg-pink-500 hover:bg-pink-600 text-white font-black py-4 sm:py-5 rounded-2xl transition-all shadow-xl shadow-pink-100 uppercase tracking-widest text-xs mt-3 sm:mt-4 active:scale-[0.98] disabled:opacity-50 disabled:bg-gray-300 disabled:shadow-none"
                 >
                   {isVerifying ? 'CONNECTING...' : 'ENTER KINGDOM DASHBOARD'}
                 </button>
               </form>
-              <div className="relative flex py-2 items-center"><div className="flex-grow border-t border-gray-100"></div><span className="flex-shrink mx-4 text-[8px] font-black text-gray-300 uppercase tracking-widest">OR</span><div className="flex-grow border-t border-gray-100"></div></div>
-              <button onClick={() => { audio.playClick(); setShowRegisterModal(true); }} className="w-full py-6 text-pink-500 font-black text-xl uppercase tracking-widest hover:bg-pink-50 rounded-3xl transition-all border-4 border-pink-200 border-dashed shadow-lg">✨ Sign Up My Kids</button>
-              <div className="mt-2 text-center"><button type="button" onClick={() => { audio.playClick(); onLogin('PARENTS', 'GUEST', 'GUEST_DEMO'); }} className="w-full bg-gray-100 text-black font-black py-4 rounded-2xl transition-all border-2 border-black text-lg uppercase tracking-widest hover:bg-gray-200 active:scale-[0.98]">Continue as Guest</button></div>
+              <div className="mt-auto space-y-2 sm:space-y-3">
+                <div className="relative flex py-1.5 sm:py-2 items-center"><div className="flex-grow border-t border-gray-100"></div><span className="flex-shrink mx-4 text-[8px] font-black text-gray-300 uppercase tracking-widest">OR</span><div className="flex-grow border-t border-gray-100"></div></div>
+                <button
+                  onClick={openRegisterModal}
+                  disabled={isOpeningRegister}
+                  className="w-full py-4 sm:py-6 text-pink-500 font-black text-lg sm:text-xl uppercase tracking-wide sm:tracking-widest bg-gradient-to-r from-pink-50 to-rose-50 hover:from-pink-100 hover:to-rose-100 rounded-3xl transition-all border-[3px] sm:border-4 border-pink-200 border-dashed shadow-lg disabled:opacity-60"
+                >
+                  {isOpeningRegister ? 'Opening...' : '✨ Sign Up My Kids'}
+                </button>
+                <div className="text-center"><button type="button" onClick={() => { audio.playClick(); onLogin('PARENTS', 'GUEST', 'GUEST_DEMO'); }} className="w-full bg-gray-100 text-black font-black py-3.5 sm:py-4 rounded-2xl transition-all border-2 border-black text-base sm:text-lg uppercase tracking-wide sm:tracking-widest hover:bg-gray-200 active:scale-[0.98]">Continue as Guest</button></div>
+              </div>
             </div>
           )}
         </div>
