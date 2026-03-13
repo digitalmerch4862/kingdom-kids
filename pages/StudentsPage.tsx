@@ -306,8 +306,23 @@ const StudentsPage: React.FC<{ user: UserSession }> = ({ user }) => {
     try {
       const ledger = await db.getPointsLedger();
       const board = await db.getTeacherBoard();
-      const today = new Date().toISOString().split('T')[0];
-      const assignment = board.find(b => b.activity_date === today);
+      const today = new Date();
+      const incomingSunday = new Date(today);
+      const daysUntilSunday = (7 - today.getDay()) % 7 || 7;
+      incomingSunday.setDate(today.getDate() + daysUntilSunday);
+      const incomingSundayKey = `${incomingSunday.getFullYear()}-${String(incomingSunday.getMonth() + 1).padStart(2, '0')}-${String(incomingSunday.getDate()).padStart(2, '0')}`;
+      const assignment = board.find(b => b.activity_date === incomingSundayKey);
+
+      const splitTeacherAssignment = (raw?: string) => {
+        const parts = (raw || '')
+          .split('/')
+          .map(p => p.trim())
+          .filter(Boolean);
+        return {
+          teacher: parts[0] || '---',
+          coTeacher: parts[1] || '---'
+        };
+      };
 
       const studentPoints = ledger.reduce((acc, l) => {
         if (!l.voided) {
@@ -325,20 +340,17 @@ const StudentsPage: React.FC<{ user: UserSession }> = ({ user }) => {
         { 
           name: '3-6 YEARS OLD', 
           key: '3-6', 
-          teacher: assignment?.age_group_3_6.split('/')[0]?.trim() || '---', 
-          coTeacher: assignment?.age_group_3_6.split('/')[1]?.trim() || '---' 
+          ...splitTeacherAssignment(assignment?.age_group_3_6)
         },
         { 
           name: '7-9 YEARS OLD', 
           key: '7-9', 
-          teacher: assignment?.age_group_7_9.split('/')[0]?.trim() || '---', 
-          coTeacher: assignment?.age_group_7_9.split('/')[1]?.trim() || '---' 
+          ...splitTeacherAssignment(assignment?.age_group_7_9)
         },
         { 
           name: '10-12 YEARS OLD', 
           key: '10-12', 
-          teacher: assignment?.teens.split('/')[0]?.trim() || '---', 
-          coTeacher: assignment?.teens.split('/')[1]?.trim() || '---' 
+          ...splitTeacherAssignment(assignment?.teens)
         }
       ];
 
@@ -348,7 +360,7 @@ const StudentsPage: React.FC<{ user: UserSession }> = ({ user }) => {
       let html = `
         <html>
           <head>
-            <title>Facilitator Report - ${today}</title>
+            <title>Facilitator Report - ${incomingSundayKey}</title>
             <style>
               @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap');
               @page { size: A4 portrait; margin: 10mm; }
@@ -413,7 +425,7 @@ const StudentsPage: React.FC<{ user: UserSession }> = ({ user }) => {
             <div class="header">
               <div class="header-row">
                 <span class="header-label">Date:</span>
-                <span class="header-value">${new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</span>
+                <span class="header-value">${incomingSunday.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</span>
                 <span style="width: 40px"></span>
                 <span class="header-label">Class:</span>
                 <span class="header-value">${group.name}</span>
