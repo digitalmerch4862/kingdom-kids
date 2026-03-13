@@ -37,7 +37,7 @@ class DatabaseService {
     return 'General';
   }
 
-  private async getNextDashedAccessKeys(count: number): Promise<string[]> {
+  private async getNextAccessKeys(count: number): Promise<string[]> {
     const year = String(new Date().getFullYear());
     const { data, error } = await supabase
       .from('students')
@@ -62,7 +62,7 @@ class DatabaseService {
 
     return Array.from({ length: count }, (_, i) => {
       const sequence = String(maxSequence + i + 1).padStart(3, '0');
-      return `${year}-${sequence}`;
+      return `${year}${sequence}`;
     });
   }
 
@@ -911,7 +911,7 @@ class DatabaseService {
 
     const existing = await this.getStudents();
     const existingByName = new Map(existing.map(s => [this.normalizeStudentFullName(s.fullName), s]));
-    const keys = await this.getNextDashedAccessKeys(rows.length);
+    const keys = await this.getNextAccessKeys(rows.length);
     const today = new Date().toISOString().split('T')[0];
 
     let keyIndex = 0;

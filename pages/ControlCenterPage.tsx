@@ -359,7 +359,7 @@ const ControlCenterPage: React.FC = () => {
       return;
     }
 
-    if (!window.confirm(`Import ${rows.length} student rows now?\n\nAccess key format: YYYY-###`)) {
+    if (!window.confirm(`Import ${rows.length} student rows now?\n\nAccess key format: YYYY###`)) {
       return;
     }
 
@@ -630,7 +630,7 @@ const ControlCenterPage: React.FC = () => {
             <div>
               <h4 className="font-black text-gray-800 uppercase text-xs tracking-wide">Mass Upload Students</h4>
               <p className="text-[10px] text-gray-500 font-bold mt-1 leading-relaxed">
-                Paste rows from sheet using: Class, First Name, Last Name, Guardian Name, Contact No (optional points at column 6+). Access keys auto-generate as YYYY-###.
+                Paste rows from sheet using: Class, First Name, Last Name, Guardian Name, Contact No (optional points at column 6+). Access keys auto-generate as YYYY###.
               </p>
             </div>
             <textarea
