@@ -351,42 +351,53 @@ const StudentsPage: React.FC<{ user: UserSession }> = ({ user }) => {
             <title>Facilitator Report - ${today}</title>
             <style>
               @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap');
-              body { font-family: 'Inter', sans-serif; padding: 0; margin: 0; background: white; }
+              @page { size: A4 portrait; margin: 10mm; }
+              * { box-sizing: border-box; }
+              body { font-family: 'Inter', sans-serif; padding: 0; margin: 0; background: white; color: #000; }
               .page { 
-                padding: 40px; 
-                height: 100vh; 
-                box-sizing: border-box; 
+                padding: 8mm;
                 page-break-after: always;
-                display: flex;
-                flex-direction: column;
+                break-after: page;
               }
+              .page:last-child { page-break-after: auto; break-after: auto; }
               .header { margin-bottom: 30px; }
               .header-row { display: flex; justify-content: space-between; margin-bottom: 10px; }
               .header-label { font-weight: 900; text-transform: uppercase; font-size: 14px; color: #666; width: 120px; }
-              .header-value { font-weight: 700; text-transform: uppercase; font-size: 16px; border-bottom: 2px solid #EEE; flex: 1; padding-bottom: 2px; }
+              .header-value { font-weight: 700; text-transform: uppercase; font-size: 15px; border-bottom: 2px solid #EEE; flex: 1; padding-bottom: 2px; min-height: 26px; line-height: 1.25; }
               
-              table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+              table { width: 100%; border-collapse: collapse; margin-top: 10px; table-layout: fixed; }
               th { 
                 text-align: left; 
-                padding: 15px; 
+                padding: 10px 12px; 
                 background: #F9FAFB; 
                 border: 2px solid #EEE; 
                 font-weight: 900; 
                 text-transform: uppercase; 
-                font-size: 12px; 
+                font-size: 11px; 
                 color: #333;
+                line-height: 1.2;
               }
               td { 
-                padding: 15px; 
+                padding: 8px 12px;
                 border: 2px solid #EEE; 
                 font-weight: 700; 
                 text-transform: uppercase; 
-                font-size: 18px; 
+                font-size: 13px; 
+                line-height: 1.25;
                 color: #000;
+                vertical-align: middle;
+                white-space: nowrap;
+                overflow: hidden;
+                text-overflow: ellipsis;
               }
-              .col-points { width: 120px; text-align: center; font-size: 14px; color: #666; }
-              .col-manual { width: 150px; }
-              .empty-row td { height: 45px; }
+              tr { height: 34px; }
+              .col-name { width: 50%; }
+              .col-points { width: 23%; text-align: center; font-size: 12px; color: #666; }
+              .col-manual { width: 27%; }
+              .empty-row td { height: 34px; }
+              @media print {
+                html, body { width: 210mm; }
+              }
             </style>
           </head>
           <body>
@@ -419,7 +430,7 @@ const StudentsPage: React.FC<{ user: UserSession }> = ({ user }) => {
             <table>
               <thead>
                 <tr>
-                  <th>Student Name</th>
+                  <th class="col-name">Student Name</th>
                   <th class="col-points">Outstanding</th>
                   <th class="col-manual">Points</th>
                 </tr>
