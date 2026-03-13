@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
-import { Play, X, Info, ChevronRight, Plus, AlertCircle } from 'lucide-react';
+import { Play, X, Info, ChevronRight, Plus, Search } from 'lucide-react';
 import { audio } from '../services/audio.service';
 import { safeJsonParse } from '../utils/storage';
 
@@ -261,11 +261,59 @@ const ThumbnailCard: React.FC<{ video: VideoData; onOpen: (id: string) => void }
 
 const CinemaPage: React.FC = () => {
   const [selectedVideo, setSelectedVideo] = useState<string | null>(null);
+  const [selectedCandidate, setSelectedCandidate] = useState<VideoData | null>(null);
+  const [selectedCategoryId, setSelectedCategoryId] = useState(CATEGORIES[0]?.id || 'pentateuch');
+  const [isSearchOpen, setIsSearchOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [manualVideoInput, setManualVideoInput] = useState('');
   const { getNextVideoId } = usePlaylistManager();
+  const allVideos = useMemo(() => CATEGORIES.flatMap(c => c.videos), []);
+
+  const filteredVideos = useMemo(() => {
+    const q = searchQuery.trim().toLowerCase();
+    if (!q) return allVideos;
+    return allVideos.filter(v => v.title.toLowerCase().includes(q));
+  }, [allVideos, searchQuery]);
+  const selectedCategory = useMemo(
+    () => CATEGORIES.find(c => c.id === selectedCategoryId) || CATEGORIES[0],
+    [selectedCategoryId]
+  );
 
   const openVideo = (youtubeId: string) => {
     audio.playClick();
     setSelectedVideo(youtubeId);
+  };
+
+  const extractYoutubeId = (input: string): string | null => {
+    const raw = input.trim();
+    if (!raw) return null;
+    if (/^[a-zA-Z0-9_-]{11}$/.test(raw)) return raw;
+    const shortMatch = raw.match(/youtu\.be\/([a-zA-Z0-9_-]{11})/);
+    if (shortMatch) return shortMatch[1];
+    const watchMatch = raw.match(/[?&]v=([a-zA-Z0-9_-]{11})/);
+    if (watchMatch) return watchMatch[1];
+    const embedMatch = raw.match(/embed\/([a-zA-Z0-9_-]{11})/);
+    if (embedMatch) return embedMatch[1];
+    return null;
+  };
+
+  const playSelectedCandidate = () => {
+    if (!selectedCandidate) return;
+    openVideo(selectedCandidate.youtubeId);
+  };
+
+  const playManualVideo = () => {
+    const id = extractYoutubeId(manualVideoInput);
+    if (!id) return;
+    setSelectedCandidate({
+      id: `manual-${id}`,
+      title: 'Manual Video',
+      youtubeId: id,
+      duration: ''
+    });
+    openVideo(id);
+    setManualVideoInput('');
+    setIsSearchOpen(false);
   };
 
   const closeVideo = () => {
@@ -289,71 +337,158 @@ const CinemaPage: React.FC = () => {
   };
 
   return (
-    <div className="bg-[#141414] min-h-[calc(100vh-6rem)] rounded-[2.5rem] p-6 md:p-8 text-white shadow-2xl relative overflow-hidden animate-in fade-in duration-500">
+    <div className="bg-[radial-gradient(circle_at_20%_10%,#4c1d95_0%,#1a1037_35%,#0b0b16_100%)] min-h-[calc(100vh-6rem)] rounded-[2.5rem] p-4 md:p-8 text-white shadow-2xl relative overflow-hidden animate-in fade-in duration-500 border border-violet-400/20">
       
       {/* Navbar */}
-      <div className="flex items-center justify-between mb-8 relative z-20">
+      <div className="flex items-center justify-between mb-5 md:mb-8 relative z-20">
         <div className="flex items-center gap-6">
-          <div className="text-red-600 font-black text-2xl tracking-tighter uppercase">KIDSFLIX</div>
-          <div className="hidden md:flex gap-4 text-[10px] font-bold text-gray-300 uppercase tracking-widest">
-            {['Home', 'Series', 'Movies', 'My List'].map((item) => (
-              <span key={item} className="hover:text-white cursor-pointer transition-colors text-gray-400">{item}</span>
+          <div className="text-pink-400 font-black text-2xl tracking-tighter uppercase">KIDSFLIX</div>
+          <div className="hidden md:block text-[10px] font-black uppercase tracking-[0.2em] text-violet-200/70">
+            Requisitions
+          </div>
+        </div>
+        <div className="text-violet-200/80 hover:text-white cursor-pointer"><Info size={20} /></div>
+      </div>
+
+      {/* Control Panel */}
+      <div className="mb-5 md:mb-7 bg-black/30 border border-violet-300/20 rounded-2xl p-3 md:p-4">
+        <div className="flex flex-wrap gap-2">
+          {CATEGORIES.map((cat) => (
+            <button
+              key={cat.id}
+              onClick={() => setSelectedCategoryId(cat.id)}
+              className={`px-3 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${
+                selectedCategoryId === cat.id
+                  ? 'bg-violet-500/70 text-white border border-violet-300/50'
+                  : 'bg-white/5 text-violet-100/80 border border-white/10 hover:bg-white/10'
+              }`}
+            >
+              {cat.title}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Game Card Selection Grid */}
+      <div className="relative z-10 pb-20">
+        <div className="mb-4 flex items-center justify-between">
+          <h3 className="text-[11px] md:text-xs font-black uppercase tracking-[0.2em] text-violet-100">
+            {selectedCategory.title}
+          </h3>
+          <button
+            onClick={playSelectedCandidate}
+            disabled={!selectedCandidate}
+            className="flex items-center gap-2 px-4 py-2 rounded-lg bg-pink-500 text-white text-[10px] font-black uppercase tracking-widest disabled:opacity-40"
+          >
+            <Play size={14} fill="currentColor" /> {selectedCandidate ? 'Play' : 'Select'}
+          </button>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 md:gap-4">
+          {selectedCategory.videos.map((video) => (
+            <div
+              key={video.id}
+              onClick={() => {
+                audio.playClick();
+                setSelectedCandidate(video);
+              }}
+              className={`relative rounded-xl p-[1px] transition-all cursor-pointer ${
+                selectedCandidate?.youtubeId === video.youtubeId
+                  ? 'bg-gradient-to-b from-yellow-300 to-pink-500 shadow-[0_0_24px_rgba(253,224,71,0.35)]'
+                  : 'bg-gradient-to-b from-violet-300/40 to-violet-900/40 hover:from-violet-300/70 hover:to-pink-600/40'
+              }`}
+            >
+              <div className="rounded-xl bg-[#110c2a] min-h-[210px] p-4 flex flex-col">
+                <div className="aspect-video rounded-lg overflow-hidden border border-white/10 mb-3">
+                  <img
+                    src={`https://img.youtube.com/vi/${video.youtubeId}/mqdefault.jpg`}
+                    alt={video.title}
+                    className="w-full h-full object-cover"
+                    onError={(e) => {
+                      const target = e.target as HTMLImageElement;
+                      target.src = 'https://placehold.co/640x360/1f2937/white?text=No+Image';
+                    }}
+                  />
+                </div>
+                <p className="text-sm font-black uppercase tracking-tight text-white leading-tight">{video.title}</p>
+                <p className="text-[11px] text-violet-200/80 mt-1">{video.duration || '4m'}</p>
+                <div className="mt-auto pt-3">
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setSelectedCandidate(video);
+                    }}
+                    className={`w-full py-2 rounded-lg text-[10px] font-black uppercase tracking-widest ${
+                      selectedCandidate?.youtubeId === video.youtubeId
+                        ? 'bg-yellow-300 text-black'
+                        : 'bg-white/10 text-white hover:bg-white/20'
+                    }`}
+                  >
+                    {selectedCandidate?.youtubeId === video.youtubeId ? 'Selected' : 'Select'}
+                  </button>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Floating Search */}
+      <button
+        onClick={() => setIsSearchOpen((v) => !v)}
+        className="fixed bottom-8 right-8 z-[60] w-14 h-14 rounded-full bg-black/80 border border-white/20 text-white shadow-2xl flex items-center justify-center hover:scale-105 transition-all"
+        title="Search and Pick Movie"
+      >
+        <Search size={22} />
+      </button>
+
+      {isSearchOpen && (
+        <div className="fixed bottom-24 right-6 z-[70] w-[92vw] max-w-md bg-[#0f0f10] border border-white/10 rounded-2xl p-4 shadow-2xl">
+          <div className="flex items-center justify-between mb-3">
+            <h4 className="text-xs font-black uppercase tracking-widest text-white">Movie Picker</h4>
+            <button onClick={() => setIsSearchOpen(false)} className="text-gray-400 hover:text-white"><X size={16} /></button>
+          </div>
+          <input
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder="Search available movies..."
+            className="w-full px-3 py-2 rounded-lg bg-white/10 border border-white/10 text-white text-sm outline-none"
+          />
+          <div className="mt-3 max-h-48 overflow-y-auto space-y-2">
+            {filteredVideos.slice(0, 20).map((video) => (
+              <button
+                key={`search-${video.id}`}
+                onClick={() => {
+                  setSelectedCandidate(video);
+                  setIsSearchOpen(false);
+                }}
+                className="w-full text-left px-3 py-2 rounded-lg bg-white/5 hover:bg-white/10 transition-colors"
+              >
+                <p className="text-[11px] font-bold text-white uppercase">{video.title}</p>
+                <p className="text-[10px] text-gray-400">{video.duration || '-'}</p>
+              </button>
             ))}
           </div>
-        </div>
-        <div className="text-gray-400 hover:text-white cursor-pointer"><Info size={20} /></div>
-      </div>
-
-      {/* Dynamic Hero Section */}
-      <div className="relative w-full aspect-[4/3] md:aspect-[2.35/1] rounded-2xl overflow-hidden shadow-2xl bg-gray-900 mb-10 group">
-        <img 
-          src={HERO_VIDEO.thumbnail}
-          alt="Featured"
-          className="w-full h-full object-cover opacity-60 group-hover:opacity-40 transition-opacity duration-1000 scale-105 group-hover:scale-100"
-        />
-        <div className="absolute inset-0 bg-gradient-to-t from-[#141414] via-[#141414]/20 to-transparent flex flex-col justify-end p-6 md:p-12">
-          <div className="max-w-2xl animate-in slide-in-from-bottom-10 duration-700 space-y-4">
-              <div className="flex items-center gap-3 mb-2">
-                <div className="w-6 h-6 bg-red-600 flex items-center justify-center font-black text-[10px] rounded-sm">N</div>
-                <span className="text-gray-300 text-[10px] font-bold uppercase tracking-[0.2em]">Series</span>
-              </div>
-              <h1 className="text-4xl md:text-6xl font-black text-white uppercase tracking-tighter drop-shadow-xl leading-none">
-                {HERO_VIDEO.title}
-              </h1>
-              <p className="text-gray-200 text-xs md:text-sm font-medium line-clamp-3 md:line-clamp-none leading-relaxed max-w-lg drop-shadow-md">
-                {HERO_VIDEO.description}
-              </p>
-              
-              <div className="flex gap-3 pt-4">
-                <button 
-                  onClick={() => openVideo(HERO_VIDEO.youtubeId)}
-                  className="flex items-center gap-2 bg-white text-black px-6 py-2.5 rounded font-bold uppercase tracking-wide text-xs hover:bg-white/90 transition-all active:scale-95"
-                >
-                  <Play fill="currentColor" size={18} /> Play
-                </button>
-                <button className="flex items-center gap-2 bg-gray-500/40 backdrop-blur-md text-white px-6 py-2.5 rounded font-bold uppercase tracking-wide text-xs hover:bg-gray-500/60 transition-all active:scale-95">
-                  <Info size={18} /> More Info
-                </button>
-              </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Dynamic Rows Generation */}
-      <div className="space-y-8 relative z-10 px-2 pb-20">
-        {CATEGORIES.map((category) => (
-          <div key={category.id} className="space-y-3">
-            <h3 className="text-sm font-bold text-gray-200 hover:text-white transition-colors cursor-pointer flex items-center gap-1 group">
-              {category.title} <ChevronRight size={14} className="opacity-0 group-hover:opacity-100 transition-opacity -translate-x-2 group-hover:translate-x-0" />
-            </h3>
-            <div className="flex overflow-x-auto gap-3 pb-4 pt-2 custom-scrollbar snap-x">
-              {category.videos.map(video => (
-                <ThumbnailCard key={video.id} video={video} onOpen={openVideo} />
-              ))}
+          <div className="mt-3 border-t border-white/10 pt-3 space-y-2">
+            <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">Manual type (YouTube URL or ID)</p>
+            <div className="flex gap-2">
+              <input
+                value={manualVideoInput}
+                onChange={(e) => setManualVideoInput(e.target.value)}
+                placeholder="e.g. https://youtu.be/FAzQIA_rF1s"
+                className="flex-1 px-3 py-2 rounded-lg bg-white/10 border border-white/10 text-white text-sm outline-none"
+              />
+              <button
+                onClick={playManualVideo}
+                disabled={!manualVideoInput.trim()}
+                className="px-3 py-2 rounded-lg bg-pink-500 text-white text-xs font-black uppercase tracking-widest disabled:opacity-40"
+              >
+                Play
+              </button>
             </div>
           </div>
-        ))}
-      </div>
+        </div>
+      )}
 
       {/* Video Player Modal */}
       {selectedVideo && (

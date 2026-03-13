@@ -223,8 +223,12 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
         ageGroup: ageData.group!
       });
 
-      // Ensure profile exists immediately
-      await db.ensureProfile(result.id, fullName);
+      // Do not block sign-up if profile table has restricted policy.
+      try {
+        await db.ensureProfile(result.id, fullName);
+      } catch (profileErr) {
+        console.warn('Profile sync skipped during registration:', profileErr);
+      }
 
       const firstName = formData.firstName.toUpperCase();
       const smsMsg = `Welcome to Kingdom Kids! Student: ${firstName}, Access Key: ${result.access_key}. See you at the Kingdom! 👑`;
