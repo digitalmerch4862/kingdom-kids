@@ -336,7 +336,7 @@ const CinemaPage: React.FC = () => {
           <span className="text-[10px] text-violet-200/70 font-black uppercase tracking-widest">Tap card to play</span>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 md:gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 md:gap-4 max-h-[62vh] overflow-y-auto snap-y snap-mandatory pr-1 custom-scrollbar">
           {selectedCategory.videos.map((video) => (
             <div
               key={video.id}
@@ -345,7 +345,7 @@ const CinemaPage: React.FC = () => {
                 setSelectedCandidate(video);
                 openVideo(video.youtubeId);
               }}
-              className={`relative rounded-xl p-[1px] transition-all cursor-pointer ${
+              className={`relative rounded-xl p-[1px] transition-all cursor-pointer snap-start ${
                 selectedCandidate?.youtubeId === video.youtubeId
                   ? 'bg-gradient-to-b from-yellow-300 to-pink-500 shadow-[0_0_24px_rgba(253,224,71,0.35)]'
                   : 'bg-gradient-to-b from-violet-300/40 to-violet-900/40 hover:from-violet-300/70 hover:to-pink-600/40'
@@ -370,22 +370,6 @@ const CinemaPage: React.FC = () => {
                 </div>
                 <p className="text-sm font-black uppercase tracking-tight text-white leading-tight">{video.title}</p>
                 <p className="text-[11px] text-violet-200/80 mt-1">{video.duration || '4m'}</p>
-                <div className="mt-auto pt-3">
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setSelectedCandidate(video);
-                      openVideo(video.youtubeId);
-                    }}
-                    className={`w-full py-2 rounded-lg text-[10px] font-black uppercase tracking-widest ${
-                      selectedCandidate?.youtubeId === video.youtubeId
-                        ? 'bg-yellow-300 text-black'
-                        : 'bg-white/10 text-white hover:bg-white/20'
-                    }`}
-                  >
-                    {selectedCandidate?.youtubeId === video.youtubeId ? 'Playing Selected' : 'Play Now'}
-                  </button>
-                </div>
               </div>
             </div>
           ))}
