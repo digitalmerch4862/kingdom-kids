@@ -6,6 +6,7 @@ import { audio } from '../services/audio.service';
 import { db } from '../services/db.service';
 import CameraScanner from '../components/CameraScanner';
 import jsQR from 'jsqr';
+import { Camera } from 'lucide-react';
 
 const getFirstName = (fullName: string) => {
   if (!fullName) return "Student";
@@ -29,6 +30,7 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
   const [error, setError] = useState('');
   const [isVerifying, setIsVerifying] = useState(false);
   const [scanStatus, setScanStatus] = useState('');
+  const [isStudentScannerActive, setIsStudentScannerActive] = useState(false);
 
   // Splash Screen State
   const [showSplash, setShowSplash] = useState(true);
@@ -313,17 +315,35 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
               <form onSubmit={handleParentLoginSubmit} className="space-y-3 sm:space-y-5 animate-in fade-in duration-300">
                 <div className="space-y-1 sm:space-y-2">
                   <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest block text-center">Your Access Key</label>
-                  <div className="rounded-2xl overflow-hidden border border-gray-100">
-                    <CameraScanner
-                      onCapture={handleQrCapture}
-                      isScanning={isVerifying}
-                      facingMode="environment"
-                      autoCaptureInterval={550}
-                      label="Scanning..."
-                    />
-                  </div>
+                  {!isStudentScannerActive ? (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        audio.playClick();
+                        setError('');
+                        setScanStatus('');
+                        setIsStudentScannerActive(true);
+                      }}
+                      className="w-full flex items-center justify-center gap-3 px-6 py-5 bg-pink-500 hover:bg-pink-600 text-white rounded-2xl font-black uppercase tracking-widest text-xs shadow-xl shadow-pink-100 transition-all active:scale-[0.98]"
+                    >
+                      <Camera size={18} />
+                      Activate Camera Scan
+                    </button>
+                  ) : (
+                    <div className="rounded-2xl overflow-hidden border border-gray-100">
+                      <CameraScanner
+                        onCapture={handleQrCapture}
+                        isScanning={isVerifying}
+                        facingMode="environment"
+                        autoCaptureInterval={550}
+                        label="Scanning..."
+                      />
+                    </div>
+                  )}
                   <p className="text-[9px] text-gray-300 font-bold uppercase tracking-widest text-center">
-                    {isVerifying ? 'VERIFYING QR...' : (scanStatus || 'SCAN YOUR STUDENT QR CODE')}
+                    {!isStudentScannerActive
+                      ? 'TAP CAMERA BUTTON TO START SCANNING'
+                      : (isVerifying ? 'VERIFYING QR...' : (scanStatus || 'SCAN YOUR STUDENT QR CODE'))}
                   </p>
                 </div>
                 {error && (
