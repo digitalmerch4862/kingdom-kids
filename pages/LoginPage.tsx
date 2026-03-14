@@ -357,7 +357,7 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
                 <button
                   onClick={openRegisterModal}
                   disabled={isOpeningRegister}
-                  className="w-full py-4 sm:py-6 text-pink-500 font-black text-lg sm:text-xl uppercase tracking-wide sm:tracking-widest bg-gradient-to-r from-pink-50 to-rose-50 hover:from-pink-100 hover:to-rose-100 rounded-3xl transition-all border-[3px] sm:border-4 border-pink-200 border-dashed shadow-lg disabled:opacity-60"
+                  className="signup-running-border w-full py-4 sm:py-6 text-pink-500 font-black text-lg sm:text-xl uppercase tracking-wide sm:tracking-widest rounded-3xl transition-all shadow-lg disabled:opacity-60"
                 >
                   {isOpeningRegister ? 'Opening...' : '✨ Sign Up My Kids'}
                 </button>
@@ -475,6 +475,34 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
           </div>
         </div>
       )}
+      <style>{`
+        .signup-running-border {
+          border: 4px solid transparent;
+          background:
+            linear-gradient(90deg, #fdf2f8, #fff1f2) padding-box,
+            repeating-linear-gradient(
+              90deg,
+              #f9a8d4 0 10px,
+              #fbcfe8 10px 20px
+            ) border-box;
+          background-size: auto, 200% 100%;
+          animation: signupBorderRun 2s linear infinite;
+        }
+        .signup-running-border:hover {
+          background:
+            linear-gradient(90deg, #fce7f3, #ffe4e6) padding-box,
+            repeating-linear-gradient(
+              90deg,
+              #ec4899 0 10px,
+              #f9a8d4 10px 20px
+            ) border-box;
+          background-size: auto, 200% 100%;
+        }
+        @keyframes signupBorderRun {
+          from { background-position: 0 0, 0 0; }
+          to { background-position: 0 0, 200% 0; }
+        }
+      `}</style>
     </div>
   );
 };
