@@ -479,7 +479,7 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
         href="https://m.me/JLYCCKingdomKids"
         target="_blank"
         rel="noopener noreferrer"
-        className="fixed bottom-5 right-5 z-[90] inline-flex items-center gap-2 bg-pink-300 hover:bg-pink-400 text-white px-4 py-3 rounded-full shadow-xl transition-all active:scale-[0.98]"
+        className="fixed bottom-5 right-5 z-[90] inline-flex items-center gap-2 bg-pink-400 hover:bg-pink-500 opacity-100 text-white px-4 py-3 rounded-full shadow-xl transition-all active:scale-[0.98]"
         aria-label="Chat with us on Facebook Messenger"
       >
         <MessageCircle size={18} />
