@@ -1,9 +1,11 @@
 
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { AUTH_PASSWORDS } from '../constants';
 import { UserRole, AgeGroup } from '../types';
 import { audio } from '../services/audio.service';
 import { db } from '../services/db.service';
+import CameraScanner from '../components/CameraScanner';
+import jsQR from 'jsqr';
 
 const getFirstName = (fullName: string) => {
   if (!fullName) return "Student";
@@ -23,10 +25,10 @@ const MONTH_OPTIONS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', '
 const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
-  const [accessKey, setAccessKey] = useState('');
   const [role, setRole] = useState<'TEACHER' | 'PARENTS'>('PARENTS');
   const [error, setError] = useState('');
   const [isVerifying, setIsVerifying] = useState(false);
+  const [scanStatus, setScanStatus] = useState('');
 
   // Splash Screen State
   const [showSplash, setShowSplash] = useState(true);
@@ -38,6 +40,7 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
   const [isSaving, setIsSaving] = useState(false);
   const [regError, setRegError] = useState('');
   const [newAccessKey, setNewAccessKey] = useState<string | null>(null);
+  const lastAutoAttemptRef = useRef('');
   const [birthMonth, setBirthMonth] = useState('');
   const [birthDay, setBirthDay] = useState('');
   const [birthYear, setBirthYear] = useState('');
@@ -123,6 +126,35 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
     }
   };
 
+  const handleQrCapture = async (base64: string) => {
+    if (isVerifying) return;
+    try {
+      const image = new Image();
+      image.src = base64;
+      await new Promise(resolve => image.onload = resolve);
+
+      const canvas = document.createElement('canvas');
+      canvas.width = image.width;
+      canvas.height = image.height;
+      const ctx = canvas.getContext('2d');
+      if (!ctx) return;
+
+      ctx.drawImage(image, 0, 0);
+      const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+      const code = jsQR(imageData.data, imageData.width, imageData.height);
+      if (!code?.data) return;
+
+      const scannedKey = code.data.trim().toUpperCase();
+      if (scannedKey === lastAutoAttemptRef.current) return;
+
+      lastAutoAttemptRef.current = scannedKey;
+      setScanStatus('QR FOUND. VERIFYING...');
+      await performAccessKeyLogin(scannedKey);
+    } catch {
+      // Keep scanner alive on transient frame decode failures.
+    }
+  };
+
   const SPECIAL_TEACHERS = ['CHING', 'LEE', 'BETH', 'MARGE', 'MAGI'];
   const checkTeacherAutoLogin = (inputPass: string, inputUser: string) => {
     const normalizedUser = inputUser.trim().toUpperCase();
@@ -161,32 +193,8 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
     }
   };
 
-  /**
-   * Keeps access key input normalized while allowing both
-   * legacy (KK-...) and new numeric student keys (YYYY###).
-   */
-  const handleAccessKeyChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (error) setError('');
-    let val = e.target.value.toUpperCase();
-    setAccessKey(val);
-
-    // Auto-trigger if it looks like a full key (optional, keeping it flexible)
-    if (val.length >= 10 && !val.includes(' ')) {
-      // Maybe check if it's a standard length if desired
-    }
-  };
-
   const handleParentLoginSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    audio.playClick();
-
-    const cleanInput = accessKey.trim();
-    if (!cleanInput) {
-      setError('PLEASE ENTER YOUR ACCESS KEY');
-      return;
-    }
-
-    performAccessKeyLogin(cleanInput);
   };
 
   const ageData = useMemo(() => {
@@ -305,29 +313,24 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
               <form onSubmit={handleParentLoginSubmit} className="space-y-3 sm:space-y-5 animate-in fade-in duration-300">
                 <div className="space-y-1 sm:space-y-2">
                   <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest block text-center">Your Access Key</label>
-                  <input
-                    type="text"
-                    required
-                    disabled={isVerifying}
-                    className="w-full px-6 py-3.5 sm:py-4 bg-gray-50 border border-gray-100 rounded-2xl outline-none focus:ring-2 focus:ring-pink-300 transition-all uppercase font-black text-gray-700 placeholder:text-gray-300 text-center tracking-[0.2em] sm:tracking-[0.25em] text-base sm:text-lg disabled:opacity-50"
-                    value={accessKey}
-                    onChange={handleAccessKeyChange}
-                    placeholder="YYYY### or KK-..."
-                  />
-                  <p className="text-[9px] text-gray-300 font-bold uppercase tracking-widest text-center">{isVerifying ? 'VERIFYING KEY...' : 'ENTER YOUR UNIQUE ACCESS KEY'}</p>
+                  <div className="rounded-2xl overflow-hidden border border-gray-100">
+                    <CameraScanner
+                      onCapture={handleQrCapture}
+                      isScanning={isVerifying}
+                      facingMode="environment"
+                      autoCaptureInterval={550}
+                      label="Scanning..."
+                    />
+                  </div>
+                  <p className="text-[9px] text-gray-300 font-bold uppercase tracking-widest text-center">
+                    {isVerifying ? 'VERIFYING QR...' : (scanStatus || 'SCAN YOUR STUDENT QR CODE')}
+                  </p>
                 </div>
                 {error && (
                   <div className="p-3 bg-red-50 rounded-xl animate-in shake">
                     <p className="text-red-500 text-[9px] font-black uppercase tracking-widest text-center leading-relaxed">{error}</p>
                   </div>
                 )}
-                <button
-                  type="submit"
-                  disabled={isVerifying || accessKey.length < 3}
-                  className="w-full bg-pink-500 hover:bg-pink-600 text-white font-black py-4 sm:py-5 rounded-2xl transition-all shadow-xl shadow-pink-100 uppercase tracking-widest text-xs mt-3 sm:mt-4 active:scale-[0.98] disabled:opacity-50 disabled:bg-gray-300 disabled:shadow-none"
-                >
-                  {isVerifying ? 'CONNECTING...' : 'ENTER KINGDOM DASHBOARD'}
-                </button>
               </form>
               <div className="mt-auto space-y-2 sm:space-y-3">
                 <div className="relative flex py-1.5 sm:py-2 items-center"><div className="flex-grow border-t border-gray-100"></div><span className="flex-shrink mx-4 text-[8px] font-black text-gray-300 uppercase tracking-widest">OR</span><div className="flex-grow border-t border-gray-100"></div></div>
