@@ -486,7 +486,7 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
               #fbcfe8 10px 20px
             ) border-box;
           background-size: auto, 200% 100%;
-          animation: signupBorderRun 2s linear infinite;
+          animation: signupBorderRun 4.5s linear infinite;
         }
         .signup-running-border:hover {
           background:
