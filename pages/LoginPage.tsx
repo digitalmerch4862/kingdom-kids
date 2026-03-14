@@ -6,7 +6,7 @@ import { audio } from '../services/audio.service';
 import { db } from '../services/db.service';
 import CameraScanner from '../components/CameraScanner';
 import jsQR from 'jsqr';
-import { Camera } from 'lucide-react';
+import { Camera, MessageCircle } from 'lucide-react';
 
 const getFirstName = (fullName: string) => {
   if (!fullName) return "Student";
@@ -475,6 +475,16 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
           </div>
         </div>
       )}
+      <a
+        href="https://m.me/JLYCCKingdomKids"
+        target="_blank"
+        rel="noopener noreferrer"
+        className="fixed bottom-5 right-5 z-[90] inline-flex items-center gap-2 bg-[#1877F2] hover:bg-[#1669d9] text-white px-4 py-3 rounded-full shadow-xl transition-all active:scale-[0.98]"
+        aria-label="Chat with us on Facebook Messenger"
+      >
+        <MessageCircle size={18} />
+        <span className="text-[11px] font-black uppercase tracking-widest">Chat Us</span>
+      </a>
       <style>{`
         .signup-running-border {
           border: 4px solid transparent;
