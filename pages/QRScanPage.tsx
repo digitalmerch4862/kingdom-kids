@@ -49,9 +49,7 @@ const QRScanPage: React.FC<{ username: string }> = ({ username }) => {
         const accessKey = code.data.trim().toUpperCase();
         
         // Quick validate format before hitting DB to save resources
-        const isLegacyKey = accessKey.startsWith('KK-');
-        const isNewStudentKey = /^\d{7}$/.test(accessKey);
-        if (!isLegacyKey && !isNewStudentKey) {
+        if (!/^\d{7}$/.test(accessKey)) {
            setError(`INVALID FORMAT: ${accessKey}`);
            audio.playClick(); // Error sound
            setIsProcessing(false);

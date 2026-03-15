@@ -37,11 +37,11 @@ ALTER TABLE students ADD COLUMN IF NOT EXISTS is_legacy boolean DEFAULT false;
   const seedDemoDataSql = `
 -- 1. Insert Sample Students
 INSERT INTO students (full_name, age_group, is_enrolled, access_key, student_status, consecutive_absences) VALUES
-('ALEXA G.', '10-12', true, 'KK-DEMO-001', 'active', 0),
-('LIAM P.', '7-9', true, 'KK-DEMO-002', 'active', 0),
-('ZARA M.', '3-6', true, 'KK-DEMO-003', 'active', 0),
-('NOAH E.', '3-6', true, 'KK-DEMO-004', 'active', 1),
-('MIA S.', '10-12', true, 'KK-DEMO-005', 'active', 0)
+('ALEXA G.', '10-12', true, '2026001', 'active', 0),
+('LIAM P.', '7-9', true, '2026002', 'active', 0),
+('ZARA M.', '3-6', true, '2026003', 'active', 0),
+('NOAH E.', '3-6', true, '2026004', 'active', 1),
+('MIA S.', '10-12', true, '2026005', 'active', 0)
 ON CONFLICT (access_key) DO NOTHING;
 
 -- 2. Insert Sample Points for Current Month
@@ -54,11 +54,11 @@ DECLARE
     mia_id uuid;
     today date := current_date;
 BEGIN
-    SELECT id INTO alexa_id FROM students WHERE access_key = 'KK-DEMO-001';
-    SELECT id INTO liam_id FROM students WHERE access_key = 'KK-DEMO-002';
-    SELECT id INTO zara_id FROM students WHERE access_key = 'KK-DEMO-003';
-    SELECT id INTO noah_id FROM students WHERE access_key = 'KK-DEMO-004';
-    SELECT id INTO mia_id FROM students WHERE access_key = 'KK-DEMO-005';
+    SELECT id INTO alexa_id FROM students WHERE access_key = '2026001';
+    SELECT id INTO liam_id FROM students WHERE access_key = '2026002';
+    SELECT id INTO zara_id FROM students WHERE access_key = '2026003';
+    SELECT id INTO noah_id FROM students WHERE access_key = '2026004';
+    SELECT id INTO mia_id FROM students WHERE access_key = '2026005';
 
     -- Insert Points (Ensure IDs exist before inserting)
     IF alexa_id IS NOT NULL THEN

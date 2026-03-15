@@ -651,31 +651,6 @@ const ControlCenterPage: React.FC = () => {
           </div>
         </div>
 
-        {/* Attendance Automation */}
-        <div className="bg-white p-8 rounded-[2.5rem] border border-pink-50 shadow-sm space-y-6">
-          <div className="flex items-center gap-3 border-b border-pink-50 pb-4">
-             <div className="w-10 h-10 bg-blue-100 rounded-xl flex items-center justify-center text-blue-500">
-               <Settings size={20} />
-             </div>
-             <h3 className="text-lg font-black text-gray-800 uppercase tracking-tight">Attendance Automation</h3>
-          </div>
-
-          <div className="space-y-4">
-             <div>
-               <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2">Auto-Checkout Time</label>
-               <input 
-                 type="time" 
-                 value={settings.autoCheckoutTime}
-                 onChange={(e) => setSettings({ ...settings, autoCheckoutTime: e.target.value })}
-                 className="w-full md:w-48 px-4 py-3 bg-gray-50 border border-gray-100 rounded-xl outline-none focus:ring-2 focus:ring-blue-100 font-bold text-gray-700"
-               />
-               <p className="text-[9px] text-gray-300 font-bold uppercase tracking-widest mt-2 leading-relaxed">
-                 System will automatically mark students as checked-out if they are still 'Active' after this time.
-               </p>
-             </div>
-          </div>
-        </div>
-
         <div className="bg-white p-8 rounded-[2.5rem] border border-pink-50 shadow-sm space-y-6">
           <div className="flex items-center gap-3 border-b border-pink-50 pb-4">
              <div className="w-10 h-10 bg-blue-100 rounded-xl flex items-center justify-center text-blue-500">

@@ -65,7 +65,7 @@ describe('QuestService', () => {
         id: 'student-1',
         fullName: 'Test Student',
         ageGroup: '7-9',
-        accessKey: 'KK-001',
+        accessKey: '2026001',
       };
 
       const mockStory: QuestStory = {
@@ -135,7 +135,7 @@ describe('QuestService', () => {
           id: 'student-1',
           fullName: 'Test Student',
           ageGroup: '7-9',
-          accessKey: 'KK-001',
+          accessKey: '2026001',
         };
 
         vi.mocked(db.getStudentById).mockResolvedValue(mockStudent as any);
@@ -175,7 +175,7 @@ describe('QuestService', () => {
         id: 'student-1',
         fullName: 'Test Student',
         ageGroup: '7-9',
-        accessKey: 'KK-001',
+        accessKey: '2026001',
       };
 
       vi.mocked(db.getStudentById).mockResolvedValue(mockStudent as any);
@@ -204,7 +204,7 @@ describe('QuestService', () => {
         id: 'student-1',
         fullName: 'Test Student',
         ageGroup: '7-9',
-        accessKey: 'KK-001',
+        accessKey: '2026001',
       };
 
       vi.mocked(db.getStudentById).mockResolvedValue(mockStudent as any);

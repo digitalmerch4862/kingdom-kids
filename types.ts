@@ -8,7 +8,7 @@ export type StudentStatus = "active" | "frozen" | "alumni" | "guest" | "student"
 
 export interface Student {
   id: string;
-  accessKey: string; // Student format: YYYY### (legacy KK- keys also supported)
+  accessKey: string; // Student format: YYYY###
   fullName: string;
   birthday: string; // ISO Date YYYY-MM-DD
   ageGroup: AgeGroup;

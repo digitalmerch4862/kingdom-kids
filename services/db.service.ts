@@ -188,8 +188,7 @@ class DatabaseService {
       try {
         const rawResults = await this.runRawSql(
           `SELECT * FROM students 
-           WHERE UPPER(REPLACE(REPLACE(access_key, '-', ''), ' ', '')) = '${normalizedKey}' 
-           OR UPPER(REPLACE(REPLACE(access_key, '-', ''), ' ', '')) = 'KK' || '${normalizedKey}'
+           WHERE UPPER(REPLACE(REPLACE(access_key, '-', ''), ' ', '')) = '${normalizedKey}'
            LIMIT 1`
         );
         if (rawResults && rawResults.length > 0) data = rawResults[0];
@@ -222,11 +221,9 @@ class DatabaseService {
   }
 
   async addManualRecord(data: { name: string, status: 'alumni' | 'guest', role?: string, batch?: string, guardianContact?: string }) {
-    const now = new Date();
-    const yyyymmdd = now.toISOString().slice(0, 10).replace(/-/g, '');
-    const prefix = data.status === 'alumni' ? 'AL' : 'GS';
+    const year = String(new Date().getFullYear());
     const random = Math.floor(Math.random() * 999).toString().padStart(3, '0');
-    const accessKey = `KK-${prefix}-${yyyymmdd}-${random}`;
+    const accessKey = `${year}${random}`;
 
     const { data: result, error } = await supabase
       .from('students')
@@ -734,7 +731,8 @@ class DatabaseService {
     const { data } = await supabase
       .from('students')
       .select('*')
-      .or(`access_key.eq.KK-TEACHER-${cleanName},full_name.ilike.${cleanName}`)
+      .or(`access_key.eq.${cleanName},full_name.ilike.${cleanName}`)
+      .eq('current_role', 'TEACHER')
       .limit(1)
       .maybeSingle();
 
@@ -749,7 +747,7 @@ class DatabaseService {
       const { data, error } = await supabase.from('students').insert([{
         full_name: cleanName,
         age_group: 'Adult',
-        access_key: `KK-TEACHER-${cleanName}`,
+        access_key: cleanName,
         student_status: 'active',
         current_role: 'TEACHER',
         is_enrolled: true
