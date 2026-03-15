@@ -20,6 +20,7 @@ const AssignmentsPage: React.FC<{ user: UserSession }> = ({ user }) => {
   });
 
   const isTeacherOrAdmin = user.role === 'TEACHER' || user.role === 'ADMIN';
+  const isReadOnly = user.isReadOnly;
 
   const loadAssignments = async () => {
     setLoading(true);
@@ -97,7 +98,7 @@ const AssignmentsPage: React.FC<{ user: UserSession }> = ({ user }) => {
           <h2 className="text-3xl font-black text-gray-800 uppercase tracking-tighter">Assignments</h2>
           <p className="text-gray-400 font-medium uppercase tracking-widest text-[10px]">Ministry Tasks & Lessons</p>
         </div>
-        {isTeacherOrAdmin && (
+        {isTeacherOrAdmin && !isReadOnly && (
           <button 
             onClick={() => { audio.playClick(); setShowAddModal(true); }}
             className="bg-pink-500 text-white px-8 py-3.5 rounded-[1.25rem] font-black transition-all shadow-xl shadow-pink-100 uppercase tracking-widest text-[12px]"
@@ -110,7 +111,7 @@ const AssignmentsPage: React.FC<{ user: UserSession }> = ({ user }) => {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {assignments.map((a) => (
           <div key={a.id} className="bg-white p-8 rounded-[2.5rem] border border-pink-50 shadow-sm space-y-4 hover:shadow-xl hover:shadow-pink-100/30 transition-all relative group">
-            {isTeacherOrAdmin && (
+            {isTeacherOrAdmin && !isReadOnly && (
               <button 
                 onClick={() => handleDelete(a.id)}
                 className="absolute top-6 right-6 text-gray-200 hover:text-red-500 transition-colors opacity-0 group-hover:opacity-100"

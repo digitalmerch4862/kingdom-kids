@@ -44,6 +44,7 @@ const ClassroomPage: React.FC = () => {
 
   const sessionStr = sessionStorage.getItem('km_session');
   const user = safeJsonParse<UserSession | null>(sessionStr, null);
+  const isReadOnly = user?.isReadOnly;
 
   const loadClassroom = async () => {
     setLoading(true);
@@ -485,7 +486,7 @@ const ClassroomPage: React.FC = () => {
                 <button 
                   onMouseEnter={() => audio.playHover()}
                   onClick={handleAddPoints}
-                  disabled={isAwarding || manualPoints === 0}
+                  disabled={isAwarding || manualPoints === 0 || isReadOnly}
                   className="w-full py-3 md:py-4 font-black rounded-2xl uppercase tracking-widest text-xs shadow-xl transition-all bg-pink-500 text-white shadow-pink-100 hover:bg-pink-600 disabled:opacity-50"
                 >
                   {isAwarding ? 'PROCESSING...' : `ADD ${manualPoints} POINTS`}

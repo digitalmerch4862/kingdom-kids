@@ -17,6 +17,7 @@ const FollowUpPage: React.FC<{ user: UserSession }> = ({ user }) => {
   const [students, setStudents] = useState<Student[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
+  const isReadOnly = user.isReadOnly;
 
   useEffect(() => {
     loadData();
@@ -178,7 +179,8 @@ const FollowUpPage: React.FC<{ user: UserSession }> = ({ user }) => {
                 </button>
                 <button 
                   onClick={confirmSend}
-                  className="flex-1 py-4 bg-pink-500 hover:bg-pink-600 text-white font-black rounded-2xl shadow-xl shadow-pink-100 transition-all uppercase tracking-widest text-[10px]"
+                  disabled={isReadOnly}
+                  className={`flex-1 py-4 bg-pink-500 hover:bg-pink-600 text-white font-black rounded-2xl shadow-xl shadow-pink-100 transition-all uppercase tracking-widest text-[10px] ${isReadOnly ? 'opacity-50 cursor-not-allowed' : ''}`}
                 >
                   Open Messages
                 </button>

@@ -98,6 +98,7 @@ export interface UserSession {
   role: UserRole;
   username: string;
   studentId?: string; // For Parent/Student portal
+  isReadOnly?: boolean; // Read-only mode for non-RAD teachers Mon-Sat
 }
 
 export interface Assignment {

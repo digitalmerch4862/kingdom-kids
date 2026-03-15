@@ -18,7 +18,7 @@ const getFirstName = (fullName: string) => {
 };
 
 interface LoginPageProps {
-  onLogin: (role: UserRole, username: string, studentId?: string) => void;
+  onLogin: (role: UserRole, username: string, studentId?: string, isReadOnly?: boolean) => void;
 }
 
 const MONTH_OPTIONS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
@@ -158,21 +158,33 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
   };
 
   const SPECIAL_TEACHERS = ['CHING', 'LEE', 'BETH', 'MARGE', 'MAGI'];
+  
+  const getManilaDay = () => {
+    const now = new Date();
+    const manilaTime = new Date(now.toLocaleString('en-US', { timeZone: 'Asia/Manila' }));
+    return manilaTime.getDay();
+  };
+
   const checkTeacherAutoLogin = (inputPass: string, inputUser: string) => {
     const normalizedUser = inputUser.trim().toUpperCase();
     if (!normalizedUser) return;
 
+    const manilaDay = getManilaDay();
+    const isSunday = manilaDay === 0;
+    const isRad = normalizedUser === 'RAD';
+    const isReadOnly = !isSunday && !isRad;
+
     if (normalizedUser === 'RAD' && inputPass === AUTH_PASSWORDS.ADMIN) {
       audio.playYehey();
-      onLogin('ADMIN', normalizedUser);
+      onLogin('ADMIN', normalizedUser, undefined, isReadOnly);
       return true;
     } else if (SPECIAL_TEACHERS.includes(normalizedUser) && inputPass === AUTH_PASSWORDS.TEACHER) {
       audio.playYehey();
-      onLogin('TEACHER', normalizedUser);
+      onLogin('TEACHER', normalizedUser, undefined, isReadOnly);
       return true;
     } else if (inputPass === AUTH_PASSWORDS.TEACHER) {
       audio.playYehey();
-      onLogin('TEACHER', normalizedUser);
+      onLogin('TEACHER', normalizedUser, undefined, isReadOnly);
       return true;
     }
     return false;

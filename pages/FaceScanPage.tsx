@@ -20,6 +20,7 @@ const FaceScanPage: React.FC<{ user: UserSession }> = ({ user }) => {
   const [error, setError] = useState<string | null>(null);
   const [allEmbeddings, setAllEmbeddings] = useState<FaceEmbedding[]>([]);
   const [allStudents, setAllStudents] = useState<Student[]>([]);
+  const isReadOnly = user.isReadOnly;
 
   useEffect(() => {
     db.getEmbeddings().then(setAllEmbeddings).catch(err => console.error(err));
@@ -49,12 +50,14 @@ const FaceScanPage: React.FC<{ user: UserSession }> = ({ user }) => {
         const studentId = bestMatch.studentId;
         const student = allStudents.find(s => s.id === studentId);
         if (student) {
-          try {
-            await MinistryService.checkIn(student.id, user.username);
-            setMatch({ student, confidence: bestMatch.confidence });
-          } catch (e: any) {
-            setMatch({ student, confidence: bestMatch.confidence, alreadyCheckedIn: true });
+          if (!isReadOnly) {
+            try {
+              await MinistryService.checkIn(student.id, user.username);
+            } catch (e: any) {
+              // Already checked in
+            }
           }
+          setMatch({ student, confidence: bestMatch.confidence });
         }
       } else {
         setError("UNKNOWN FACE DETECTED");

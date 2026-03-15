@@ -52,8 +52,8 @@ const TeachersBoardPage: React.FC = () => {
       }
    };
 
-   // Check if user is allowed to edit (only 'rad')
-   const canEdit = user?.username?.toLowerCase() === 'rad';
+   // Check if user is allowed to edit (only 'rad' and not read-only mode)
+   const canEdit = user?.username?.toLowerCase() === 'rad' && !user?.isReadOnly;
 
    const filteredData = React.useMemo(() => {
       const targetYear = currentMonth.getFullYear();

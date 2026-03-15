@@ -90,8 +90,8 @@ const App: React.FC = () => {
     };
   }, [user]);
 
-  const handleLogin = (role: any, username: string, studentId?: string) => {
-    const session = { role, username, studentId };
+  const handleLogin = (role: any, username: string, studentId?: string, isReadOnly?: boolean) => {
+    const session = { role, username, studentId, isReadOnly };
     setUser(session);
     sessionStorage.setItem(SESSION_KEY, JSON.stringify(session));
     localStorage.removeItem(SESSION_KEY);
@@ -163,7 +163,7 @@ const App: React.FC = () => {
           } />
 
           <Route path="/admin/qr-scan" element={
-             !user ? <Navigate to="/login" replace /> : (isTeacherOrAdmin ? <QRScanPage username={user.username} /> : <Navigate to="/portal" replace />)
+             !user ? <Navigate to="/login" replace /> : (isTeacherOrAdmin ? <QRScanPage user={user} /> : <Navigate to="/portal" replace />)
           } />
 
           <Route path="/admin/sql" element={

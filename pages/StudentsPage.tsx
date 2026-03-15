@@ -32,10 +32,11 @@ const StudentsPage: React.FC<{ user: UserSession }> = ({ user }) => {
 
   const isTeacherOrAdmin = user.role === 'TEACHER' || user.role === 'ADMIN';
   const isAdmin = user.role === 'ADMIN';
-  const canDelete = user.role === 'ADMIN';
+  const canDelete = user.role === 'ADMIN' && !user.isReadOnly;
   const isRad = user.username.toUpperCase() === 'RAD';
   const isChing = user.username.toUpperCase() === 'CHING';
   const canAccessFacilitatorReport = isAdmin || isRad || isChing;
+  const isReadOnly = user.isReadOnly;
 
   useEffect(() => {
     loadStudents();
@@ -582,7 +583,8 @@ const StudentsPage: React.FC<{ user: UserSession }> = ({ user }) => {
               </button>
               <button
                 onClick={() => { resetForm(); setShowAddModal(true); audio.playClick(); }}
-                className="bg-pink-500 text-white px-8 py-3.5 rounded-[1.25rem] font-black transition-all shadow-xl shadow-pink-100 uppercase tracking-widest text-[12px]"
+                disabled={isReadOnly}
+                className={`bg-pink-500 text-white px-8 py-3.5 rounded-[1.25rem] font-black transition-all shadow-xl shadow-pink-100 uppercase tracking-widest text-[12px] ${isReadOnly ? 'opacity-50 cursor-not-allowed' : ''}`}
               >
                 + Register
               </button>

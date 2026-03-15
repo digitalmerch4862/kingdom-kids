@@ -39,7 +39,7 @@ const PointsLedgerPage: React.FC<{ user: UserSession }> = ({ user }) => {
   const [loading, setLoading] = useState(true);
   const isAdmin = user.role === 'ADMIN';
   const manualEditors = ['LEE', 'CHING', 'MARGE', 'MAGI', 'BETH'];
-  const canManualEditPoints = isAdmin || manualEditors.includes(user.username.toUpperCase());
+  const canManualEditPoints = (isAdmin || manualEditors.includes(user.username.toUpperCase())) && !user.isReadOnly;
 
   useEffect(() => {
     if (viewMode === 'LEDGER') {

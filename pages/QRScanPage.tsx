@@ -4,6 +4,7 @@ import CameraScanner from '../components/CameraScanner';
 import { db, formatError } from '../services/db.service';
 import { MinistryService } from '../services/ministry.service';
 import { audio } from '../services/audio.service';
+import { UserSession } from '../types';
 import jsQR from 'jsqr';
 
 const getFirstName = (fullName: string) => {
@@ -15,7 +16,9 @@ const getFirstName = (fullName: string) => {
   return fullName.split(' ')[0];
 };
 
-const QRScanPage: React.FC<{ username: string }> = ({ username }) => {
+const QRScanPage: React.FC<{ user: UserSession }> = ({ user }) => {
+  const username = user.username;
+  const isReadOnly = user.isReadOnly;
   const [isProcessing, setIsProcessing] = useState(false);
   const [lastResult, setLastResult] = useState<{ name: string; status: string } | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -59,13 +62,17 @@ const QRScanPage: React.FC<{ username: string }> = ({ username }) => {
         const student = await db.getStudentByNo(accessKey);
         
         if (student) {
-          try {
-            await MinistryService.checkIn(student.id, username);
-            audio.playYehey();
-            setLastResult({ name: getFirstName(student.fullName).toUpperCase(), status: 'CHECKED-IN SUCCESS' });
-          } catch (e: any) {
-            setLastResult({ name: getFirstName(student.fullName).toUpperCase(), status: 'ALREADY PRESENT' });
-            audio.playClick(); // Notification sound
+          if (isReadOnly) {
+            setLastResult({ name: getFirstName(student.fullName).toUpperCase(), status: 'VIEW ONLY' });
+          } else {
+            try {
+              await MinistryService.checkIn(student.id, username);
+              audio.playYehey();
+              setLastResult({ name: getFirstName(student.fullName).toUpperCase(), status: 'CHECKED-IN SUCCESS' });
+            } catch (e: any) {
+              setLastResult({ name: getFirstName(student.fullName).toUpperCase(), status: 'ALREADY PRESENT' });
+              audio.playClick(); // Notification sound
+            }
           }
         } else {
           setError(`UNKNOWN KEY: ${accessKey}`);
