@@ -55,6 +55,20 @@ const toLocalDate = (dateStr: string) => {
 
 const getQuarter = (monthIndex: number) => Math.floor(monthIndex / 3) + 1;
 
+const toSundayOfWeek = (date: Date) => {
+  const d = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+  const day = d.getDay(); // 0 = Sunday
+  d.setDate(d.getDate() - day);
+  return d;
+};
+
+const formatIsoDate = (date: Date) => {
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, '0');
+  const d = String(date.getDate()).padStart(2, '0');
+  return `${y}-${m}-${d}`;
+};
+
 export const StudentAnalyticsModal: React.FC<StudentAnalyticsModalProps> = ({
   student,
   currentRank,
@@ -81,8 +95,6 @@ export const StudentAnalyticsModal: React.FC<StudentAnalyticsModalProps> = ({
       const startDate = thirtyDaysAgo.toISOString().split('T')[0];
       const endDate = new Date().toISOString().split('T')[0];
 
-      const dailyPointsData = await db.getStudentDailyPoints(student.id, startDate, endDate);
-      
       // Fetch category breakdown
       const categoryData = await db.getStudentCategoryBreakdown(student.id);
       
@@ -102,7 +114,9 @@ export const StudentAnalyticsModal: React.FC<StudentAnalyticsModalProps> = ({
 
       studentLedger.forEach((entry) => {
         const d = toLocalDate(entry.entryDate);
-        const sundayLabel = d.toLocaleDateString('en-US', {
+        const sunday = toSundayOfWeek(d);
+        const sundayKey = formatIsoDate(sunday);
+        const sundayLabel = sunday.toLocaleDateString('en-US', {
           month: 'short',
           day: 'numeric',
           year: 'numeric'
@@ -111,7 +125,7 @@ export const StudentAnalyticsModal: React.FC<StudentAnalyticsModalProps> = ({
         const quarterLabel = `Q${getQuarter(d.getMonth())} ${d.getFullYear()}`;
         const yearLabel = String(d.getFullYear());
 
-        sundayMap.set(sundayLabel, (sundayMap.get(sundayLabel) || 0) + entry.points);
+        sundayMap.set(sundayKey, (sundayMap.get(sundayKey) || 0) + entry.points);
         monthMap.set(monthLabel, (monthMap.get(monthLabel) || 0) + entry.points);
         quarterMap.set(quarterLabel, (quarterMap.get(quarterLabel) || 0) + entry.points);
         yearMap.set(yearLabel, (yearMap.get(yearLabel) || 0) + entry.points);
@@ -120,12 +134,25 @@ export const StudentAnalyticsModal: React.FC<StudentAnalyticsModalProps> = ({
       // Calculate total points
       const totalPoints = categoryData.reduce((sum: number, cat: CategoryBreakdown) => sum + cat.points, 0);
 
+      const sundayScores = Array.from(sundayMap.entries())
+        .sort(([a], [b]) => a.localeCompare(b))
+        .map(([iso, points]) => {
+          const d = toLocalDate(iso);
+          return {
+            date: iso,
+            label: d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
+            points
+          };
+        });
+      const sundayScoresLast30 = sundayScores.filter(s => s.date >= startDate && s.date <= endDate);
+
       setData({
-        dailyPoints: dailyPointsData,
+        // Show weekly Sunday trend so mass weekly uploads are visible as weekly totals.
+        dailyPoints: sundayScoresLast30.map(s => ({ date: s.date, formattedDate: s.label, points: s.points })),
         categoryBreakdown: categoryData,
         recentActivity,
         totalPoints,
-        sundayScores: Array.from(sundayMap, ([label, points]) => ({ label, points })).reverse(),
+        sundayScores: sundayScores.map(({ label, points }) => ({ label, points })),
         monthlyScores: Array.from(monthMap, ([label, points]) => ({ label, points })).reverse(),
         quarterlyScores: Array.from(quarterMap, ([label, points]) => ({ label, points })).reverse(),
         yearlyScores: Array.from(yearMap, ([label, points]) => ({ label, points })).reverse()
