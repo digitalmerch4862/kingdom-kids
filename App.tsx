@@ -38,19 +38,10 @@ const App: React.FC = () => {
 
   useEffect(() => {
     MinistryService.getCurrentActivity().then(setActivity);
-    const saved = sessionStorage.getItem(SESSION_KEY) || localStorage.getItem(SESSION_KEY);
-    if (saved) {
-      try {
-        const parsed = JSON.parse(saved);
-        setUser(parsed);
-        sessionStorage.setItem(SESSION_KEY, JSON.stringify(parsed));
-        localStorage.removeItem(SESSION_KEY);
-      } catch {
-        sessionStorage.removeItem(SESSION_KEY);
-        localStorage.removeItem(SESSION_KEY);
-        setUser(null);
-      }
-    }
+    // Always start from login page on app load/refresh.
+    sessionStorage.removeItem(SESSION_KEY);
+    localStorage.removeItem(SESSION_KEY);
+    setUser(null);
   }, []);
 
   useEffect(() => {

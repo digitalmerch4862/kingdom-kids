@@ -282,6 +282,22 @@ export const StudentAnalyticsModal: React.FC<StudentAnalyticsModalProps> = ({
                 </div>
               </div>
 
+              {/* Period Analytics */}
+              <div>
+                <div className="flex items-center gap-2 mb-4">
+                  <Calendar size={18} className="text-pink-500" />
+                  <h3 className="text-xs font-black uppercase tracking-widest text-gray-800">
+                    Score by Sunday / Month / Quarter / Year
+                  </h3>
+                </div>
+                <div className="grid md:grid-cols-2 gap-4">
+                  <PeriodScoreCard title="Per Sunday" rows={data.sundayScores} />
+                  <PeriodScoreCard title="Per Month" rows={data.monthlyScores} />
+                  <PeriodScoreCard title="Per Quarter" rows={data.quarterlyScores} />
+                  <PeriodScoreCard title="Per Year" rows={data.yearlyScores} />
+                </div>
+              </div>
+
               {/* Category Breakdown */}
               <div>
                 <div className="flex items-center gap-2 mb-4">
@@ -343,22 +359,6 @@ export const StudentAnalyticsModal: React.FC<StudentAnalyticsModalProps> = ({
                       <p className="text-xs font-black uppercase tracking-widest">No recent activity</p>
                     </div>
                   )}
-                </div>
-              </div>
-
-              {/* Period Analytics */}
-              <div>
-                <div className="flex items-center gap-2 mb-4">
-                  <Calendar size={18} className="text-pink-500" />
-                  <h3 className="text-xs font-black uppercase tracking-widest text-gray-800">
-                    Score by Sunday / Month / Quarter / Year
-                  </h3>
-                </div>
-                <div className="grid md:grid-cols-2 gap-4">
-                  <PeriodScoreCard title="Per Sunday" rows={data.sundayScores} />
-                  <PeriodScoreCard title="Per Month" rows={data.monthlyScores} />
-                  <PeriodScoreCard title="Per Quarter" rows={data.quarterlyScores} />
-                  <PeriodScoreCard title="Per Year" rows={data.yearlyScores} />
                 </div>
               </div>
             </>
