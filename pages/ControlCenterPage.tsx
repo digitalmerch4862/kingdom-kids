@@ -319,17 +319,16 @@ const ControlCenterPage: React.FC = () => {
       const looksLikeStudentNoHeader = /^student\s*no/i.test(cells[0] || '');
       const looksLikeClassLabel = /^\d+\s*-\s*\d+/.test(cells[0] || '');
       const looksLikeStudentNumber = /^\d{6,}$/.test(cells[0] || '');
+      const hasClassStudentNoLayout = looksLikeClassLabel && cells.length >= 4;
 
-      if (looksLikeClassLabel) {
-        // Format: Class, Student No?, First, Last, Guardian?, Phone?, BDay?
+      if (hasClassStudentNoLayout) {
+        // Exact format: Class, Student No, First Name, Last Name, BDay, Age
         classLabel = cells[0];
         accessKey = /^\d{6,}$/.test(cells[1] || '') ? cells[1] : '';
-        firstName = cells[2] || cells[1] || '';
-        lastName = cells[3] || cells[2] || '';
-        // If guardian columns are present they shift birthday; keep them optional
-        guardianName = cells[4] && cells[4].includes('/') ? '' : (cells[4] || '');
-        guardianPhone = cells[5] && cells[5].includes('/') ? '' : (cells[5] || '');
-        const birthdayCell = cells.find((c, i) => i >= 4 && c.includes('/')) || '';
+        firstName = cells[2] || '';
+        lastName = cells[3] || '';
+        const birthdayCell = cells[4] || '';
+        const ageCell = cells[5] || '';
         const parsed = parseBirthday(birthdayCell);
         if (parsed) {
           const today = new Date();
@@ -337,6 +336,9 @@ const ControlCenterPage: React.FC = () => {
           const m = today.getMonth() - parsed.getMonth();
           if (m < 0 || (m === 0 && today.getDate() < parsed.getDate())) computedAge--;
           age = computedAge;
+        }
+        if (age === null && /^\d+$/.test(ageCell)) {
+          age = Number(ageCell);
         }
       } else if (looksLikeStudentNumber || looksLikeStudentNoHeader) {
         // Student No, First, Last, BDay
@@ -376,7 +378,9 @@ const ControlCenterPage: React.FC = () => {
         guardianPhone = cells[5] || '';
       }
 
-      const maybePointsCell = cells.find((c, i) => i >= 5 && /^\d+$/.test(c)) || '';
+      // Ignore age column as points for the Class+StudentNo+BDay+Age layout.
+      const pointsStartIndex = hasClassStudentNoLayout ? 6 : 5;
+      const maybePointsCell = cells.find((c, i) => i >= pointsStartIndex && /^\d+$/.test(c)) || '';
       const points = maybePointsCell ? Number(maybePointsCell) : 0;
 
       const fullName = `${firstName} ${lastName}`.trim();
@@ -708,14 +712,14 @@ const ControlCenterPage: React.FC = () => {
             <div>
               <h4 className="font-black text-gray-800 uppercase text-xs tracking-wide">Mass Upload Students</h4>
               <p className="text-[10px] text-gray-500 font-bold mt-1 leading-relaxed">
-                Paste rows from sheet using: Class, First Name, Last Name, Guardian Name, Contact No (optional points at column 6+). Access keys auto-generate as YYYY###.
+                Paste rows using: Class, Student No, First Name, Last Name, BDay, Age (optional points at column 7+). Blank Student No auto-generates as YYYY###.
               </p>
             </div>
             <textarea
               value={massUploadInput}
               onChange={(e) => setMassUploadInput(e.target.value)}
               rows={8}
-              placeholder={`Class\tFirst Name\tLast Name\tGuardian Name\tContact No\n4-6\tHailey\tAbunio\t\t\n4-6\tNasya\tAgustin\tLuchie\t9770620616`}
+              placeholder={`Class\tStudent No\tFirst Name\tLast Name\tBDay\tAge\n4-6\t2026001\tHailey\tAbunio\t\t\n4-6\t2026003\tSelena\tBuen\t3/14/2023\t3`}
               className="w-full px-4 py-3 bg-white border border-blue-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-200 font-bold text-[11px] text-gray-700"
             />
             <button
