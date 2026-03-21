@@ -904,7 +904,7 @@ class DatabaseService {
     };
   }
 
-  async bulkImportStudents(rows: Array<{ fullName: string; classLabel?: string; guardianName?: string; guardianPhone?: string; points?: number; accessKey?: string }>, actor: string): Promise<{ created: number; updated: number; pointsAdded: number; skipped: number; errors: string[]; }> {
+  async bulkImportStudents(rows: Array<{ fullName: string; classLabel?: string; guardianName?: string; guardianPhone?: string; birthday?: string; points?: number; accessKey?: string }>, actor: string): Promise<{ created: number; updated: number; pointsAdded: number; skipped: number; errors: string[]; }> {
     if (!rows.length) return { created: 0, updated: 0, pointsAdded: 0, skipped: 0, errors: [] };
 
     const existing = await this.getStudents();
@@ -929,6 +929,7 @@ class DatabaseService {
       const ageGroup = this.mapClassToAgeGroup(row.classLabel);
       const guardianName = String(row.guardianName || '').trim().toUpperCase();
       const guardianPhone = String(row.guardianPhone || '').replace(/\D/g, '').slice(0, 11);
+      const birthday = String(row.birthday || '').trim();
       const existingStudent = existingByName.get(normalizedName);
       let studentId = existingStudent?.id || '';
 
@@ -943,6 +944,7 @@ class DatabaseService {
         };
         if (guardianName) payload.guardian_name = guardianName;
         if (guardianPhone) payload.guardian_phone = guardianPhone;
+        if (birthday) payload.birthday = birthday;
         // Keep existing access key on update; do not overwrite with provided/generator.
 
         const { error: updateErr } = await supabase.from('students').update(payload).eq('id', existingStudent.id);
@@ -960,6 +962,7 @@ class DatabaseService {
           access_key: accessKey,
           guardian_name: guardianName,
           guardian_phone: guardianPhone,
+          birthday: birthday || null,
           notes: 'MASS UPLOAD',
           is_enrolled: false,
           consecutive_absences: 0,

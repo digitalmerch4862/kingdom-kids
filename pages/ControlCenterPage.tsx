@@ -292,13 +292,13 @@ const ControlCenterPage: React.FC = () => {
     return isNaN(dt.getTime()) ? null : dt;
   };
 
-  const parseMassUploadRows = (raw: string): { fullName: string; classLabel?: string; guardianName?: string; guardianPhone?: string; points?: number; accessKey?: string }[] => {
+  const parseMassUploadRows = (raw: string): { fullName: string; classLabel?: string; guardianName?: string; guardianPhone?: string; birthday?: string; points?: number; accessKey?: string }[] => {
     const lines = raw
       .split(/\r?\n/)
       .map(line => line.trim())
       .filter(Boolean);
 
-    const rows: { fullName: string; classLabel?: string; guardianName?: string; guardianPhone?: string; points?: number; accessKey?: string }[] = [];
+    const rows: { fullName: string; classLabel?: string; guardianName?: string; guardianPhone?: string; birthday?: string; points?: number; accessKey?: string }[] = [];
 
     lines.forEach((line) => {
       const cells = (line.includes('\t') ? line.split('\t') : line.split(',')).map(c => c.trim());
@@ -314,6 +314,7 @@ const ControlCenterPage: React.FC = () => {
       let lastName = '';
       let guardianName = '';
       let guardianPhone = '';
+      let birthday = '';
       let age: number | null = null;
 
       const looksLikeStudentNoHeader = /^student\s*no/i.test(cells[0] || '');
@@ -331,6 +332,7 @@ const ControlCenterPage: React.FC = () => {
         const ageCell = cells[5] || '';
         const parsed = parseBirthday(birthdayCell);
         if (parsed) {
+          birthday = parsed.toISOString().split('T')[0];
           const today = new Date();
           let computedAge = today.getFullYear() - parsed.getFullYear();
           const m = today.getMonth() - parsed.getMonth();
@@ -348,6 +350,7 @@ const ControlCenterPage: React.FC = () => {
         const birthdayCell = cells[3] || '';
         const parsed = parseBirthday(birthdayCell);
         if (parsed) {
+          birthday = parsed.toISOString().split('T')[0];
           const today = new Date();
           let computedAge = today.getFullYear() - parsed.getFullYear();
           const m = today.getMonth() - parsed.getMonth();
@@ -364,6 +367,7 @@ const ControlCenterPage: React.FC = () => {
 
         const parsed = parseBirthday(birthdayCell);
         if (parsed) {
+          birthday = parsed.toISOString().split('T')[0];
           const today = new Date();
           let computedAge = today.getFullYear() - parsed.getFullYear();
           const m = today.getMonth() - parsed.getMonth();
@@ -391,6 +395,7 @@ const ControlCenterPage: React.FC = () => {
         classLabel,
         guardianName,
         guardianPhone,
+        birthday,
         points,
         accessKey
       });
