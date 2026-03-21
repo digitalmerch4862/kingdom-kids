@@ -468,13 +468,14 @@ const ControlCenterPage: React.FC = () => {
     }
   };
 
-  const parseMassPointsRows = (raw: string): { fullName: string; points: number }[] => {
+  const parseMassPointsRows = (raw: string): { fullName?: string; accessKey?: string; points: number; entryDate?: string }[] => {
     const lines = raw
       .split(/\r?\n/)
       .map(line => line.trim())
       .filter(Boolean);
 
-    const rows: { fullName: string; points: number }[] = [];
+    const rows: { fullName?: string; accessKey?: string; points: number; entryDate?: string }[] = [];
+    let headerEntryDate = '';
 
     lines.forEach((line) => {
       const cells = line.includes('\t')
@@ -482,17 +483,52 @@ const ControlCenterPage: React.FC = () => {
         : line.split(',').map(c => c.trim());
 
       if (!cells.length) return;
-      const firstName = cells[0] || '';
-      const lastName = cells[1] || '';
-      const pointsCell = cells[2] || '';
+      const col0 = cells[0] || '';
+      const col1 = cells[1] || '';
+      const col2 = cells[2] || '';
 
-      if (/^first\s*name$/i.test(firstName) || /^last\s*name$/i.test(lastName)) return;
-      if (!firstName && !lastName) return;
+      // New format header: Student No, Jan-04 (or any weekly header)
+      if (/^student\s*no$/i.test(col0)) {
+        const weekLabel = col1;
+        const mmddyyyy = weekLabel.match(/^([A-Za-z]{3})-(\d{1,2})-(\d{4})$/);
+        const mmdd = weekLabel.match(/^([A-Za-z]{3})-(\d{1,2})$/);
+        if (mmddyyyy || mmdd) {
+          const monthMap: Record<string, number> = {
+            jan: 0, feb: 1, mar: 2, apr: 3, may: 4, jun: 5,
+            jul: 6, aug: 7, sep: 8, oct: 9, nov: 10, dec: 11
+          };
+          const match = mmddyyyy || mmdd;
+          const month = monthMap[(match?.[1] || '').toLowerCase()];
+          const day = Number(match?.[2] || 0);
+          if (month !== undefined && day >= 1 && day <= 31) {
+            const now = new Date();
+            const year = mmddyyyy ? Number(mmddyyyy[3]) : now.getFullYear();
+            const dt = new Date(year, month, day);
+            if (!isNaN(dt.getTime())) {
+              headerEntryDate = `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, '0')}-${String(dt.getDate()).padStart(2, '0')}`;
+            }
+          }
+        }
+        return;
+      }
+      if (/^\d{6,}$/.test(col0)) {
+        const parsedPoints = /^\d+$/.test(col1) ? Number(col1) : 0;
+        rows.push({
+          accessKey: col0,
+          points: parsedPoints,
+          entryDate: headerEntryDate || undefined
+        });
+        return;
+      }
 
-      const parsedPoints = /^\d+$/.test(pointsCell) ? Number(pointsCell) : 0;
+      // Backward-compatible format: First Name, Last Name, Points
+      if (/^first\s*name$/i.test(col0) || /^last\s*name$/i.test(col1)) return;
+      if (!col0 && !col1) return;
+      const parsedPoints = /^\d+$/.test(col2) ? Number(col2) : 0;
       rows.push({
-        fullName: `${firstName} ${lastName}`.trim(),
-        points: parsedPoints
+        fullName: `${col0} ${col1}`.trim(),
+        points: parsedPoints,
+        entryDate: headerEntryDate || undefined
       });
     });
 
@@ -747,14 +783,14 @@ const ControlCenterPage: React.FC = () => {
           </div>
 
           <p className="text-[10px] text-gray-500 font-bold leading-relaxed">
-            Paste rows using: First Name, Last Name, MMM-## (points). Blank points are skipped.
+            Paste rows using: Student No, Week Column (e.g. Jan-04). Blank points are skipped. Legacy name format still works.
           </p>
 
           <textarea
             value={massPointsInput}
             onChange={(e) => setMassPointsInput(e.target.value)}
             rows={8}
-            placeholder={`First Name\tLast Name\tMMM-##\nHailey\tAbunio\t\nNasya\tAgustin\t10\nSelena\tBuen\t`}
+            placeholder={`Student No\tJan-04\n2026001\t\n2026002\t10\n2026003\t`}
             className="w-full px-4 py-3 bg-blue-50 border border-blue-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-200 font-bold text-[11px] text-gray-700"
           />
 

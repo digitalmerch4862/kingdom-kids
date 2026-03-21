@@ -1024,11 +1024,12 @@ class DatabaseService {
     return { created, updated, pointsAdded, skipped, errors };
   }
 
-  async bulkUploadStudentPoints(rows: Array<{ fullName: string; points: number }>, actor: string): Promise<{ updated: number; pointsAdded: number; skipped: number; notFound: number; errors: string[]; }> {
+  async bulkUploadStudentPoints(rows: Array<{ fullName?: string; accessKey?: string; points: number; entryDate?: string }>, actor: string): Promise<{ updated: number; pointsAdded: number; skipped: number; notFound: number; errors: string[]; }> {
     if (!rows.length) return { updated: 0, pointsAdded: 0, skipped: 0, notFound: 0, errors: [] };
 
     const students = await this.getStudents();
     const studentByName = new Map(students.map(s => [this.normalizeStudentFullName(s.fullName), s]));
+    const studentByAccessKey = new Map(students.map(s => [String(s.accessKey || '').trim(), s]));
     const today = new Date().toISOString().split('T')[0];
 
     let updated = 0;
@@ -1039,23 +1040,27 @@ class DatabaseService {
 
     for (const row of rows) {
       const normalizedName = this.normalizeStudentFullName(row.fullName || '');
+      const normalizedAccessKey = String(row.accessKey || '').trim();
       const points = Number(row.points || 0);
+      const entryDate = row.entryDate || today;
 
-      if (!normalizedName || points <= 0) {
+      if ((!normalizedName && !normalizedAccessKey) || points <= 0) {
         skipped++;
         continue;
       }
 
-      const student = studentByName.get(normalizedName);
+      const student = normalizedAccessKey
+        ? studentByAccessKey.get(normalizedAccessKey)
+        : studentByName.get(normalizedName);
       if (!student) {
         notFound++;
-        errors.push(`Student not found: ${normalizedName}`);
+        errors.push(`Student not found: ${normalizedAccessKey || normalizedName}`);
         continue;
       }
 
       const { error } = await supabase.from('point_ledger').insert([{
         student_id: student.id,
-        entry_date: today,
+        entry_date: entryDate,
         category: 'Manual Points',
         points,
         notes: 'MASS UPLOAD POINTS',
