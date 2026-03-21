@@ -255,62 +255,140 @@ const ControlCenterPage: React.FC = () => {
     }
   };
 
-  const parseMassUploadRows = (raw: string): { fullName: string; classLabel?: string; guardianName?: string; guardianPhone?: string; points?: number }[] => {
+  const deriveAgeGroup = (age: number | null): string => {
+    if (age === null) return '';
+    if (age >= 3 && age <= 6) return '3-6';
+    if (age >= 7 && age <= 9) return '7-9';
+    if (age >= 10 && age <= 12) return '10-12';
+    return '';
+  };
+
+  const parseBirthday = (raw: string): Date | null => {
+    const trimmed = raw.trim();
+    if (!trimmed) return null;
+
+    // Handle patterns like 8/292017 (missing slash before year)
+    const compact = trimmed.match(/^(\d{1,2})\/(\d{1,2})(\d{4})$/);
+    if (compact) {
+      const [_, m, d, y] = compact;
+      const fixed = `${m}/${d}/${y}`;
+      const dt = new Date(fixed);
+      return isNaN(dt.getTime()) ? null : dt;
+    }
+
+    // Standard M/D/YYYY or M/D/YY
+    const slash = trimmed.match(/^(\d{1,2})\/(\d{1,2})\/(\d{2,4})$/);
+    if (slash) {
+      let [_, m, d, y] = slash;
+      if (y.length === 2) {
+        // Assume 2000s for 2-digit years
+        y = `20${y}`;
+      }
+      const dt = new Date(`${m}/${d}/${y}`);
+      return isNaN(dt.getTime()) ? null : dt;
+    }
+
+    const dt = new Date(trimmed);
+    return isNaN(dt.getTime()) ? null : dt;
+  };
+
+  const parseMassUploadRows = (raw: string): { fullName: string; classLabel?: string; guardianName?: string; guardianPhone?: string; points?: number; accessKey?: string }[] => {
     const lines = raw
       .split(/\r?\n/)
       .map(line => line.trim())
       .filter(Boolean);
 
-    const rows: { fullName: string; classLabel?: string; guardianName?: string; guardianPhone?: string; points?: number }[] = [];
+    const rows: { fullName: string; classLabel?: string; guardianName?: string; guardianPhone?: string; points?: number; accessKey?: string }[] = [];
 
     lines.forEach((line) => {
-      const cells = line.includes('\t')
-        ? line.split('\t').map(c => c.trim())
-        : line.split(',').map(c => c.trim());
-
+      const cells = (line.includes('\t') ? line.split('\t') : line.split(',')).map(c => c.trim());
       if (!cells.length) return;
 
-      const maybeClass = cells[0] || '';
-      const firstName = cells[1] || '';
-      const lastName = cells[2] || '';
-      const guardianName = cells[3] || '';
-      const guardianPhone = cells[4] || '';
+      // Detect format by header or first column content
+      const looksLikeHeader = (txt: string) => /^class$/i.test(txt) || /^first\s*name$/i.test(txt);
+      if (looksLikeHeader(cells[0])) return;
+
+      let classLabel = '';
+      let accessKey = '';
+      let firstName = '';
+      let lastName = '';
+      let guardianName = '';
+      let guardianPhone = '';
+      let age: number | null = null;
+
+      const looksLikeStudentNoHeader = /^student\s*no/i.test(cells[0] || '');
+      const looksLikeClassLabel = /^\d+\s*-\s*\d+/.test(cells[0] || '');
+      const looksLikeStudentNumber = /^\d{6,}$/.test(cells[0] || '');
+
+      if (looksLikeClassLabel) {
+        // Format: Class, Student No?, First, Last, Guardian?, Phone?, BDay?
+        classLabel = cells[0];
+        accessKey = /^\d{6,}$/.test(cells[1] || '') ? cells[1] : '';
+        firstName = cells[2] || cells[1] || '';
+        lastName = cells[3] || cells[2] || '';
+        // If guardian columns are present they shift birthday; keep them optional
+        guardianName = cells[4] && cells[4].includes('/') ? '' : (cells[4] || '');
+        guardianPhone = cells[5] && cells[5].includes('/') ? '' : (cells[5] || '');
+        const birthdayCell = cells.find((c, i) => i >= 4 && c.includes('/')) || '';
+        const parsed = parseBirthday(birthdayCell);
+        if (parsed) {
+          const today = new Date();
+          let computedAge = today.getFullYear() - parsed.getFullYear();
+          const m = today.getMonth() - parsed.getMonth();
+          if (m < 0 || (m === 0 && today.getDate() < parsed.getDate())) computedAge--;
+          age = computedAge;
+        }
+      } else if (looksLikeStudentNumber || looksLikeStudentNoHeader) {
+        // Student No, First, Last, BDay
+        accessKey = cells[0] && looksLikeStudentNumber ? cells[0] : '';
+        firstName = cells[1] || '';
+        lastName = cells[2] || '';
+        const birthdayCell = cells[3] || '';
+        const parsed = parseBirthday(birthdayCell);
+        if (parsed) {
+          const today = new Date();
+          let computedAge = today.getFullYear() - parsed.getFullYear();
+          const m = today.getMonth() - parsed.getMonth();
+          if (m < 0 || (m === 0 && today.getDate() < parsed.getDate())) computedAge--;
+          age = computedAge;
+        }
+        classLabel = deriveAgeGroup(age);
+      } else {
+        // Newer format: First, Last, BDay, Age, Guardian?, Phone?
+        firstName = cells[0] || '';
+        lastName = cells[1] || '';
+        const birthdayCell = cells[2] || '';
+        const ageCell = cells[3] || '';
+
+        const parsed = parseBirthday(birthdayCell);
+        if (parsed) {
+          const today = new Date();
+          let computedAge = today.getFullYear() - parsed.getFullYear();
+          const m = today.getMonth() - parsed.getMonth();
+          if (m < 0 || (m === 0 && today.getDate() < parsed.getDate())) computedAge--;
+          age = computedAge;
+        }
+        if (age === null && /^\d+$/.test(ageCell)) {
+          age = Number(ageCell);
+        }
+        classLabel = deriveAgeGroup(age);
+        guardianName = cells[4] || '';
+        guardianPhone = cells[5] || '';
+      }
+
       const maybePointsCell = cells.find((c, i) => i >= 5 && /^\d+$/.test(c)) || '';
       const points = maybePointsCell ? Number(maybePointsCell) : 0;
 
-      // Skip common header rows.
-      if (
-        /^class$/i.test(maybeClass) ||
-        /^first\s*name$/i.test(firstName) ||
-        /^last\s*name$/i.test(lastName)
-      ) return;
-
-      let maybeName = '';
-      let classLabel = maybeClass;
-      let parsedGuardian = guardianName;
-      let parsedPhone = guardianPhone;
-
-      if (firstName || lastName) {
-        maybeName = `${firstName} ${lastName}`.trim();
-      } else if (cells.length >= 2) {
-        // fallback older formats
-        maybeName = cells[1];
-      } else {
-        maybeName = cells[0];
-        classLabel = '';
-      }
-
-      if (!firstName && !lastName && cells.length >= 5) {
-        parsedGuardian = cells[3] || '';
-        parsedPhone = cells[4] || '';
-      }
+      const fullName = `${firstName} ${lastName}`.trim();
+      if (!fullName) return;
 
       rows.push({
-        fullName: maybeName,
+        fullName,
         classLabel,
-        guardianName: parsedGuardian,
-        guardianPhone: parsedPhone,
-        points
+        guardianName,
+        guardianPhone,
+        points,
+        accessKey
       });
     });
 
