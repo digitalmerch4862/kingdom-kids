@@ -136,7 +136,7 @@ export const StudentAnalyticsModal: React.FC<StudentAnalyticsModalProps> = ({
       const totalPoints = categoryData.reduce((sum: number, cat: CategoryBreakdown) => sum + cat.points, 0);
 
       const sundayScores = Array.from(sundayMap.entries())
-        .sort(([a], [b]) => a.localeCompare(b))
+        .sort(([a], [b]) => b.localeCompare(a))
         .map(([iso, points]) => {
           const d = toLocalDate(iso);
           return {
