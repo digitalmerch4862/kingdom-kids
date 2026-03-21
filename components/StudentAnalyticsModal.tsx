@@ -28,6 +28,7 @@ interface StudentAnalyticsData {
   categoryBreakdown: CategoryBreakdown[];
   recentActivity: PointLedger[];
   totalPoints: number;
+  monthlyTrend: Array<{ label: string; points: number }>;
   sundayScores: Array<{ label: string; points: number }>;
   monthlyScores: Array<{ label: string; points: number }>;
   quarterlyScores: Array<{ label: string; points: number }>;
@@ -121,12 +122,12 @@ export const StudentAnalyticsModal: React.FC<StudentAnalyticsModalProps> = ({
           day: 'numeric',
           year: 'numeric'
         });
-        const monthLabel = d.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
+        const monthKey = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
         const quarterLabel = `Q${getQuarter(d.getMonth())} ${d.getFullYear()}`;
         const yearLabel = String(d.getFullYear());
 
         sundayMap.set(sundayKey, (sundayMap.get(sundayKey) || 0) + entry.points);
-        monthMap.set(monthLabel, (monthMap.get(monthLabel) || 0) + entry.points);
+        monthMap.set(monthKey, (monthMap.get(monthKey) || 0) + entry.points);
         quarterMap.set(quarterLabel, (quarterMap.get(quarterLabel) || 0) + entry.points);
         yearMap.set(yearLabel, (yearMap.get(yearLabel) || 0) + entry.points);
       });
@@ -145,6 +146,15 @@ export const StudentAnalyticsModal: React.FC<StudentAnalyticsModalProps> = ({
           };
         });
       const sundayScoresLast30 = sundayScores.filter(s => s.date >= startDate && s.date <= endDate);
+      const monthlyTrend = Array.from(monthMap.entries())
+        .sort(([a], [b]) => b.localeCompare(a))
+        .map(([monthKey, points]) => {
+          const d = toLocalDate(`${monthKey}-01`);
+          return {
+            label: d.toLocaleDateString('en-US', { month: 'short', year: 'numeric' }),
+            points
+          };
+        });
 
       setData({
         // Show weekly Sunday trend so mass weekly uploads are visible as weekly totals.
@@ -152,8 +162,9 @@ export const StudentAnalyticsModal: React.FC<StudentAnalyticsModalProps> = ({
         categoryBreakdown: categoryData,
         recentActivity,
         totalPoints,
+        monthlyTrend,
         sundayScores: sundayScores.map(({ label, points }) => ({ label, points })),
-        monthlyScores: Array.from(monthMap, ([label, points]) => ({ label, points })).reverse(),
+        monthlyScores: monthlyTrend,
         quarterlyScores: Array.from(quarterMap, ([label, points]) => ({ label, points })).reverse(),
         yearlyScores: Array.from(yearMap, ([label, points]) => ({ label, points })).reverse()
       });
@@ -263,11 +274,11 @@ export const StudentAnalyticsModal: React.FC<StudentAnalyticsModalProps> = ({
                 <div className="flex items-center gap-2 mb-4">
                   <TrendingUp size={18} className="text-pink-500" />
                   <h3 className="text-xs font-black uppercase tracking-widest text-gray-800">
-                    30-Day Growth Trend
+                    Monthly Growth Trend
                   </h3>
                 </div>
                 <div className="bg-gray-50 rounded-2xl p-4 md:p-6">
-                  <LineChart data={data.dailyPoints} />
+                  <MonthlyBarChart data={data.monthlyTrend} />
                 </div>
               </div>
 
@@ -358,8 +369,7 @@ export const StudentAnalyticsModal: React.FC<StudentAnalyticsModalProps> = ({
   );
 };
 
-// Simple SVG Line Chart Component
-const LineChart: React.FC<{ data: DailyPoints[] }> = ({ data }) => {
+const MonthlyBarChart: React.FC<{ data: Array<{ label: string; points: number }> }> = ({ data }) => {
   if (data.length === 0) {
     return (
       <div className="h-48 flex items-center justify-center text-gray-400">
@@ -368,126 +378,23 @@ const LineChart: React.FC<{ data: DailyPoints[] }> = ({ data }) => {
     );
   }
 
-  const width = 600;
-  const height = 200;
-  const padding = { top: 20, right: 20, bottom: 40, left: 50 };
-  const chartWidth = width - padding.left - padding.right;
-  const chartHeight = height - padding.top - padding.bottom;
-
   const maxPoints = Math.max(...data.map(d => d.points), 1);
-  const minPoints = 0;
-
-  // Generate points for the line
-  const points = data.map((d, i) => {
-    const x = padding.left + (i / (data.length - 1 || 1)) * chartWidth;
-    const y = padding.top + chartHeight - ((d.points - minPoints) / (maxPoints - minPoints)) * chartHeight;
-    return { x, y, data: d };
-  });
-
-  // Create path for the line
-  const linePath = points.reduce((path, point, i) => {
-    if (i === 0) return `M ${point.x} ${point.y}`;
-    // Use bezier curves for smooth lines
-    const prev = points[i - 1];
-    const cp1x = prev.x + (point.x - prev.x) / 3;
-    const cp2x = point.x - (point.x - prev.x) / 3;
-    return `${path} C ${cp1x} ${prev.y}, ${cp2x} ${point.y}, ${point.x} ${point.y}`;
-  }, '');
-
-  // Create area path
-  const areaPath = `${linePath} L ${points[points.length - 1].x} ${padding.top + chartHeight} L ${points[0].x} ${padding.top + chartHeight} Z`;
-
-  // Y-axis ticks
-  const yTicks = [0, Math.ceil(maxPoints / 2), maxPoints];
-
   return (
-    <div className="w-full overflow-x-auto">
-      <svg 
-        viewBox={`0 0 ${width} ${height}`} 
-        className="w-full min-w-[500px]"
-        preserveAspectRatio="xMidYMid meet"
-      >
-        {/* Grid lines */}
-        {yTicks.map((tick, i) => {
-          const y = padding.top + chartHeight - (tick / maxPoints) * chartHeight;
-          return (
-            <g key={i}>
-              <line
-                x1={padding.left}
-                y1={y}
-                x2={width - padding.right}
-                y2={y}
-                stroke="#e5e7eb"
-                strokeWidth="1"
-                strokeDasharray="4 4"
-              />
-              <text
-                x={padding.left - 10}
-                y={y + 4}
-                textAnchor="end"
-                className="text-xs fill-gray-400 font-bold"
-              >
-                {tick}
-              </text>
-            </g>
-          );
-        })}
-
-        {/* Area under the line */}
-        <path
-          d={areaPath}
-          fill="url(#gradient)"
-          opacity="0.3"
-        />
-
-        {/* The line */}
-        <path
-          d={linePath}
-          fill="none"
-          stroke="#ec4899"
-          strokeWidth="3"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        />
-
-        {/* Data points */}
-        {points.map((point, i) => (
-          <g key={i}>
-            <circle
-              cx={point.x}
-              cy={point.y}
-              r="5"
-              fill="#ec4899"
-              stroke="white"
-              strokeWidth="2"
-              className="hover:r-6 transition-all cursor-pointer"
-            >
-              <title>{`${point.data.formattedDate}: ${point.data.points} pts`}</title>
-            </circle>
-          </g>
-        ))}
-
-        {/* X-axis labels (show every 5th date) */}
-        {points.filter((_, i) => i % 5 === 0).map((point, i) => (
-          <text
-            key={i}
-            x={point.x}
-            y={height - 10}
-            textAnchor="middle"
-            className="text-[10px] fill-gray-400 font-bold"
-          >
-            {point.data.formattedDate}
-          </text>
-        ))}
-
-        {/* Gradient definition */}
-        <defs>
-          <linearGradient id="gradient" x1="0%" y1="0%" x2="0%" y2="100%">
-            <stop offset="0%" stopColor="#ec4899" stopOpacity="0.5" />
-            <stop offset="100%" stopColor="#ec4899" stopOpacity="0" />
-          </linearGradient>
-        </defs>
-      </svg>
+    <div className="space-y-3">
+      {data.map((row) => {
+        const width = Math.max(4, (row.points / maxPoints) * 100);
+        return (
+          <div key={row.label} className="space-y-1">
+            <div className="flex items-center justify-between text-[10px] font-black uppercase tracking-wider text-gray-500">
+              <span>{row.label}</span>
+              <span className="text-pink-500">{row.points}</span>
+            </div>
+            <div className="h-2 rounded-full bg-white border border-pink-100 overflow-hidden">
+              <div className="h-full bg-pink-500 rounded-full" style={{ width: `${width}%` }} />
+            </div>
+          </div>
+        );
+      })}
     </div>
   );
 };
