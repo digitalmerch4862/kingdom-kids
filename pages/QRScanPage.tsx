@@ -70,8 +70,13 @@ const QRScanPage: React.FC<{ user: UserSession }> = ({ user }) => {
               audio.playYehey();
               setLastResult({ name: getFirstName(student.fullName).toUpperCase(), status: 'CHECKED-IN SUCCESS' });
             } catch (e: any) {
-              setLastResult({ name: getFirstName(student.fullName).toUpperCase(), status: 'ALREADY PRESENT' });
-              audio.playClick(); // Notification sound
+              const msg = String(e?.message || e || '').toUpperCase();
+              if (msg.includes('ALREADY CHECKED IN')) {
+                setLastResult({ name: getFirstName(student.fullName).toUpperCase(), status: 'ALREADY PRESENT' });
+              } else {
+                setError(e?.message || 'CHECK-IN BLOCKED');
+              }
+              audio.playClick();
             }
           }
         } else {

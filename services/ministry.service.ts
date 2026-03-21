@@ -15,6 +15,20 @@ export interface AttendanceStatusEntry {
 }
 
 export class MinistryService {
+  private static isWithinServiceWindow(now: Date = new Date()): boolean {
+    const isSunday = now.getDay() === 0;
+    const minutes = now.getHours() * 60 + now.getMinutes();
+    const start = 9 * 60;   // 9:00 AM
+    const end = 12 * 60;    // 12:00 PM (exclusive)
+    return isSunday && minutes >= start && minutes < end;
+  }
+
+  private static enforceServiceWindow() {
+    if (!this.isWithinServiceWindow()) {
+      throw new Error('Recording is only allowed every Sunday from 9:00 AM to 12:00 PM.');
+    }
+  }
+
   static async getSundayIndex(date: Date = new Date()): Promise<number> {
     const day = date.getDate();
     return Math.ceil(day / 7);
@@ -63,6 +77,7 @@ export class MinistryService {
   }
 
   static async checkIn(studentId: string, actor: string) {
+    this.enforceServiceWindow();
     const today = new Date().toISOString().split('T')[0];
     const sessions = await db.getAttendance();
 
@@ -201,6 +216,7 @@ export class MinistryService {
   }
 
   static async addPoints(studentId: string, category: string, points: number, actor: string, notes?: string, auditTag?: string) {
+    this.enforceServiceWindow();
     const today = new Date().toISOString().split('T')[0];
     const settings = await db.getSettings();
     const ledger = await db.getPointsLedger();

@@ -54,7 +54,13 @@ const FaceScanPage: React.FC<{ user: UserSession }> = ({ user }) => {
             try {
               await MinistryService.checkIn(student.id, user.username);
             } catch (e: any) {
-              // Already checked in
+              const msg = String(e?.message || e || '').toUpperCase();
+              if (msg.includes('ALREADY CHECKED IN')) {
+                setMatch({ student, confidence: bestMatch.confidence, alreadyCheckedIn: true });
+              } else {
+                setError(e?.message || 'CHECK-IN BLOCKED');
+              }
+              return;
             }
           }
           setMatch({ student, confidence: bestMatch.confidence });
