@@ -1,6 +1,7 @@
 
 import { Student, FaceEmbedding, AttendanceSession, PointLedger, AuditLog, AppSettings, PointRule, ActivitySchedule, AgeGroup, Assignment, TeacherAssignmentRecord } from '../types';
 import { supabase } from './supabase';
+import { withOfflineCache } from '../utils/offlineCache';
 
 export const formatError = (err: any): string => {
   if (!err) return "Unknown error occurred";
@@ -112,34 +113,36 @@ class DatabaseService {
   }
 
   async getStudents(): Promise<Student[]> {
-    const { data, error } = await supabase
-      .from('students')
-      .select('*')
-      .order('full_name', { ascending: true });
+    return withOfflineCache<Student[]>('students', async () => {
+      const { data, error } = await supabase
+        .from('students')
+        .select('*')
+        .order('full_name', { ascending: true });
 
-    if (error) throw new Error(formatError(error));
+      if (error) throw new Error(formatError(error));
 
-    return (data || []).map(s => ({
-      id: s.id,
-      accessKey: s.access_key || 'N/A',
-      fullName: s.full_name || 'UNKNOWN',
-      birthday: s.birthday || '',
-      ageGroup: s.age_group || 'General',
-      guardianName: s.guardian_name || '',
-      guardianPhone: s.guardian_phone || '',
-      photoUrl: s.photo_url,
-      isEnrolled: s.is_enrolled || false,
-      notes: s.notes || '',
-      createdAt: s.created_at,
-      updatedAt: s.updated_at,
-      consecutiveAbsences: s.consecutive_absences ?? 0,
-      studentStatus: s.student_status || 'active',
-      lastFollowupSent: s.last_followup_sent,
-      guardianNickname: s.guardian_nickname || '',
-      currentRole: s.current_role || '',
-      batchYear: s.batch_year || '',
-      isLegacy: s.is_legacy || false
-    }));
+      return (data || []).map(s => ({
+        id: s.id,
+        accessKey: s.access_key || 'N/A',
+        fullName: s.full_name || 'UNKNOWN',
+        birthday: s.birthday || '',
+        ageGroup: s.age_group || 'General',
+        guardianName: s.guardian_name || '',
+        guardianPhone: s.guardian_phone || '',
+        photoUrl: s.photo_url,
+        isEnrolled: s.is_enrolled || false,
+        notes: s.notes || '',
+        createdAt: s.created_at,
+        updatedAt: s.updated_at,
+        consecutiveAbsences: s.consecutive_absences ?? 0,
+        studentStatus: s.student_status || 'active',
+        lastFollowupSent: s.last_followup_sent,
+        guardianNickname: s.guardian_nickname || '',
+        currentRole: s.current_role || '',
+        batchYear: s.batch_year || '',
+        isLegacy: s.is_legacy || false
+      }));
+    });
   }
 
   async getStudentById(id: string): Promise<Student | null> {
@@ -183,15 +186,19 @@ class DatabaseService {
       .limit(1)
       .maybeSingle();
 
+    // Fallback: match after stripping dashes/spaces. Done client-side to avoid SQL injection.
     if (!data && !error) {
       const normalizedKey = cleanKey.replace(/[^A-Z0-9]/g, '');
       try {
-        const rawResults = await this.runRawSql(
-          `SELECT * FROM students 
-           WHERE UPPER(REPLACE(REPLACE(access_key, '-', ''), ' ', '')) = '${normalizedKey}'
-           LIMIT 1`
-        );
-        if (rawResults && rawResults.length > 0) data = rawResults[0];
+        const { data: allRows } = await supabase
+          .from('students')
+          .select('*')
+          .not('access_key', 'is', null);
+        const match = (allRows || []).find(row => {
+          const rowKey = String(row.access_key || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+          return rowKey === normalizedKey;
+        });
+        if (match) data = match;
       } catch (e) { console.warn(e); }
     }
 
@@ -352,20 +359,22 @@ class DatabaseService {
   }
 
   async getAttendanceLogs(): Promise<AttendanceSession[]> {
-    const { data, error } = await supabase.from('attendance_sessions').select('*').order('check_in_time', { ascending: false });
-    if (error) throw new Error(formatError(error));
-    return (data || []).map(s => ({
-      id: s.id,
-      studentId: s.student_id,
-      sessionDate: s.session_date,
-      checkInTime: s.check_in_time,
-      checkOutTime: s.check_out_time,
-      checkoutMode: s.checkout_mode,
-      checkedInBy: s.checked_in_by,
-      checkedOutBy: s.checked_out_by,
-      status: s.status,
-      createdAt: s.created_at
-    }));
+    return withOfflineCache<AttendanceSession[]>('attendance_logs', async () => {
+      const { data, error } = await supabase.from('attendance_sessions').select('*').order('check_in_time', { ascending: false });
+      if (error) throw new Error(formatError(error));
+      return (data || []).map(s => ({
+        id: s.id,
+        studentId: s.student_id,
+        sessionDate: s.session_date,
+        checkInTime: s.check_in_time,
+        checkOutTime: s.check_out_time,
+        checkoutMode: s.checkout_mode,
+        checkedInBy: s.checked_in_by,
+        checkedOutBy: s.checked_out_by,
+        status: s.status,
+        createdAt: s.created_at
+      }));
+    });
   }
 
   getAttendance() { return this.getAttendanceLogs(); }
@@ -394,11 +403,13 @@ class DatabaseService {
   }
 
   async getPointsLedger(): Promise<PointLedger[]> {
-    const { data, error } = await supabase.from('point_ledger').select('*').order('created_at', { ascending: false });
-    if (error) throw new Error(formatError(error));
-    return (data || []).map(l => ({
-      id: l.id, studentId: l.student_id, entryDate: l.entry_date, category: l.category, points: l.points, notes: l.notes, recordedBy: l.recorded_by, voided: l.voided, voidReason: l.void_reason, createdAt: l.created_at
-    }));
+    return withOfflineCache<PointLedger[]>('points_ledger', async () => {
+      const { data, error } = await supabase.from('point_ledger').select('*').order('created_at', { ascending: false });
+      if (error) throw new Error(formatError(error));
+      return (data || []).map(l => ({
+        id: l.id, studentId: l.student_id, entryDate: l.entry_date, category: l.category, points: l.points, notes: l.notes, recordedBy: l.recorded_by, voided: l.voided, voidReason: l.void_reason, createdAt: l.created_at
+      }));
+    });
   }
 
   async getStudentLedger(studentId: string, limit = 5): Promise<PointLedger[]> {
@@ -409,98 +420,54 @@ class DatabaseService {
     }));
   }
 
-  // Analytics: Get daily point totals for a student over a date range
+  // Analytics: Get daily point totals for a student over a date range.
+  // Uses Supabase parameterized query builder to avoid SQL injection.
   async getStudentDailyPoints(studentId: string, startDate: string, endDate: string): Promise<{ date: string; points: number; formattedDate: string }[]> {
-    const query = `
-      SELECT 
-        entry_date as date,
-        SUM(points) as points
-      FROM point_ledger
-      WHERE student_id = '${studentId}'
-        AND voided = false
-        AND entry_date >= '${startDate}'
-        AND entry_date <= '${endDate}'
-      GROUP BY entry_date
-      ORDER BY entry_date ASC
-    `;
+    const { data: ledgerData, error: ledgerError } = await supabase
+      .from('point_ledger')
+      .select('entry_date, points')
+      .eq('student_id', studentId)
+      .eq('voided', false)
+      .gte('entry_date', startDate)
+      .lte('entry_date', endDate);
 
-    const { data, error } = await supabase.rpc('exec_sql', { query_text: query });
-    if (error) {
-      // Fallback: fetch all and aggregate in memory if RPC fails
-      const { data: ledgerData, error: ledgerError } = await supabase
-        .from('point_ledger')
-        .select('entry_date, points')
-        .eq('student_id', studentId)
-        .eq('voided', false)
-        .gte('entry_date', startDate)
-        .lte('entry_date', endDate);
+    if (ledgerError) throw new Error(formatError(ledgerError));
 
-      if (ledgerError) throw new Error(formatError(ledgerError));
+    const grouped = (ledgerData || []).reduce((acc: Record<string, number>, row: any) => {
+      const date = row.entry_date;
+      acc[date] = (acc[date] || 0) + row.points;
+      return acc;
+    }, {});
 
-      // Aggregate by date
-      const grouped = (ledgerData || []).reduce((acc: Record<string, number>, row: any) => {
-        const date = row.entry_date;
-        acc[date] = (acc[date] || 0) + row.points;
-        return acc;
-      }, {});
-
-      return Object.entries(grouped).map(([date, points]) => ({
-        date,
-        points: points as number,
-        formattedDate: new Date(date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
-      })).sort((a, b) => a.date.localeCompare(b.date));
-    }
-
-    return (data || []).map((row: any) => ({
-      date: row.date,
-      points: parseInt(row.points) || 0,
-      formattedDate: new Date(row.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
-    }));
+    return Object.entries(grouped).map(([date, points]) => ({
+      date,
+      points: points as number,
+      formattedDate: new Date(date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+    })).sort((a, b) => a.date.localeCompare(b.date));
   }
 
-  // Analytics: Get category breakdown for a student
+  // Analytics: Get category breakdown for a student.
+  // Uses Supabase parameterized query builder to avoid SQL injection.
   async getStudentCategoryBreakdown(studentId: string): Promise<{ category: string; points: number; color: string }[]> {
-    const query = `
-      SELECT 
-        category,
-        SUM(points) as points
-      FROM point_ledger
-      WHERE student_id = '${studentId}'
-        AND voided = false
-      GROUP BY category
-      ORDER BY points DESC
-    `;
+    const { data: ledgerData, error: ledgerError } = await supabase
+      .from('point_ledger')
+      .select('category, points')
+      .eq('student_id', studentId)
+      .eq('voided', false);
 
-    const { data, error } = await supabase.rpc('exec_sql', { query_text: query });
-    if (error) {
-      // Fallback: fetch all and aggregate in memory
-      const { data: ledgerData, error: ledgerError } = await supabase
-        .from('point_ledger')
-        .select('category, points')
-        .eq('student_id', studentId)
-        .eq('voided', false);
+    if (ledgerError) throw new Error(formatError(ledgerError));
 
-      if (ledgerError) throw new Error(formatError(ledgerError));
+    const grouped = (ledgerData || []).reduce((acc: Record<string, number>, row: any) => {
+      const category = row.category;
+      acc[category] = (acc[category] || 0) + row.points;
+      return acc;
+    }, {});
 
-      // Aggregate by category
-      const grouped = (ledgerData || []).reduce((acc: Record<string, number>, row: any) => {
-        const category = row.category;
-        acc[category] = (acc[category] || 0) + row.points;
-        return acc;
-      }, {});
-
-      return Object.entries(grouped).map(([category, points]) => ({
-        category,
-        points: points as number,
-        color: this.getCategoryColor(category)
-      })).sort((a, b) => b.points - a.points);
-    }
-
-    return (data || []).map((row: any) => ({
-      category: row.category,
-      points: parseInt(row.points) || 0,
-      color: this.getCategoryColor(row.category)
-    }));
+    return Object.entries(grouped).map(([category, points]) => ({
+      category,
+      points: points as number,
+      color: this.getCategoryColor(category)
+    })).sort((a, b) => b.points - a.points);
   }
 
   // Helper to get color for category

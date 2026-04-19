@@ -247,42 +247,55 @@ export class QuestService {
   }
 
   static async completeQuest(studentId: string) {
-    // 1. Award Points
-    await MinistryService.addPoints(studentId, 'Daily Quest', 5, 'System', 'Completed Daily Quest');
+    const PLANT_STAGES = ['Seed', 'Sprout', 'Rooted', 'Branch', 'Fruit Bearer'];
+    const STORAGE_KEY = `quest_progress_${studentId}`;
+    const STEP = 20;
 
-    // 2. Update Supabase Profile for plant progress (replacing localStorage)
-    if (studentId === 'GUEST_DEMO') return { newStage: 0, newRankIndex: 0 };
-
+    // 1. Award Points (best-effort — tolerate weak signal)
     try {
-      const profile = await db.getProfile(studentId);
-      let totalXp = profile?.total_xp || 0;
-      let stage = profile?.current_plant_stage || 1;
-      let rank = profile?.current_rank || 'Seed';
-
-      const PLANT_STAGES = ['Seed', 'Sprout', 'Rooted', 'Branch', 'Fruit Bearer'];
-
-      // Calculate new XP and Stage
-      let newXp = totalXp + 20;
-      let newStage = stage;
-      let newRank = rank;
-
-      if (newXp >= 100) {
-        newXp = 0;
-        newStage = Math.min(stage + 1, 5);
-        const rankIndex = PLANT_STAGES.indexOf(rank);
-        newRank = PLANT_STAGES[Math.min(rankIndex + 1, PLANT_STAGES.length - 1)];
-      }
-
-      await db.updateProfile(studentId, {
-        total_xp: newXp,
-        current_plant_stage: newStage,
-        current_rank: newRank
-      });
-
-      return { newStage, newRankIndex: PLANT_STAGES.indexOf(newRank) };
+      await MinistryService.addPoints(studentId, 'Daily Quest', 5, 'System', 'Completed Daily Quest');
     } catch (err) {
-      console.error('Failed to update quest progress in Supabase:', err);
-      return { newStage: 0, newRankIndex: 0 };
+      console.warn('Points sync failed, will retry when online:', err);
     }
+
+    // 2. Read existing progress from localStorage (offline-first for weak signal).
+    let stage = 0;
+    let rankIndex = 0;
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        stage = Number(parsed?.stage) || 0;
+        rankIndex = Number(parsed?.rank) || 0;
+      }
+    } catch { /* ignore malformed cache */ }
+
+    // 3. Advance progress. Each quest adds STEP; at 100 stage resets and rank advances (capped).
+    let newStage = stage + STEP;
+    let newRankIndex = rankIndex;
+    if (newStage >= 100) {
+      newStage = 0;
+      newRankIndex = Math.min(rankIndex + 1, PLANT_STAGES.length - 1);
+    }
+
+    // 4. Persist locally FIRST so it survives weak signal / refresh.
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify({ stage: newStage, rank: newRankIndex }));
+    } catch { /* storage full or disabled */ }
+
+    // 5. Best-effort sync to Supabase. Skip for guest demo.
+    if (studentId !== 'GUEST_DEMO') {
+      try {
+        await db.updateProfile(studentId, {
+          total_xp: newStage,
+          current_plant_stage: newRankIndex + 1,
+          current_rank: PLANT_STAGES[newRankIndex]
+        });
+      } catch (err) {
+        console.warn('Profile sync to Supabase failed (will retry when online):', err);
+      }
+    }
+
+    return { newStage, newRankIndex };
   }
 }

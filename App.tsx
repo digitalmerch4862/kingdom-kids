@@ -32,13 +32,33 @@ import SideQuestPage from './pages/SideQuestPage';
 const SESSION_KEY = 'km_session';
 const INACTIVITY_TIMEOUT_MS = 5 * 60 * 1000;
 
+// Sunday service window: 9:00 AM - 12:00 PM. No auto-logout during this window
+// so teachers/parents stay logged in through the whole service even if idle.
+const isSundayServiceWindow = (now: Date = new Date()): boolean => {
+  if (now.getDay() !== 0) return false;
+  const minutes = now.getHours() * 60 + now.getMinutes();
+  return minutes >= 9 * 60 && minutes < 12 * 60;
+};
+
 const App: React.FC = () => {
   const [user, setUser] = useState<UserSession | null>(null);
   const [activity, setActivity] = useState<ActivitySchedule | null>(null);
 
   useEffect(() => {
     MinistryService.getCurrentActivity().then(setActivity);
-    // Always start from login page on app load/refresh.
+    // During Sunday 9am–12pm service window, restore the session on refresh
+    // so the user stays logged in through the entire service.
+    if (isSundayServiceWindow()) {
+      const stored = localStorage.getItem(SESSION_KEY) || sessionStorage.getItem(SESSION_KEY);
+      if (stored) {
+        try {
+          setUser(JSON.parse(stored));
+          return;
+        } catch {
+          // fall through to cleared state
+        }
+      }
+    }
     sessionStorage.removeItem(SESSION_KEY);
     localStorage.removeItem(SESSION_KEY);
     setUser(null);
@@ -48,9 +68,12 @@ const App: React.FC = () => {
     if (!user) return;
 
     let logoutTimer: ReturnType<typeof setTimeout>;
+    let windowChecker: ReturnType<typeof setInterval>;
 
     const resetTimer = () => {
       clearTimeout(logoutTimer);
+      // Skip auto-logout during Sunday 9am–12pm service window
+      if (isSundayServiceWindow()) return;
       logoutTimer = setTimeout(() => {
         sessionStorage.removeItem(SESSION_KEY);
         localStorage.removeItem(SESSION_KEY);
@@ -73,8 +96,13 @@ const App: React.FC = () => {
 
     resetTimer();
 
+    // Re-evaluate every minute so we correctly arm/disarm the timer
+    // when the clock crosses the 9am or 12pm boundary.
+    windowChecker = setInterval(resetTimer, 60 * 1000);
+
     return () => {
       clearTimeout(logoutTimer);
+      clearInterval(windowChecker);
       activityEvents.forEach((eventName) => {
         window.removeEventListener(eventName, resetTimer);
       });
@@ -84,8 +112,14 @@ const App: React.FC = () => {
   const handleLogin = (role: any, username: string, studentId?: string, isReadOnly?: boolean) => {
     const session = { role, username, studentId, isReadOnly };
     setUser(session);
-    sessionStorage.setItem(SESSION_KEY, JSON.stringify(session));
-    localStorage.removeItem(SESSION_KEY);
+    const serialized = JSON.stringify(session);
+    sessionStorage.setItem(SESSION_KEY, serialized);
+    // Persist to localStorage during Sunday 9am–12pm so refreshes keep the user logged in.
+    if (isSundayServiceWindow()) {
+      localStorage.setItem(SESSION_KEY, serialized);
+    } else {
+      localStorage.removeItem(SESSION_KEY);
+    }
   };
 
   const handleLogout = () => {
