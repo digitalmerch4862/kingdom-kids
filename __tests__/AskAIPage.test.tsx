@@ -24,15 +24,15 @@ describe('AskAIPage', () => {
     vi.clearAllMocks();
   });
 
-  it('renders the Ask AI heading and prompt box', () => {
+  it('renders the personalized heading and prompt box', () => {
     render(
       <MemoryRouter>
-        <AskAIPage user={{ role: 'ADMIN', username: 'RAD' } as any} />
+        <AskAIPage user={{ role: 'ADMIN', username: 'maggie' } as any} />
       </MemoryRouter>
     );
 
-    expect(screen.getByRole('heading', { name: /Ask AI/i })).toBeInTheDocument();
-    expect(screen.getByPlaceholderText(/Ask about students/i)).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: /How can I help, Maggie\?/i })).toBeInTheDocument();
+    expect(screen.getByPlaceholderText(/Ask anything/i)).toBeInTheDocument();
   });
 
   it('submits a prompt and renders the AI answer', async () => {
@@ -52,7 +52,7 @@ describe('AskAIPage', () => {
     fireEvent.change(screen.getByLabelText(/Ask AI prompt/i), {
       target: { value: 'Who is absent today?' },
     });
-    fireEvent.click(screen.getByRole('button', { name: /Ask AI/i }));
+    fireEvent.click(screen.getByRole('button', { name: /Send prompt/i }));
 
     expect(await screen.findByText(/2 students are absent today/i)).toBeInTheDocument();
   });
@@ -81,7 +81,7 @@ describe('AskAIPage', () => {
     fireEvent.change(screen.getByLabelText(/Ask AI prompt/i), {
       target: { value: 'Add 5 points to Joshua for memory verse' },
     });
-    fireEvent.click(screen.getByRole('button', { name: /Ask AI/i }));
+    fireEvent.click(screen.getByRole('button', { name: /Send prompt/i }));
 
     expect(await screen.findByText(/Add 5 points to Joshua for memory verse\?/i)).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /Confirm Save/i })).toBeInTheDocument();
@@ -112,7 +112,7 @@ describe('AskAIPage', () => {
     fireEvent.change(screen.getByLabelText(/Ask AI prompt/i), {
       target: { value: 'Add 5 points to Joshua for memory verse' },
     });
-    fireEvent.click(screen.getByRole('button', { name: /Ask AI/i }));
+    fireEvent.click(screen.getByRole('button', { name: /Send prompt/i }));
     fireEvent.click(await screen.findByRole('button', { name: /Confirm Save/i }));
 
     await waitFor(() => {

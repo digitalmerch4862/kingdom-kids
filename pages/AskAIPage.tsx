@@ -1,14 +1,25 @@
 import React, { useMemo, useState } from 'react';
-import { Bot, Loader2, MessageSquare, Shield, Sparkles } from 'lucide-react';
+import { Loader2, Mic, Plus, Shield, Sparkles, Square } from 'lucide-react';
 import type { UserSession } from '../types';
 import type { AskAIResponse } from '../services/ask-ai.types';
 import { AskAIService } from '../services/ask-ai.service';
 import { audio } from '../services/audio.service';
 
+const toDisplayName = (username?: string) => {
+  if (!username) return 'Friend';
+  return username
+    .toLowerCase()
+    .split(/\s+/)
+    .filter(Boolean)
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(' ');
+};
+
 const AskAIPage: React.FC<{ user: UserSession | null }> = ({ user }) => {
   const [prompt, setPrompt] = useState('');
   const [response, setResponse] = useState<AskAIResponse | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const displayName = useMemo(() => toDisplayName(user?.username), [user?.username]);
 
   const canWrite = useMemo(
     () => Boolean(user && !user.isReadOnly && (user.role === 'ADMIN' || user.role === 'TEACHER')),
@@ -80,21 +91,32 @@ const AskAIPage: React.FC<{ user: UserSession | null }> = ({ user }) => {
     }
   };
 
+  const handleClearChat = () => {
+    audio.playClick();
+    setPrompt('');
+    setResponse(null);
+    setIsLoading(false);
+  };
+
   return (
-    <div className="space-y-6 animate-in fade-in duration-500 pb-20">
-      <section className="bg-white p-8 md:p-10 rounded-[2.5rem] border border-pink-50 shadow-sm overflow-hidden relative">
-        <div className="absolute right-8 top-6 text-pink-100 hidden md:block">
-          <Bot size={84} strokeWidth={1.5} />
-        </div>
-        <p className="text-[10px] font-black text-pink-500 uppercase tracking-widest">Kingdom Kids AI</p>
-        <h1 className="text-4xl md:text-5xl font-black uppercase tracking-tighter text-gray-900 mt-2">Ask AI</h1>
-        <p className="text-sm text-gray-500 mt-3 max-w-2xl">
-          Ask about attendance, students, follow-up, leaderboard, and points. Point changes are previewed first and only saved after confirmation.
-        </p>
-      </section>
+    <div className="animate-in fade-in duration-500 h-[calc(100vh-10rem)] min-h-[620px] flex flex-col bg-white rounded-[2.5rem] border border-gray-100 shadow-sm overflow-hidden">
+      <div className="px-6 md:px-12 pt-10 md:pt-14 text-center shrink-0 relative">
+        {(prompt || response) && (
+          <button
+            type="button"
+            onClick={handleClearChat}
+            className="absolute right-6 top-10 md:right-12 md:top-14 text-[10px] font-black uppercase tracking-widest text-gray-400 hover:text-[#F97316] transition-colors"
+          >
+            Clear Chat
+          </button>
+        )}
+        <h1 className="text-3xl md:text-5xl font-medium tracking-tight text-gray-900">
+          How can I help, {displayName}?
+        </h1>
+      </div>
 
       {!canWrite && (
-        <div className="bg-amber-50 border border-amber-100 p-5 rounded-[2rem]">
+        <div className="mx-6 md:mx-10 mt-6 bg-amber-50 border border-amber-100 p-4 rounded-[1.75rem] shrink-0">
           <p className="text-[10px] font-black uppercase tracking-widest text-amber-600">Read-only mode</p>
           <p className="mt-2 text-sm text-amber-900">
             Ask AI can answer questions, but write actions are disabled for this session.
@@ -102,102 +124,105 @@ const AskAIPage: React.FC<{ user: UserSession | null }> = ({ user }) => {
         </div>
       )}
 
-      <section className="bg-white p-6 md:p-8 rounded-[2rem] border border-pink-50 shadow-sm space-y-5">
-        <div className="flex items-center gap-3">
-            <div className="w-11 h-11 rounded-2xl bg-pink-50 text-pink-500 flex items-center justify-center">
-            <MessageSquare size={20} />
+      <div className="flex-1 px-6 md:px-10 py-8 overflow-y-auto">
+        {!response ? (
+          <div className="h-full flex flex-col items-center justify-center text-center">
+            <p className="text-sm md:text-base text-gray-400 max-w-xl">
+              Ask about attendance, students, follow-up, leaderboard, or draft a points action for confirmation.
+            </p>
           </div>
-          <div>
-            <p className="text-[10px] font-black uppercase tracking-widest text-gray-400">Prompt</p>
-            <p className="text-sm font-black text-gray-800 uppercase tracking-tight">Staff command box</p>
-          </div>
-        </div>
+        ) : (
+          <div className="space-y-8">
+            <div className="flex justify-end">
+              <div className="max-w-[70%] rounded-[1.5rem] bg-[#FCE7DA] px-5 py-3 text-sm text-[#7A3D14] shadow-sm">
+                {prompt}
+              </div>
+            </div>
 
-        <textarea
-          className="w-full min-h-[160px] rounded-[1.75rem] border border-gray-200 p-5 text-sm text-gray-700 outline-none focus:ring-2 focus:ring-pink-200 resize-none"
-          placeholder="Ask about students, attendance, points, or follow-up..."
-          aria-label="Ask AI prompt"
-          value={prompt}
-          onChange={(e) => setPrompt(e.target.value)}
-        />
+            <div className="max-w-3xl space-y-4">
+              <p className="text-2xl text-gray-950 whitespace-pre-wrap">{response.reply}</p>
 
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-          <div className="text-[10px] font-black uppercase tracking-widest text-gray-400">
-            Signed in as {user?.username ?? 'Unknown'}
+              {response.citations.length > 0 && (
+                <div className="flex flex-wrap gap-2">
+                  {response.citations.map((citation) => (
+                    <span
+                      key={citation}
+                      className="px-3 py-1 rounded-full bg-gray-50 border border-gray-100 text-[10px] font-black uppercase tracking-widest text-gray-400"
+                    >
+                      {citation}
+                    </span>
+                  ))}
+                </div>
+              )}
+
+              {response.mode === 'confirm' && response.pendingAction && (
+                <div className="max-w-xl rounded-[1.75rem] border border-[#F5D2BF] bg-[#FFF4EC] p-5 space-y-4">
+                  <div className="flex items-center gap-2 text-[#B85B1B]">
+                    <Shield size={16} />
+                    <span className="text-[10px] font-black uppercase tracking-widest">Needs confirmation</span>
+                  </div>
+                  <div className="text-sm text-gray-700 space-y-1">
+                    <p>Student: {response.pendingAction.studentName}</p>
+                    <p>Points: +{response.pendingAction.points}</p>
+                    <p>Category: {response.pendingAction.category}</p>
+                  </div>
+                  <button
+                    onClick={handleConfirm}
+                    disabled={isLoading}
+                    className="px-5 py-3 rounded-2xl bg-[#F97316] text-white font-black uppercase text-[10px] tracking-widest hover:bg-[#EA580C] disabled:opacity-50"
+                  >
+                    Confirm Save
+                  </button>
+                </div>
+              )}
+            </div>
           </div>
+        )}
+      </div>
+
+      <div className="p-4 md:p-6 shrink-0">
+        <div className="flex items-center gap-3 rounded-full border border-gray-200 bg-white px-4 py-3 shadow-[0_8px_30px_rgba(15,23,42,0.06)]">
           <button
-            onClick={handleAsk}
-            disabled={!prompt.trim() || isLoading}
-            className="inline-flex items-center justify-center gap-2 px-6 py-3 rounded-2xl bg-pink-500 text-white font-black uppercase text-[10px] tracking-widest disabled:opacity-50 disabled:cursor-not-allowed hover:bg-pink-600 transition-colors"
+            type="button"
+            className="w-9 h-9 rounded-full flex items-center justify-center text-gray-800 hover:bg-gray-50 transition-colors shrink-0"
+            aria-label="Add attachment"
           >
-            {isLoading ? <Loader2 size={16} className="animate-spin" /> : <Sparkles size={16} />}
-            Ask AI
+            <Plus size={20} />
+          </button>
+
+          <input
+            type="text"
+            className="flex-1 border-none outline-none bg-transparent text-base text-gray-800 placeholder:text-gray-400"
+            placeholder="Ask anything"
+            aria-label="Ask AI prompt"
+            value={prompt}
+            onChange={(e) => setPrompt(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                e.preventDefault();
+                handleAsk();
+              }
+            }}
+          />
+
+          <button
+            type="button"
+            className="w-9 h-9 rounded-full flex items-center justify-center text-gray-900 hover:bg-gray-50 transition-colors shrink-0"
+            aria-label="Voice input"
+          >
+            <Mic size={18} />
+          </button>
+
+          <button
+            onClick={isLoading ? undefined : handleAsk}
+            disabled={!prompt.trim()}
+            className="w-11 h-11 rounded-full bg-[#F97316] text-white flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed hover:bg-[#EA580C] transition-colors shrink-0"
+            aria-label={isLoading ? 'Stop response' : 'Send prompt'}
+          >
+            {isLoading ? <Square size={16} fill="currentColor" /> : <Sparkles size={18} />}
           </button>
         </div>
-
-        <div className="grid gap-3 md:grid-cols-3">
-          <div className="rounded-[1.5rem] border border-pink-50 bg-pink-50/40 p-4">
-            <p className="text-[10px] font-black uppercase tracking-widest text-pink-400">Examples</p>
-            <p className="mt-2 text-xs text-gray-600">Who is absent today?</p>
-          </div>
-          <div className="rounded-[1.5rem] border border-pink-50 bg-pink-50/40 p-4">
-            <p className="text-[10px] font-black uppercase tracking-widest text-pink-400">Examples</p>
-            <p className="mt-2 text-xs text-gray-600">Who needs follow-up?</p>
-          </div>
-          <div className="rounded-[1.5rem] border border-pink-50 bg-pink-50/40 p-4">
-            <p className="text-[10px] font-black uppercase tracking-widest text-pink-400">Examples</p>
-            <p className="mt-2 text-xs text-gray-600">Add 5 points to Joshua for Memory Verse</p>
-          </div>
-        </div>
-      </section>
-
-      {response && (
-        <section className="bg-white p-6 md:p-8 rounded-[2rem] border border-pink-50 shadow-sm space-y-4">
-          <div className="flex items-start justify-between gap-4">
-            <div>
-              <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">AI Reply</p>
-              <p className="mt-3 text-sm text-gray-700 whitespace-pre-wrap">{response.reply}</p>
-            </div>
-            {response.mode === 'confirm' && (
-                <div className="hidden md:flex items-center gap-2 px-3 py-2 rounded-2xl bg-pink-50 text-pink-500">
-                <Shield size={16} />
-                <span className="text-[10px] font-black uppercase tracking-widest">Needs confirmation</span>
-              </div>
-            )}
-          </div>
-
-          {response.citations.length > 0 && (
-            <div className="flex flex-wrap gap-2">
-              {response.citations.map((citation) => (
-                <span
-                  key={citation}
-                  className="px-3 py-1 rounded-full bg-gray-50 border border-gray-100 text-[10px] font-black uppercase tracking-widest text-gray-400"
-                >
-                  {citation}
-                </span>
-              ))}
-            </div>
-          )}
-
-          {response.mode === 'confirm' && response.pendingAction && (
-            <div className="bg-pink-50 border border-pink-100 p-5 rounded-[1.75rem] space-y-4">
-              <p className="text-[10px] font-black uppercase tracking-widest text-pink-500">Pending write</p>
-              <div className="text-sm text-gray-700 space-y-1">
-                <p>Student: {response.pendingAction.studentName}</p>
-                <p>Points: +{response.pendingAction.points}</p>
-                <p>Category: {response.pendingAction.category}</p>
-              </div>
-              <button
-                onClick={handleConfirm}
-                disabled={isLoading}
-                className="px-5 py-3 rounded-2xl bg-pink-500 text-white font-black uppercase text-[10px] tracking-widest hover:bg-pink-600 disabled:opacity-50"
-              >
-                Confirm Save
-              </button>
-            </div>
-          )}
-        </section>
-      )}
+      </div>
     </div>
   );
 };
