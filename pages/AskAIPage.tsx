@@ -20,6 +20,7 @@ const AskAIPage: React.FC<{ user: UserSession | null }> = ({ user }) => {
   const [response, setResponse] = useState<AskAIResponse | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const displayName = useMemo(() => toDisplayName(user?.username), [user?.username]);
+  const hasConversation = Boolean(prompt.trim() || response);
 
   const canWrite = useMemo(
     () => Boolean(user && !user.isReadOnly && (user.role === 'ADMIN' || user.role === 'TEACHER')),
@@ -100,19 +101,26 @@ const AskAIPage: React.FC<{ user: UserSession | null }> = ({ user }) => {
 
   return (
     <div className="animate-in fade-in duration-500 h-[calc(100vh-10rem)] min-h-[620px] flex flex-col bg-white rounded-[2.5rem] border border-gray-100 shadow-sm overflow-hidden">
-      <div className="px-6 md:px-12 pt-10 md:pt-14 text-center shrink-0 relative">
-        {(prompt || response) && (
+      <div className="px-6 md:px-12 pt-8 md:pt-10 shrink-0">
+        <div className="flex items-start justify-between gap-4">
+          <div className="min-w-0" />
+          <div className="flex-1 text-center">
+            <h1 className="text-3xl md:text-5xl font-medium tracking-tight text-gray-900">
+              How can I help, {displayName}?
+            </h1>
+          </div>
+          <div className="min-w-[92px] flex justify-start">
+        {hasConversation && (
           <button
             type="button"
             onClick={handleClearChat}
-            className="absolute right-6 top-10 md:right-12 md:top-14 text-[10px] font-black uppercase tracking-widest text-gray-400 hover:text-[#F97316] transition-colors"
+            className="text-[10px] font-black uppercase tracking-widest text-gray-400 hover:text-[#F97316] transition-colors"
           >
             Clear Chat
           </button>
         )}
-        <h1 className="text-3xl md:text-5xl font-medium tracking-tight text-gray-900">
-          How can I help, {displayName}?
-        </h1>
+          </div>
+        </div>
       </div>
 
       {!canWrite && (
@@ -126,10 +134,26 @@ const AskAIPage: React.FC<{ user: UserSession | null }> = ({ user }) => {
 
       <div className="flex-1 px-6 md:px-10 py-8 overflow-y-auto">
         {!response ? (
-          <div className="h-full flex flex-col items-center justify-center text-center">
-            <p className="text-sm md:text-base text-gray-400 max-w-xl">
-              Ask about attendance, students, follow-up, leaderboard, or draft a points action for confirmation.
-            </p>
+          <div className="h-full flex flex-col items-center justify-center">
+            <div className="w-full max-w-3xl space-y-6">
+              <div className="rounded-[2rem] border border-gray-100 bg-[#FCFCFC] p-6 md:p-8 shadow-sm">
+                <p className="text-[10px] font-black uppercase tracking-widest text-[#F97316]">How To Use Me</p>
+                <ul className="mt-4 space-y-3 text-sm md:text-base text-gray-600 list-disc pl-5">
+                  <li>Ask direct questions like `Who is absent today?` or `Who needs follow-up?` for the fastest answers.</li>
+                  <li>Use full student names or access keys when asking about points so matching is more accurate.</li>
+                  <li>Try `How many students do we have?`, `Top students right now`, or `How many points does Joshua Cruz have?`.</li>
+                  <li>For point changes, say it clearly like `Add 5 points to Joshua Cruz for Memory Verse`.</li>
+                  <li>I will preview any point-add action first, and nothing is saved until you press `Confirm Save`.</li>
+                  <li>If the reply looks too broad, rewrite the prompt with one request only instead of combining many questions.</li>
+                  <li>Use `Clear Chat` anytime to reset the conversation and start a new request cleanly.</li>
+                </ul>
+              </div>
+              <div className="text-center">
+                <p className="text-sm md:text-base text-gray-400">
+                  Ask about attendance, students, follow-up, leaderboard, or draft a points action for confirmation.
+                </p>
+              </div>
+            </div>
           </div>
         ) : (
           <div className="space-y-8">
@@ -219,7 +243,7 @@ const AskAIPage: React.FC<{ user: UserSession | null }> = ({ user }) => {
             className="w-11 h-11 rounded-full bg-[#F97316] text-white flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed hover:bg-[#EA580C] transition-colors shrink-0"
             aria-label={isLoading ? 'Stop response' : 'Send prompt'}
           >
-            {isLoading ? <Square size={16} fill="currentColor" /> : <Sparkles size={18} />}
+            {isLoading ? <Loader2 size={18} className="animate-spin" /> : <Sparkles size={18} />}
           </button>
         </div>
       </div>

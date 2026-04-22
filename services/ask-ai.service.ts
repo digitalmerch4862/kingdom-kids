@@ -122,6 +122,14 @@ const answerStudentPoints = async (prompt: string, students: Student[], ledger: 
   });
 };
 
+const answerHelp = () =>
+  normalizeAskAIResponse({
+    mode: 'answer',
+    reply:
+      'You can ask about absent students, follow-up, leaderboard, roster counts, student points, or draft point actions like "Add 5 points to Joshua Cruz for Memory Verse". Keep each prompt to one clear request for best results.',
+    citations: ['students', 'attendance', 'points'],
+  });
+
 export const normalizeAskAIResponse = (input: Partial<AskAIResponse>): AskAIResponse => ({
   mode: input.mode ?? 'error',
   reply: input.reply ?? 'Something went wrong.',
@@ -178,11 +186,11 @@ export class AskAIService {
       return answerStudentPoints(prompt, students, ledger.length ? ledger : await db.getPointsLedger());
     }
 
-    return normalizeAskAIResponse({
-      mode: 'answer',
-      reply: 'I can help with attendance, follow-up, leaderboard, roster counts, student points, and draft add-points actions like "Add 5 points to Joshua for Memory Verse".',
-      citations: ['students', 'attendance', 'points'],
-    });
+    if (normalizedPrompt.includes('how to use') || normalizedPrompt.includes('help me use') || normalizedPrompt === 'help' || normalizedPrompt.includes('what can you do')) {
+      return answerHelp();
+    }
+
+    return answerHelp();
   }
 
   static async executeAddPoints(input: AskAIAddPointsAction & { actor: string }) {

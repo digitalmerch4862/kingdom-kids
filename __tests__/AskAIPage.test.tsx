@@ -33,6 +33,8 @@ describe('AskAIPage', () => {
 
     expect(screen.getByRole('heading', { name: /How can I help, Maggie\?/i })).toBeInTheDocument();
     expect(screen.getByPlaceholderText(/Ask anything/i)).toBeInTheDocument();
+    expect(screen.getByText(/How To Use Me/i)).toBeInTheDocument();
+    expect(screen.getByText(/nothing is saved until you press/i)).toBeInTheDocument();
   });
 
   it('submits a prompt and renders the AI answer', async () => {
@@ -136,5 +138,32 @@ describe('AskAIPage', () => {
     );
 
     expect(screen.getByText(/read-only mode/i)).toBeInTheDocument();
+  });
+
+  it('clears the prompt and conversation when clear chat is pressed', async () => {
+    vi.mocked(AskAIService.ask).mockResolvedValue({
+      mode: 'answer',
+      reply: '2 students are absent today.',
+      citations: ['attendance'],
+      pendingAction: null,
+    });
+
+    render(
+      <MemoryRouter>
+        <AskAIPage user={{ role: 'ADMIN', username: 'RAD' } as any} />
+      </MemoryRouter>
+    );
+
+    fireEvent.change(screen.getByLabelText(/Ask AI prompt/i), {
+      target: { value: 'Who is absent today?' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: /Send prompt/i }));
+
+    expect(await screen.findByText(/2 students are absent today/i)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: /Clear Chat/i }));
+
+    expect(screen.getByLabelText(/Ask AI prompt/i)).toHaveValue('');
+    expect(screen.queryByText(/2 students are absent today/i)).not.toBeInTheDocument();
+    expect(screen.getByText(/How To Use Me/i)).toBeInTheDocument();
   });
 });

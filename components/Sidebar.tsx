@@ -144,8 +144,8 @@ const Sidebar: React.FC<SidebarProps> = ({ user, onLogout, isOpen, isDesktopOpen
   }, []);
 
   const teacherItems: SidebarItem[] = [
-    { label: 'DASHBOARD', icon: LayoutDashboard, path: '/admin' },
     { label: 'ASK AI', icon: Sparkles, path: '/admin/ask-ai' },
+    { label: 'DASHBOARD', icon: LayoutDashboard, path: '/admin' },
     { label: "TEACHER'S BOARD", icon: Calendar, path: '/admin/teachers-board' },
     { label: 'FOLLOW-UP', icon: MessageSquare, path: '/admin/follow-up', badge: followUpCount > 0 ? followUpCount : null },
     { label: 'QR CHECK-IN', icon: Camera, path: '/admin/qr-scan' },

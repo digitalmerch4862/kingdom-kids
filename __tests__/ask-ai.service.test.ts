@@ -111,4 +111,16 @@ describe('AskAIService', () => {
       'AI drafted action'
     );
   });
+
+  it('returns a help response for capability questions', async () => {
+    vi.mocked(db.getStudents).mockResolvedValue([] as any);
+
+    const result = await AskAIService.ask({
+      prompt: 'What can you do?',
+      actor: { role: 'ADMIN', username: 'RAD' },
+    });
+
+    expect(result.mode).toBe('answer');
+    expect(result.reply).toContain('absent students');
+  });
 });
