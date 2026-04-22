@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { Loader2, Mic, Plus, Shield, Sparkles, Square } from 'lucide-react';
+import { Loader2, Plus, Shield, Sparkles, Trash2 } from 'lucide-react';
 import type { UserSession } from '../types';
 import type { AskAIResponse } from '../services/ask-ai.types';
 import { AskAIService } from '../services/ask-ai.service';
@@ -109,17 +109,7 @@ const AskAIPage: React.FC<{ user: UserSession | null }> = ({ user }) => {
               How can I help, {displayName}?
             </h1>
           </div>
-          <div className="min-w-[92px] flex justify-start">
-        {hasConversation && (
-          <button
-            type="button"
-            onClick={handleClearChat}
-            className="text-[10px] font-black uppercase tracking-widest text-gray-400 hover:text-[#F97316] transition-colors"
-          >
-            Clear Chat
-          </button>
-        )}
-          </div>
+          <div className="min-w-[92px]" />
         </div>
       </div>
 
@@ -231,17 +221,18 @@ const AskAIPage: React.FC<{ user: UserSession | null }> = ({ user }) => {
 
           <button
             type="button"
+            onClick={handleClearChat}
             className="w-9 h-9 rounded-full flex items-center justify-center text-gray-900 hover:bg-gray-50 transition-colors shrink-0"
-            aria-label="Voice input"
+            aria-label="Clear chat"
           >
-            <Mic size={18} />
+            <Trash2 size={18} />
           </button>
 
           <button
             onClick={isLoading ? undefined : handleAsk}
             disabled={!prompt.trim()}
             className="w-11 h-11 rounded-full bg-[#F97316] text-white flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed hover:bg-[#EA580C] transition-colors shrink-0"
-            aria-label={isLoading ? 'Stop response' : 'Send prompt'}
+            aria-label="Send prompt"
           >
             {isLoading ? <Loader2 size={18} className="animate-spin" /> : <Sparkles size={18} />}
           </button>
