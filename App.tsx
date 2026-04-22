@@ -28,6 +28,7 @@ import FaithPathwayPage from './pages/FaithPathwayPage';
 import TeachersBoardPage from './pages/TeachersBoardPage';
 import DailyQuestPage from './pages/DailyQuestPage';
 import SideQuestPage from './pages/SideQuestPage';
+import AskAIPage from './pages/AskAIPage';
 
 const SESSION_KEY = 'km_session';
 const INACTIVITY_TIMEOUT_MS = 5 * 60 * 1000;
@@ -153,6 +154,10 @@ const App: React.FC = () => {
 
           <Route path="/admin/teachers-board" element={
              !user ? <Navigate to="/login" replace /> : (isTeacherOrAdmin ? <TeachersBoardPage /> : <Navigate to="/portal" replace />)
+          } />
+
+          <Route path="/admin/ask-ai" element={
+             !user ? <Navigate to="/login" replace /> : (isTeacherOrAdmin ? <AskAIPage user={user} /> : <Navigate to="/portal" replace />)
           } />
 
           <Route path="/admin/control-center" element={

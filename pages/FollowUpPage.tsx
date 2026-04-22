@@ -37,19 +37,18 @@ const FollowUpPage: React.FC<{ user: UserSession }> = ({ user }) => {
   };
 
   const getSmsTemplate = (student: Student, count: number) => {
-    const childName = student.fullName;
     const childNickname = getFirstName(student.fullName);
     const guardianNickname = student.guardianNickname || getFirstName(student.guardianName) || "Parent";
     const teacherName = user.username;
 
     if (count === 1) {
-      return `Hi ${childNickname} 😊\nWe missed you at Sunday Church today! 💛\nHope you’re doing well. See you next Sunday! 🙏✨\n– Teacher ${teacherName}`;
+      return `Hello ${guardianNickname}! 😊 This is Teacher ${teacherName} from Sunday Church.\nWe missed ${childNickname} today! Hope everything is okay. 💛\nSee you both next Sunday! 🙏✨`;
     }
     if (count === 2) {
-      return `Hello ${guardianNickname}, this is Teacher ${teacherName} from Sunday Church.\n${childNickname} was absent today, just checking in to see if everything is okay. 💛\nWe look forward to seeing ${childNickname} next Sunday! 🙏`;
+      return `Hello ${guardianNickname}, this is Teacher ${teacherName} from Sunday Church.\n${childNickname} has been absent for 2 Sundays now. Just checking in to see if everything is okay. 💛\nWe look forward to seeing ${childNickname} next Sunday! 🙏`;
     }
     if (count >= 3) {
-      return `Hi ${childNickname} 👋\nWe missed you in church today 😊\nDon’t forget—Sunday School is every Sunday at 10 am. See you soon! 🙏\nTeacher ${teacherName}`;
+      return `Hello ${guardianNickname}, this is Teacher ${teacherName} from Sunday Church.\nWe’ve missed ${childNickname} for ${count} Sundays already. 🙏 We’d love to have ${childNickname} back!\nSunday School is every Sunday at 10 AM. Please let us know if there’s anything we can do to help. 💛`;
     }
     return '';
   };
