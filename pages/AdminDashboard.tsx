@@ -211,7 +211,7 @@ const AdminDashboard: React.FC<{ activity: ActivitySchedule | null }> = ({ activ
           { label: 'Check-In', path: '/admin/qr-scan', icon: '📸' },
           { label: 'Register', path: '/admin/students', icon: '👤' },
           { label: 'Points', path: '/admin/points', icon: '⭐' },
-          { label: 'Manual', onClick: () => { audio.playClick(); setShowManualModal(true); }, icon: '⌨️' }
+          { label: 'Ask AI', path: '/admin/ask-ai', icon: '✨' }
         ].map((a, i) => (
           <button
             key={i}
