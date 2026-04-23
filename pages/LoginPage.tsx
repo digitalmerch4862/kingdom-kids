@@ -1,12 +1,13 @@
 
 import React, { useState, useMemo, useEffect, useRef } from 'react';
-import { AUTH_PASSWORDS } from '../constants';
+import { AUTH_PASSWORDS, FACILITATOR_USERNAMES } from '../constants';
 import { UserRole, AgeGroup } from '../types';
 import { audio } from '../services/audio.service';
 import { db } from '../services/db.service';
 import CameraScanner from '../components/CameraScanner';
 import jsQR from 'jsqr';
 import { Camera, MessageCircle } from 'lucide-react';
+import { resolveTeacherRole } from '../utils/permissions';
 
 const getFirstName = (fullName: string) => {
   if (!fullName) return "Student";
@@ -157,8 +158,6 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
     }
   };
 
-  const SPECIAL_TEACHERS = ['CHING', 'LEE', 'BETH', 'MARGE', 'MAGI'];
-  
   const getManilaDay = () => {
     const now = new Date();
     const manilaTime = new Date(now.toLocaleString('en-US', { timeZone: 'Asia/Manila' }));
@@ -174,19 +173,19 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
     const isRad = normalizedUser === 'RAD';
     const isReadOnly = !isSunday && !isRad;
 
-    if (normalizedUser === 'RAD' && inputPass === AUTH_PASSWORDS.ADMIN) {
+    const resolvedRole = resolveTeacherRole(
+      normalizedUser,
+      inputPass,
+      AUTH_PASSWORDS,
+      FACILITATOR_USERNAMES
+    );
+
+    if (resolvedRole) {
       audio.playYehey();
-      onLogin('ADMIN', normalizedUser, undefined, isReadOnly);
-      return true;
-    } else if (SPECIAL_TEACHERS.includes(normalizedUser) && inputPass === AUTH_PASSWORDS.TEACHER) {
-      audio.playYehey();
-      onLogin('TEACHER', normalizedUser, undefined, isReadOnly);
-      return true;
-    } else if (inputPass === AUTH_PASSWORDS.TEACHER) {
-      audio.playYehey();
-      onLogin('TEACHER', normalizedUser, undefined, isReadOnly);
+      onLogin(resolvedRole, normalizedUser, undefined, isReadOnly && resolvedRole !== 'FACILITATOR');
       return true;
     }
+
     return false;
   };
 

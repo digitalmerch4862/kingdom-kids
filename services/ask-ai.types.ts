@@ -24,3 +24,11 @@ export interface AskAIRequest {
     isReadOnly?: boolean;
   };
 }
+
+export interface AskAIExecuteRequest extends AskAIAddPointsAction {
+  actor: {
+    role: string;
+    username: string;
+    isReadOnly?: boolean;
+  };
+}

@@ -4,6 +4,7 @@ import type { UserSession } from '../types';
 import type { AskAIResponse } from '../services/ask-ai.types';
 import { AskAIService } from '../services/ask-ai.service';
 import { audio } from '../services/audio.service';
+import { canConfirmAskAIWrites } from '../utils/permissions';
 
 const toDisplayName = (username?: string) => {
   if (!username) return 'Friend';
@@ -22,10 +23,7 @@ const AskAIPage: React.FC<{ user: UserSession | null }> = ({ user }) => {
   const displayName = useMemo(() => toDisplayName(user?.username), [user?.username]);
   const hasConversation = Boolean(prompt.trim() || response);
 
-  const canWrite = useMemo(
-    () => Boolean(user && !user.isReadOnly && (user.role === 'ADMIN' || user.role === 'TEACHER')),
-    [user]
-  );
+  const canWrite = useMemo(() => canConfirmAskAIWrites(user), [user]);
 
   const handleAsk = async () => {
     if (!prompt.trim() || !user || isLoading) return;
@@ -70,7 +68,11 @@ const AskAIPage: React.FC<{ user: UserSession | null }> = ({ user }) => {
     try {
       await AskAIService.executeAddPoints({
         ...response.pendingAction,
-        actor: user.username,
+        actor: {
+          role: user.role,
+          username: user.username,
+          isReadOnly: user.isReadOnly,
+        },
       });
       audio.playYehey();
       setResponse({
@@ -133,14 +135,14 @@ const AskAIPage: React.FC<{ user: UserSession | null }> = ({ user }) => {
                   <li>Use full student names or access keys when asking about points so matching is more accurate.</li>
                   <li>Try `How many students do we have?`, `Top students right now`, or `How many points does Joshua Cruz have?`.</li>
                   <li>For point changes, say it clearly like `Add 5 points to Joshua Cruz for Memory Verse`.</li>
-                  <li>I will preview any point-add action first, and nothing is saved until you press `Confirm Save`.</li>
+                  <li>I will preview any point-add action first, and nothing is saved until an allowed user presses `Confirm Save`.</li>
                   <li>If the reply looks too broad, rewrite the prompt with one request only instead of combining many questions.</li>
                   <li>Use `Clear Chat` anytime to reset the conversation and start a new request cleanly.</li>
                 </ul>
               </div>
               <div className="text-center">
                 <p className="text-sm md:text-base text-gray-400">
-                  Ask about attendance, students, follow-up, leaderboard, or draft a points action for confirmation.
+                  Ask about attendance, students, follow-up, leaderboard, or draft a points action for confirmation with GPT-5.
                 </p>
               </div>
             </div>

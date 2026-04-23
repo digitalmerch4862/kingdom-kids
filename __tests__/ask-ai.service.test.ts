@@ -54,6 +54,7 @@ describe('normalizeAskAIResponse', () => {
 describe('AskAIService', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.unstubAllGlobals();
   });
 
   it('returns a normalized answer payload for absences', async () => {
@@ -76,9 +77,22 @@ describe('AskAIService', () => {
   });
 
   it('drafts a confirmation payload for add points', async () => {
-    vi.mocked(db.getStudents).mockResolvedValue([
-      { id: 'student-1', fullName: 'Joshua Cruz', studentStatus: 'active', accessKey: '2026001' },
-    ] as any);
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        mode: 'confirm',
+        reply: 'Add 5 points to Joshua Cruz for Memory Verse?',
+        citations: ['students', 'points'],
+        pendingAction: {
+          type: 'add_points',
+          studentId: 'student-1',
+          studentName: 'Joshua Cruz',
+          points: 5,
+          category: 'Memory Verse',
+          notes: 'AI drafted action',
+        },
+      }),
+    }));
 
     const result = await AskAIService.ask({
       prompt: 'Add 5 points to Joshua for Memory Verse',
@@ -100,7 +114,7 @@ describe('AskAIService', () => {
       points: 5,
       category: 'Memory Verse',
       notes: 'AI drafted action',
-      actor: 'RAD',
+      actor: { role: 'ADMIN', username: 'RAD' },
     });
 
     expect(MinistryService.addPoints).toHaveBeenCalledWith(
@@ -108,7 +122,8 @@ describe('AskAIService', () => {
       'Memory Verse',
       5,
       'RAD',
-      'AI drafted action'
+      'AI drafted action',
+      'ASK_AI'
     );
   });
 

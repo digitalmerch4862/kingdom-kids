@@ -29,6 +29,7 @@ import TeachersBoardPage from './pages/TeachersBoardPage';
 import DailyQuestPage from './pages/DailyQuestPage';
 import SideQuestPage from './pages/SideQuestPage';
 import AskAIPage from './pages/AskAIPage';
+import { canAccessAdminWorkspace, hasAskAIWorkspaceAccess, isRadUser } from './utils/permissions';
 
 const SESSION_KEY = 'km_session';
 const INACTIVITY_TIMEOUT_MS = 5 * 60 * 1000;
@@ -129,7 +130,7 @@ const App: React.FC = () => {
     setUser(null);
   };
 
-  const isTeacherOrAdmin = user?.role === 'TEACHER' || user?.role === 'ADMIN';
+  const isTeacherOrAdmin = canAccessAdminWorkspace(user);
   const isAdmin = user?.role === 'ADMIN';
   const isGuest = (user?.username ?? '').toUpperCase() === 'GUEST';
 
@@ -157,11 +158,11 @@ const App: React.FC = () => {
           } />
 
           <Route path="/admin/ask-ai" element={
-             !user ? <Navigate to="/login" replace /> : (isTeacherOrAdmin ? <AskAIPage user={user} /> : <Navigate to="/portal" replace />)
+             !user ? <Navigate to="/login" replace /> : (hasAskAIWorkspaceAccess(user) ? <AskAIPage user={user} /> : <Navigate to="/portal" replace />)
           } />
 
           <Route path="/admin/control-center" element={
-             !user ? <Navigate to="/login" replace /> : (user.username === 'RAD' ? <ControlCenterPage /> : <Navigate to="/admin" replace />)
+             !user ? <Navigate to="/login" replace /> : (isRadUser(user.username) ? <ControlCenterPage /> : <Navigate to="/admin" replace />)
           } />
 
           <Route path="/admin/students" element={

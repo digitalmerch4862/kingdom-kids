@@ -34,7 +34,7 @@ describe('AskAIPage', () => {
     expect(screen.getByRole('heading', { name: /How can I help, Maggie\?/i })).toBeInTheDocument();
     expect(screen.getByPlaceholderText(/Ask anything/i)).toBeInTheDocument();
     expect(screen.getByText(/How To Use Me/i)).toBeInTheDocument();
-    expect(screen.getByText(/nothing is saved until you press/i)).toBeInTheDocument();
+    expect(screen.getByText(/nothing is saved until an allowed user presses/i)).toBeInTheDocument();
   });
 
   it('submits a prompt and renders the AI answer', async () => {
@@ -125,7 +125,11 @@ describe('AskAIPage', () => {
         points: 5,
         category: 'Memory Verse',
         notes: 'AI drafted action',
-        actor: 'RAD',
+        actor: {
+          role: 'ADMIN',
+          username: 'RAD',
+          isReadOnly: undefined,
+        },
       });
     });
   });

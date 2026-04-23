@@ -33,6 +33,7 @@ export const AUTH_PASSWORDS = {
 };
 
 export const FACILITATOR_USERNAMES = [
+  'FACILITATOR'
 ];
 
 export const ADMIN_READONLY_USERS = [
