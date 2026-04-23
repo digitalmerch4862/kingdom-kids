@@ -228,9 +228,7 @@ class DatabaseService {
   }
 
   async addManualRecord(data: { name: string, status: 'alumni' | 'guest', role?: string, batch?: string, guardianContact?: string }) {
-    const year = String(new Date().getFullYear());
-    const random = Math.floor(Math.random() * 999).toString().padStart(3, '0');
-    const accessKey = `${year}${random}`;
+    const accessKey = await this.generateStudentAccessKey();
 
     const { data: result, error } = await supabase
       .from('students')

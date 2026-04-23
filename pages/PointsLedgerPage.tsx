@@ -238,6 +238,12 @@ const PointsLedgerPage: React.FC<{ user: UserSession }> = ({ user }) => {
       return;
     }
 
+    const currentDaily = dailyScores[manualTargetStudent.id] || 0;
+    if (currentDaily + pts > 50) {
+      setManualError(`Daily limit (50) exceeded. Current: ${currentDaily}/50 pts today.`);
+      return;
+    }
+
     setManualError('');
     setIsManualSaving(true);
     audio.playClick();
