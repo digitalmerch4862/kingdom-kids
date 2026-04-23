@@ -1,8 +1,8 @@
 import { db } from '../services/db.service';
-import { MinistryService } from '../services/ministry.service';
 import type { AskAIRequest, AskAIResponse } from '../services/ask-ai.types';
-import type { PointLedger, Student } from '../types';
+import type { Student } from '../types';
 import { canConfirmAskAIWrites } from '../utils/permissions';
+import { askDeterministic, askWithLocalFallback, normalizeAskAIResponse, normalizeText, resolveStudentMatches } from '../services/ask-ai.logic';
 
 const OPENAI_API_URL = 'https://api.openai.com/v1/responses';
 const OPENAI_MODEL = process.env.OPENAI_MODEL || 'gpt-5';
@@ -31,29 +31,6 @@ type AskAIModelPayload = {
   } | null;
 };
 
-const todayIso = () => new Date().toISOString().split('T')[0];
-
-const normalizeText = (value: string) =>
-  value.toLowerCase().replace(/[^a-z0-9\s]/g, ' ').replace(/\s+/g, ' ').trim();
-
-const buildStudentMatcher = (students: Student[], candidate: string): Student | null => {
-  const normalizedCandidate = normalizeText(candidate);
-  if (!normalizedCandidate) return null;
-
-  const exact = students.find((student) => {
-    const normalizedName = normalizeText(student.fullName);
-    const normalizedKey = normalizeText(student.accessKey);
-    return normalizedName === normalizedCandidate || normalizedKey === normalizedCandidate;
-  });
-  if (exact) return exact;
-
-  const partial = students.find((student) => normalizeText(student.fullName).includes(normalizedCandidate));
-  return partial || null;
-};
-
-const getStudentTotalPoints = (ledger: PointLedger[], studentId: string) =>
-  ledger.filter((entry) => entry.studentId === studentId && !entry.voided).reduce((sum, entry) => sum + entry.points, 0);
-
 const toStudentSummary = (students: Student[]) =>
   students.slice(0, 200).map((student) => ({
     id: student.id,
@@ -65,7 +42,7 @@ const toStudentSummary = (students: Student[]) =>
   }));
 
 const toAttendanceSummary = (attendance: Awaited<ReturnType<typeof db.getAttendance>>) => {
-  const today = todayIso();
+  const today = new Date().toISOString().split('T')[0];
   return attendance
     .filter((session) => session.sessionDate === today)
     .map((session) => ({
@@ -85,13 +62,6 @@ const toPointsSummary = (ledger: PointLedger[]) =>
     voided: entry.voided,
   }));
 
-const normalizeAskAIResponse = (input: Partial<AskAIResponse>): AskAIResponse => ({
-  mode: input.mode ?? 'error',
-  reply: input.reply ?? 'Something went wrong.',
-  citations: input.citations ?? [],
-  pendingAction: input.pendingAction ?? null,
-});
-
 const finalizePendingAction = (
   payload: AskAIModelPayload,
   students: Student[],
@@ -105,14 +75,25 @@ const finalizePendingAction = (
     });
   }
 
-  const student = buildStudentMatcher(students, payload.pendingAction.studentName);
-  if (!student) {
+  const matches = resolveStudentMatches(students, payload.pendingAction.studentName);
+  if (matches.length === 0) {
     return normalizeAskAIResponse({
       mode: 'error',
       reply: `${payload.reply}\n\nI could not match the student for that action. Try using the full name or access key.`,
       citations: payload.citations,
     });
   }
+
+  if (matches.length > 1) {
+    const options = matches.slice(0, 5).map((student) => student.fullName).join(', ');
+    return normalizeAskAIResponse({
+      mode: 'answer',
+      reply: `${payload.reply}\n\nI found multiple students matching that action. Please use the full name or access key. Matches: ${options}${matches.length > 5 ? '...' : ''}`,
+      citations: payload.citations,
+    });
+  }
+
+  const student = matches[0];
 
   if (!canWrite) {
     return normalizeAskAIResponse({
@@ -137,139 +118,12 @@ const finalizePendingAction = (
   });
 };
 
-const answerHelp = () =>
-  normalizeAskAIResponse({
-    mode: 'answer',
-    reply:
-      'You can ask about absent students, follow-up, leaderboard, roster counts, student points, or draft point actions like "Add 5 points to Joshua Cruz for Memory Verse". Keep each prompt to one clear request for best results.',
-    citations: ['students', 'attendance', 'points'],
-  });
-
-const answerAbsentToday = async (students: Student[]) => {
-  const attendance = await db.getAttendance();
-  const today = todayIso();
-  const presentIds = new Set(
-    attendance
-      .filter((session) => session.sessionDate === today)
-      .map((session) => session.studentId)
-  );
-
-  const absentStudents = students.filter(
-    (student) => student.studentStatus === 'active' && !presentIds.has(student.id)
-  );
-
-  const preview = absentStudents.slice(0, 8).map((student) => student.fullName).join(', ');
-  return normalizeAskAIResponse({
-    mode: 'answer',
-    reply: absentStudents.length
-      ? `${absentStudents.length} active students are absent today. ${preview}${absentStudents.length > 8 ? '...' : ''}`
-      : 'No active students are absent today.',
-    citations: ['attendance', 'students'],
-  });
-};
-
-const answerFollowUp = async (students: Student[]) => {
-  const followUps = students
-    .filter((student) => student.studentStatus === 'active' && student.consecutiveAbsences > 0)
-    .sort((a, b) => b.consecutiveAbsences - a.consecutiveAbsences);
-
-  return normalizeAskAIResponse({
-    mode: 'answer',
-    reply: followUps.length
-      ? `Follow-up list: ${followUps
-          .slice(0, 10)
-          .map((student) => `${student.fullName} (${student.consecutiveAbsences})`)
-          .join(', ')}`
-      : 'No students currently need follow-up.',
-    citations: ['students'],
-  });
-};
-
-const answerLeaderboard = async () => {
-  const top = (await MinistryService.getLeaderboard()).slice(0, 5);
-  return normalizeAskAIResponse({
-    mode: 'answer',
-    reply: top.length
-      ? `Top students right now: ${top
-          .map((student, index) => `#${index + 1} ${student.fullName} (${student.totalPoints})`)
-          .join(', ')}`
-      : 'No leaderboard data is available yet.',
-    citations: ['points', 'students'],
-  });
-};
-
-const answerStudentPoints = async (prompt: string, students: Student[], ledger: PointLedger[]) => {
-  const studentQuery = prompt
-    .replace(/how many points does/i, '')
-    .replace(/what(?:'s| is) the points? of/i, '')
-    .replace(/points? for/i, '')
-    .replace(/have\??/i, '')
-    .trim();
-
-  const student = buildStudentMatcher(students, studentQuery);
-  if (!student) {
-    return normalizeAskAIResponse({
-      mode: 'error',
-      reply: 'I could not match that student name. Try the full name or access key.',
-      citations: ['students'],
-    });
-  }
-
-  const total = getStudentTotalPoints(ledger, student.id);
-  return normalizeAskAIResponse({
-    mode: 'answer',
-    reply: `${student.fullName} has ${total} total points.`,
-    citations: ['points', 'students'],
-  });
-};
-
-const askWithLocalFallback = async (payload: AskAIRequest, students: Student[]): Promise<AskAIResponse> => {
-  const prompt = payload.prompt.trim();
-  const normalizedPrompt = normalizeText(prompt);
-  const ledger = normalizedPrompt.includes('points') ? await db.getPointsLedger() : [];
-
-  if (normalizedPrompt.includes('absent today') || normalizedPrompt.includes('who is absent')) {
-    return answerAbsentToday(students);
-  }
-
-  if (normalizedPrompt.includes('follow up') || normalizedPrompt.includes('follow-up')) {
-    return answerFollowUp(students);
-  }
-
-  if (normalizedPrompt.includes('leaderboard') || normalizedPrompt.includes('top students')) {
-    return answerLeaderboard();
-  }
-
-  if (normalizedPrompt.includes('how many students') || normalizedPrompt.includes('total students')) {
-    const activeCount = students.filter((student) => student.studentStatus === 'active').length;
-    return normalizeAskAIResponse({
-      mode: 'answer',
-      reply: `There are ${activeCount} active students in the ministry roster.`,
-      citations: ['students'],
-    });
-  }
-
-  if (
-    normalizedPrompt.includes('points for') ||
-    normalizedPrompt.includes('how many points does') ||
-    normalizedPrompt.includes('what is the points of')
-  ) {
-    return answerStudentPoints(prompt, students, ledger.length ? ledger : await db.getPointsLedger());
-  }
-
-  if (
-    normalizedPrompt.includes('how to use') ||
-    normalizedPrompt.includes('help me use') ||
-    normalizedPrompt === 'help' ||
-    normalizedPrompt.includes('what can you do')
-  ) {
-    return answerHelp();
-  }
-
-  return answerHelp();
-};
-
 const askOpenAI = async (payload: AskAIRequest, students: Student[]): Promise<AskAIResponse> => {
+  const deterministic = await askDeterministic(payload, students);
+  if (deterministic) {
+    return deterministic;
+  }
+
   const attendance = await db.getAttendance();
   const ledger = await db.getPointsLedger();
   const canWrite = canConfirmAskAIWrites({
@@ -310,7 +164,7 @@ const askOpenAI = async (payload: AskAIRequest, students: Student[]): Promise<As
                   isReadOnly: payload.actor.isReadOnly || false,
                   canWrite,
                 },
-                today: todayIso(),
+                today: new Date().toISOString().split('T')[0],
                 prompt: payload.prompt,
                 students: toStudentSummary(students),
                 attendanceToday: toAttendanceSummary(attendance),

@@ -138,4 +138,50 @@ describe('AskAIService', () => {
     expect(result.mode).toBe('answer');
     expect(result.reply).toContain('absent students');
   });
+
+  it('asks for clarification when multiple students match a points lookup', async () => {
+    vi.mocked(db.getStudents).mockResolvedValue([
+      { id: 'student-1', fullName: 'Joshua Cruz', studentStatus: 'active', accessKey: '2026001' },
+      { id: 'student-2', fullName: 'Joshua Reyes', studentStatus: 'active', accessKey: '2026002' },
+    ] as any);
+    vi.mocked(db.getPointsLedger).mockResolvedValue([] as any);
+
+    const result = await AskAIService.ask({
+      prompt: 'How many points does Joshua have?',
+      actor: { role: 'ADMIN', username: 'RAD' },
+    });
+
+    expect(result.mode).toBe('answer');
+    expect(result.reply).toContain('multiple students');
+    expect(result.reply).toContain('Joshua Cruz');
+    expect(result.reply).toContain('Joshua Reyes');
+  });
+
+  it('prefers deterministic answers before using the server route', async () => {
+    vi.mocked(db.getStudents).mockResolvedValue([
+      { id: 'student-1', fullName: 'Joshua Cruz', studentStatus: 'active', accessKey: '2026001' },
+      { id: 'student-2', fullName: 'Anna Lee', studentStatus: 'active', accessKey: '2026002' },
+    ] as any);
+    vi.mocked(db.getAttendance).mockResolvedValue([
+      { id: 'a1', studentId: 'student-2', sessionDate: new Date().toISOString().split('T')[0] },
+    ] as any);
+    const fetchSpy = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        mode: 'answer',
+        reply: 'Server answer',
+        citations: ['attendance'],
+        pendingAction: null,
+      }),
+    });
+    vi.stubGlobal('fetch', fetchSpy);
+
+    const result = await AskAIService.ask({
+      prompt: 'Who is absent today?',
+      actor: { role: 'ADMIN', username: 'RAD' },
+    });
+
+    expect(result.reply).toContain('absent');
+    expect(fetchSpy).not.toHaveBeenCalled();
+  });
 });
