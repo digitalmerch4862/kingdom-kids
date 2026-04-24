@@ -29,6 +29,7 @@ import TeachersBoardPage from './pages/TeachersBoardPage';
 import DailyQuestPage from './pages/DailyQuestPage';
 import SideQuestPage from './pages/SideQuestPage';
 import AskAIPage from './pages/AskAIPage';
+import ExcelImportPage from './pages/ExcelImportPage';
 import { canAccessAdminWorkspace, hasAskAIWorkspaceAccess, isRadUser } from './utils/permissions';
 
 const SESSION_KEY = 'km_session';
@@ -163,6 +164,10 @@ const App: React.FC = () => {
 
           <Route path="/admin/control-center" element={
              !user ? <Navigate to="/login" replace /> : (isRadUser(user.username) ? <ControlCenterPage /> : <Navigate to="/admin" replace />)
+          } />
+
+          <Route path="/admin/import" element={
+             !user ? <Navigate to="/login" replace /> : (isAdmin ? <ExcelImportPage /> : <Navigate to="/admin" replace />)
           } />
 
           <Route path="/admin/students" element={
