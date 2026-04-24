@@ -24,7 +24,6 @@ import FollowUpPage from './pages/FollowUpPage';
 import CinemaPage from './pages/CinemaPage';
 import ControlCenterPage from './pages/ControlCenterPage';
 import FacebookPage from './pages/FacebookPage';
-import FaithPathwayPage from './pages/FaithPathwayPage';
 import TeachersBoardPage from './pages/TeachersBoardPage';
 import DailyQuestPage from './pages/DailyQuestPage';
 import SideQuestPage from './pages/SideQuestPage';
@@ -161,11 +160,6 @@ const App: React.FC = () => {
           {/* Faith Pathway — admin lesson editor */}
           <Route path="/admin/faith-pathway/manage" element={
              !user ? <Navigate to="/login" replace /> : (isAdmin ? <FaithPathwayAdminPage /> : <Navigate to="/admin" replace />)
-          } />
-
-          {/* Legacy route — keep the old page for backwards compat */}
-          <Route path="/admin/faith-pathway" element={
-             !user ? <Navigate to="/login" replace /> : (isTeacherOrAdmin ? <FaithPathwayPage /> : <Navigate to="/portal" replace />)
           } />
 
           <Route path="/admin/teachers-board" element={
