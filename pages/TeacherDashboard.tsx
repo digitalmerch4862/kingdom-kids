@@ -3,6 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { ActivitySchedule } from '../types';
 import { MinistryService } from '../services/ministry.service';
+import FeaturedLessonCard from '../components/faith-pathway/FeaturedLessonCard';
 
 const TeacherDashboard: React.FC<{ activity: ActivitySchedule | null }> = ({ activity }) => {
   const [leaderboard, setLeaderboard] = useState<any[]>([]);
@@ -24,6 +25,8 @@ const TeacherDashboard: React.FC<{ activity: ActivitySchedule | null }> = ({ act
           </div>
         )}
       </div>
+
+      <FeaturedLessonCard />
 
       <div className="grid md:grid-cols-3 gap-6">
         <div className="md:col-span-2 space-y-6">
