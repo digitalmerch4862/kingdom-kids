@@ -39,7 +39,8 @@ import { parseWorkbook } from '../utils/excelParser';
 
 describe('parseWorkbook', () => {
   const fixturePath = path.resolve(__dirname, '../yearly kingdom kids 2026.xlsx');
-  const buffer = fs.readFileSync(fixturePath).buffer as ArrayBuffer;
+  const nodeBuf = fs.readFileSync(fixturePath);
+  const buffer = nodeBuf.buffer.slice(nodeBuf.byteOffset, nodeBuf.byteOffset + nodeBuf.byteLength) as ArrayBuffer;
 
   it('returns array of parsed students', () => {
     const result = parseWorkbook(buffer);
