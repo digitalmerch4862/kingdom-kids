@@ -1,0 +1,442 @@
+import React, { useState, useEffect, useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
+import {
+  X, ArrowLeft, ChevronRight, ChevronLeft, Menu, Download, FileText,
+  Play, Eye, Search, BookOpen, GraduationCap, Users, CheckCircle2,
+  LayoutGrid, Book, History, Music, ScrollText, Send, Globe, LogOut,
+  Video, ArrowUpDown, Check
+} from 'lucide-react';
+import { listLessons, getLesson } from '../services/lessons.service';
+import { toContentStructure } from '../utils/lessonMarkdown';
+import type { Lesson, LessonAttachment, LessonVideo } from '../types';
+
+// lucide-react doesn't export Cross — use a simple SVG stand-in
+const CrossIcon = ({ size = 16 }: { size?: number }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+    <line x1="12" y1="2" x2="12" y2="22" /><line x1="2" y1="8" x2="22" y2="8" />
+  </svg>
+);
+
+const CATEGORIES = [
+  { name: 'ALL MISSIONS',    icon: <LayoutGrid size={16} /> },
+  { name: 'PENTATEUCH',      icon: <Book size={16} /> },
+  { name: 'HISTORY',         icon: <History size={16} /> },
+  { name: 'POETRY',          icon: <Music size={16} /> },
+  { name: 'THE PROPHETS',    icon: <ScrollText size={16} /> },
+  { name: 'THE GOSPELS',     icon: <CrossIcon size={16} /> },
+  { name: 'ACTS & EPISTLES', icon: <Send size={16} /> },
+  { name: 'REVELATION',      icon: <Globe size={16} /> },
+];
+
+function getVideoThumbnail(videos?: LessonVideo[]): string | null {
+  if (!videos?.length) return null;
+  try {
+    const u = new URL(videos[0].url);
+    if (u.hostname.includes('youtube.com') || u.hostname.includes('youtu.be')) {
+      const id = u.searchParams.get('v') ?? u.pathname.split('/').pop();
+      return `https://img.youtube.com/vi/${id}/hqdefault.jpg`;
+    }
+    if (u.hostname.includes('vimeo.com')) {
+      return `https://vumbnail.com/${u.pathname.split('/').pop()}.jpg`;
+    }
+  } catch { /* ignore */ }
+  return null;
+}
+
+function getDriveFileId(url: string): string | null {
+  const m = url.match(/\/d\/([^/]+)/) ?? url.match(/id=([^&]+)/);
+  return m ? m[1] : null;
+}
+
+function getViewableUrl(url: string): string {
+  const fid = getDriveFileId(url);
+  return fid && url.includes('drive.google.com')
+    ? `https://drive.google.com/file/d/${fid}/preview`
+    : url;
+}
+
+function getDownloadUrl(url: string): string {
+  const fid = getDriveFileId(url);
+  return fid && url.includes('drive.google.com')
+    ? `https://drive.google.com/uc?export=download&id=${fid}`
+    : url;
+}
+
+const FaithPathwayTeacherPage: React.FC = () => {
+  const navigate = useNavigate();
+  const [lessons, setLessons] = useState<Lesson[]>([]);
+  const [selectedLesson, setSelectedLesson] = useState<Lesson | null>(null);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [categoryFilter, setCategoryFilter] = useState('ALL MISSIONS');
+  const [loading, setLoading] = useState(true);
+  const [sortOrder, setSortOrder] = useState<'newest' | 'alpha_asc' | 'alpha_desc'>('alpha_asc');
+  const [isSortMenuOpen, setIsSortMenuOpen] = useState(false);
+  const [activeIndex, setActiveIndex] = useState(0);
+  const [isNavExpanded, setIsNavExpanded] = useState(false);
+  const [activeVideo, setActiveVideo] = useState<LessonVideo | null>(null);
+  const [viewingResource, setViewingResource] = useState<LessonAttachment | null>(null);
+  const [activeReadingId] = useState<string | null>(null);
+
+  useEffect(() => {
+    listLessons('PUBLISHED')
+      .then(setLessons)
+      .catch(console.error)
+      .finally(() => setLoading(false));
+  }, []);
+
+  const filteredLessons = useMemo(() => {
+    const result = lessons.filter(l =>
+      l.title.toLowerCase().includes(searchTerm.toLowerCase()) &&
+      (categoryFilter === 'ALL MISSIONS' || l.category === categoryFilter)
+    );
+    result.sort((a, b) => {
+      if (sortOrder === 'alpha_asc') return a.title.localeCompare(b.title, undefined, { numeric: true, sensitivity: 'base' });
+      if (sortOrder === 'alpha_desc') return b.title.localeCompare(a.title, undefined, { numeric: true, sensitivity: 'base' });
+      return new Date(b.updated_at || 0).getTime() - new Date(a.updated_at || 0).getTime();
+    });
+    return result;
+  }, [lessons, searchTerm, categoryFilter, sortOrder]);
+
+  useEffect(() => { setActiveIndex(0); }, [categoryFilter, searchTerm, sortOrder]);
+
+  const handlePrev = () => setActiveIndex(i => Math.max(0, i - 1));
+  const handleNext = () => setActiveIndex(i => Math.min(filteredLessons.length - 1, i + 1));
+
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if (selectedLesson) return;
+      if (e.key === 'ArrowLeft') handlePrev();
+      if (e.key === 'ArrowRight') handleNext();
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, [activeIndex, selectedLesson, filteredLessons.length]);
+
+  const handleViewLesson = async (id: string) => {
+    setLoading(true);
+    try {
+      const full = await getLesson(id);
+      setSelectedLesson(full);
+      setIsNavExpanded(false);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    } catch { alert('Error loading lesson.'); }
+    finally { setLoading(false); }
+  };
+
+  const scrollToSection = (id: string) => {
+    document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    setIsNavExpanded(false);
+  };
+
+  const lessonStructure = selectedLesson ? toContentStructure(selectedLesson.content ?? '') : null;
+
+  return (
+    <div className="min-h-screen bg-slate-50 text-slate-900 font-sans selection:bg-pink-100 flex flex-col overflow-hidden">
+
+      {/* Resource preview modal */}
+      {viewingResource && (
+        <div className="fixed inset-0 z-[200] flex items-center justify-center bg-slate-900/95 backdrop-blur-md p-0 sm:p-6 overflow-hidden">
+          <div className="bg-white w-full h-full sm:max-w-6xl sm:h-[90vh] sm:rounded-[40px] overflow-hidden flex flex-col shadow-2xl animate-in zoom-in-95 duration-300">
+            <div className="px-4 py-4 sm:px-8 sm:py-6 border-b flex items-center justify-between bg-white sticky top-0 z-[210]">
+              <div className="flex items-center gap-3 min-w-0">
+                <FileText className="text-[#EF4E92] shrink-0" size={24} />
+                <h3 className="font-black text-sm sm:text-xl truncate text-[#003882]">{viewingResource.name}</h3>
+              </div>
+              <div className="flex items-center gap-2 sm:gap-3 shrink-0">
+                <button
+                  onClick={() => window.open(getDownloadUrl(viewingResource.storage_path), '_blank')}
+                  className="bg-[#003882] text-white p-2.5 sm:px-6 sm:py-3 rounded-xl sm:rounded-full text-[10px] font-black uppercase tracking-widest flex items-center gap-2 hover:bg-[#002b66] active:scale-95 transition-all shadow-lg"
+                >
+                  <Download size={16} /><span className="hidden sm:inline">Download</span>
+                </button>
+                <button onClick={() => setViewingResource(null)} className="p-2 sm:p-3 hover:bg-slate-100 rounded-xl transition-colors text-slate-400">
+                  <X size={24} strokeWidth={3} />
+                </button>
+              </div>
+            </div>
+            <div className="flex-1 w-full bg-slate-50 relative overflow-hidden">
+              <iframe src={getViewableUrl(viewingResource.storage_path)} className="w-full h-full border-none bg-white" title="Resource Preview" allow="autoplay" />
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Floating header — list view only */}
+      {!selectedLesson && (
+        <header className="fixed top-0 left-0 right-0 z-50 px-6 py-4 flex items-center justify-between pointer-events-none">
+          <div className="bg-white/90 backdrop-blur-md px-5 py-3 rounded-full shadow-lg border border-slate-100 pointer-events-auto flex items-center gap-3">
+            <div className="bg-[#EF4E92] w-8 h-8 rounded-full flex items-center justify-center font-black text-white text-xs shadow-md">K</div>
+            <div>
+              <h1 className="text-sm font-black text-[#003882] uppercase tracking-tighter leading-none">KK Faith Pathway</h1>
+              <p className="text-[9px] text-slate-400 font-bold tracking-widest uppercase">Mission Control</p>
+            </div>
+          </div>
+
+          <div className="hidden md:flex bg-white/90 backdrop-blur-md px-2 py-2 rounded-full shadow-lg border border-slate-100 pointer-events-auto items-center gap-1 max-w-2xl overflow-x-auto">
+            {CATEGORIES.map(cat => (
+              <button
+                key={cat.name}
+                onClick={() => setCategoryFilter(cat.name)}
+                className={`flex items-center gap-2 px-4 py-2 rounded-full transition-all text-[10px] font-black uppercase tracking-widest whitespace-nowrap ${categoryFilter === cat.name ? 'bg-[#003882] text-white shadow-md' : 'text-slate-400 hover:bg-slate-50 hover:text-slate-600'}`}
+              >
+                <span className={categoryFilter === cat.name ? 'text-[#EF4E92]' : 'opacity-50'}>{cat.icon}</span>
+                {cat.name}
+              </button>
+            ))}
+          </div>
+
+          <div className="flex items-center gap-3 pointer-events-auto">
+            <div className="relative">
+              <button onClick={() => setIsSortMenuOpen(o => !o)} className="bg-white/90 backdrop-blur-md p-3 rounded-full shadow-lg border border-slate-100 hover:bg-slate-50 text-slate-400 hover:text-[#EF4E92] transition-colors">
+                <ArrowUpDown size={18} />
+              </button>
+              {isSortMenuOpen && (
+                <div className="absolute top-full right-0 mt-2 w-48 bg-white/95 backdrop-blur-xl rounded-2xl shadow-2xl border border-slate-100 p-2 flex flex-col gap-1 z-[60] animate-in fade-in zoom-in-95 duration-200">
+                  {([['newest', 'Newest First'], ['alpha_asc', 'Title (A-Z)'], ['alpha_desc', 'Title (Z-A)']] as const).map(([val, label]) => (
+                    <button key={val} onClick={() => { setSortOrder(val); setIsSortMenuOpen(false); }}
+                      className={`px-4 py-3 text-left text-[10px] font-black uppercase tracking-widest rounded-xl transition-all flex items-center justify-between ${sortOrder === val ? 'bg-pink-50 text-[#EF4E92]' : 'text-slate-400 hover:bg-slate-50'}`}>
+                      <span>{label}</span>
+                      {sortOrder === val && <Check size={12} />}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+            <div className="hidden sm:flex bg-white/90 backdrop-blur-md px-4 py-2.5 rounded-full shadow-lg border border-slate-100 items-center gap-2 w-48 transition-all focus-within:w-64 focus-within:ring-2 ring-[#EF4E92]">
+              <Search size={14} className="text-slate-400" />
+              <input type="text" placeholder="SEARCH MISSIONS..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)}
+                className="bg-transparent border-none outline-none text-[10px] font-bold text-slate-700 w-full placeholder:text-slate-300 uppercase tracking-wider" />
+            </div>
+            <button onClick={() => navigate('/')} className="bg-white/90 backdrop-blur-md p-3 rounded-full shadow-lg border border-slate-100 hover:bg-red-50 hover:text-red-500 text-slate-400 transition-colors" title="Back to dashboard">
+              <LogOut size={18} />
+            </button>
+          </div>
+        </header>
+      )}
+
+      <main className="flex-1 w-full h-screen relative overflow-hidden flex flex-col">
+        {!selectedLesson ? (
+          <div className="flex-1 relative flex items-center justify-center bg-gradient-to-br from-slate-50 via-blue-50/30 to-slate-100">
+            <div className="absolute inset-0 overflow-hidden pointer-events-none opacity-30">
+              <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-[#EF4E92] rounded-full mix-blend-multiply filter blur-3xl opacity-20 animate-blob" />
+              <div className="absolute top-1/3 right-1/4 w-96 h-96 bg-[#003882] rounded-full mix-blend-multiply filter blur-3xl opacity-20 animate-blob animation-delay-2000" />
+            </div>
+
+            <div className="md:hidden absolute top-24 left-0 right-0 px-6 z-30">
+              <select value={categoryFilter} onChange={e => setCategoryFilter(e.target.value)}
+                className="w-full bg-white/80 backdrop-blur border border-white shadow-lg rounded-2xl p-4 text-xs font-black text-[#003882] uppercase outline-none">
+                {CATEGORIES.map(c => <option key={c.name} value={c.name}>{c.name}</option>)}
+              </select>
+            </div>
+
+            {loading ? (
+              <div className="flex flex-col items-center gap-4 animate-pulse">
+                <div className="w-12 h-12 border-4 border-[#EF4E92] border-t-transparent rounded-full animate-spin" />
+                <span className="text-[10px] font-black uppercase tracking-[0.3em] text-[#003882]">Loading Missions...</span>
+              </div>
+            ) : filteredLessons.length === 0 ? (
+              <div className="text-center p-8 bg-white/50 backdrop-blur-sm rounded-[48px] border-2 border-dashed border-slate-200">
+                <p className="font-black uppercase tracking-widest text-slate-400 text-[10px]">No active missions found.</p>
+                <button onClick={() => { setCategoryFilter('ALL MISSIONS'); setSearchTerm(''); }} className="mt-4 text-[#EF4E92] text-xs font-bold underline">Reset Filters</button>
+              </div>
+            ) : (
+              <div className="relative w-full max-w-[1400px] h-[600px] flex items-center justify-center perspective-[1200px]">
+                <button onClick={handlePrev} disabled={activeIndex === 0}
+                  className="absolute left-4 md:left-10 z-40 p-4 rounded-full bg-white/80 backdrop-blur-md shadow-xl text-[#003882] disabled:opacity-30 disabled:cursor-not-allowed hover:scale-110 active:scale-95 transition-all border border-white">
+                  <ChevronLeft size={32} strokeWidth={3} />
+                </button>
+                <button onClick={handleNext} disabled={activeIndex === filteredLessons.length - 1}
+                  className="absolute right-4 md:right-10 z-40 p-4 rounded-full bg-white/80 backdrop-blur-md shadow-xl text-[#003882] disabled:opacity-30 disabled:cursor-not-allowed hover:scale-110 active:scale-95 transition-all border border-white">
+                  <ChevronRight size={32} strokeWidth={3} />
+                </button>
+
+                <div className="relative w-full h-full flex items-center justify-center">
+                  {filteredLessons.map((lesson, index) => {
+                    const offset = index - activeIndex;
+                    if (Math.abs(offset) > 2) return null;
+                    const isActive = offset === 0;
+                    const thumb = getVideoThumbnail(lesson.videos);
+                    const catIcon = CATEGORIES.find(c => c.name === lesson.category)?.icon ?? <Video size={32} />;
+                    return (
+                      <div
+                        key={lesson.id}
+                        onClick={() => isActive ? handleViewLesson(lesson.id) : (offset < 0 ? handlePrev() : handleNext())}
+                        className={`absolute w-[300px] sm:w-[380px] md:w-[420px] aspect-[3/4] bg-white rounded-[40px] shadow-2xl border-4 border-white transition-all duration-500 ease-out cursor-pointer overflow-hidden flex flex-col ${isActive ? 'z-30 ring-8 ring-[#EF4E92]/20' : 'z-10 grayscale-[0.5] hover:grayscale-0 opacity-80'}`}
+                        style={{
+                          transform: `translateX(${offset * 110}%) scale(${1 - Math.abs(offset) * 0.15}) rotateY(${offset * -25}deg) translateZ(${Math.abs(offset) * -100}px)`,
+                          opacity: Math.abs(offset) > 2 ? 0 : (isActive ? 1 : 0.6),
+                          boxShadow: isActive ? '0 25px 50px -12px rgba(0,0,0,0.25)' : 'none',
+                        }}
+                      >
+                        <div className="h-[55%] bg-slate-100 relative overflow-hidden">
+                          {thumb
+                            ? <img src={thumb} alt="" className="w-full h-full object-cover" />
+                            : <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-[#003882] to-[#EF4E92]/20 text-[#003882]/20">
+                                {React.cloneElement(catIcon as React.ReactElement<{ size?: number; strokeWidth?: number }>, { size: 80, strokeWidth: 1 })}
+                              </div>
+                          }
+                          <div className="absolute top-4 left-4 bg-white/90 backdrop-blur px-3 py-1 rounded-full text-[8px] font-black uppercase tracking-widest text-[#003882] shadow-sm">{lesson.category}</div>
+                          <div className={`absolute inset-0 bg-black/20 flex items-center justify-center transition-opacity ${isActive ? 'opacity-100' : 'opacity-0'}`}>
+                            <div className="w-16 h-16 bg-white/30 backdrop-blur-md rounded-full flex items-center justify-center text-white border border-white/50 shadow-lg">
+                              <Play fill="currentColor" size={28} className="ml-1" />
+                            </div>
+                          </div>
+                        </div>
+                        <div className="flex-1 p-6 md:p-8 flex flex-col bg-white">
+                          <h2 className="text-xl md:text-2xl font-black text-[#003882] leading-none mb-3 line-clamp-2 uppercase tracking-tight">{lesson.title}</h2>
+                          <p className="text-slate-500 text-xs md:text-sm font-medium leading-relaxed line-clamp-3 mb-auto">{lesson.summary}</p>
+                          <div className="pt-4 mt-4 border-t border-slate-50 flex items-center justify-between">
+                            <span className="text-[10px] font-black text-slate-300 uppercase tracking-widest">Grade {lesson.grade_min}-{lesson.grade_max}</span>
+                            <button className={`w-8 h-8 rounded-full flex items-center justify-center transition-colors ${isActive ? 'bg-[#EF4E92] text-white' : 'bg-slate-100 text-slate-400'}`}>
+                              <ChevronRight size={16} strokeWidth={3} />
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+
+                <div className="absolute -bottom-12 flex gap-2">
+                  {filteredLessons.map((_, i) => (
+                    <div key={i} className={`h-1.5 rounded-full transition-all duration-300 ${i === activeIndex ? 'w-8 bg-[#EF4E92]' : 'w-1.5 bg-slate-300'}`} />
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {!loading && (
+              <div className="absolute bottom-6 right-6 text-[10px] font-black text-slate-300 uppercase tracking-widest">
+                Mission {activeIndex + 1} / {filteredLessons.length}
+              </div>
+            )}
+          </div>
+        ) : (
+          /* Lesson detail view */
+          <div className="flex-1 overflow-y-auto bg-[#F4F7FA]">
+            <div className="max-w-4xl mx-auto px-5 sm:px-6 py-10 sm:py-20 animate-in fade-in slide-in-from-bottom-6 duration-700">
+              {/* Floating nav map */}
+              {lessonStructure && (
+                <div className="fixed bottom-6 right-6 z-[70] flex flex-col items-end gap-3 pointer-events-none">
+                  <div className={`flex flex-col gap-2 mb-2 transition-all duration-300 origin-bottom-right max-h-[50vh] overflow-y-auto pr-1 pointer-events-auto ${isNavExpanded ? 'scale-100 opacity-100' : 'scale-0 opacity-0'}`}>
+                    <button onClick={() => setSelectedLesson(null)} className="bg-slate-900 text-white px-5 sm:px-6 py-3 rounded-2xl text-[9px] sm:text-[10px] font-black uppercase tracking-widest shadow-xl flex items-center gap-2 self-end">
+                      <ArrowLeft size={14} /> Exit Mission
+                    </button>
+                    <div className="w-px h-4 bg-slate-200 self-end mr-6" />
+                    {lessonStructure.read.map(item => (
+                      <button key={item.id} onClick={() => scrollToSection(item.id)} className="bg-[#2563eb] text-white px-6 sm:px-5 py-4 sm:py-3 rounded-2xl text-[11px] sm:text-[10px] font-black uppercase tracking-widest shadow-lg text-right hover:scale-105 active:scale-95 transition-all">{item.title}</button>
+                    ))}
+                    {lessonStructure.teach.map(item => (
+                      <button key={item.id} onClick={() => scrollToSection(item.id)} className="bg-[#10b981] text-white px-6 sm:px-5 py-4 sm:py-3 rounded-2xl text-[11px] sm:text-[10px] font-black uppercase tracking-widest shadow-lg text-right hover:scale-105 active:scale-95 transition-all">{item.title}</button>
+                    ))}
+                    {lessonStructure.engage.map(item => (
+                      <button key={item.id} onClick={() => scrollToSection(item.id)} className="bg-[#EF4E92] text-white px-6 sm:px-5 py-4 sm:py-3 rounded-2xl text-[11px] sm:text-[10px] font-black uppercase tracking-widest shadow-lg text-right hover:scale-105 active:scale-95 transition-all">{item.title}</button>
+                    ))}
+                  </div>
+                  <button onClick={() => setIsNavExpanded(e => !e)}
+                    className={`w-16 h-16 rounded-full flex items-center justify-center shadow-2xl transition-all duration-500 pointer-events-auto ${isNavExpanded ? 'bg-slate-900 text-white rotate-90' : 'bg-[#EF4E92] text-white'}`}>
+                    {isNavExpanded ? <X size={24} strokeWidth={3} /> : <Menu size={24} strokeWidth={3} />}
+                  </button>
+                </div>
+              )}
+
+              <div className="mb-12 sm:mb-20">
+                <div className="flex items-center gap-3 mb-6 sm:mb-8">
+                  <button onClick={() => setSelectedLesson(null)} className="p-2.5 sm:p-3 bg-white rounded-xl sm:rounded-2xl shadow-sm border border-slate-100 hover:bg-slate-50 transition-all active:scale-95">
+                    <ArrowLeft size={20} />
+                  </button>
+                  <span className="bg-[#EF4E92] text-white px-4 py-1.5 rounded-full text-[9px] sm:text-[10px] font-black uppercase tracking-widest shadow-md">{selectedLesson.category}</span>
+                </div>
+                <h1 className="text-3xl sm:text-5xl md:text-7xl font-black text-[#003882] tracking-tighter mt-4 leading-[1.1] mb-6">{selectedLesson.title}</h1>
+                <p className="text-lg sm:text-xl md:text-2xl text-slate-400 font-medium italic leading-relaxed">"{selectedLesson.summary}"</p>
+              </div>
+
+              <div className="space-y-24 sm:space-y-32">
+                {[
+                  { key: 'read' as const, color: '#2563eb', label: '1. READ', icon: <BookOpen size={24} />, anchor: 'read-anchor' },
+                  { key: 'teach' as const, color: '#10b981', label: '2. TEACH', icon: <GraduationCap size={24} />, anchor: 'teach-anchor' },
+                  { key: 'engage' as const, color: '#EF4E92', label: '3. ENGAGE', icon: <Users size={24} />, anchor: 'engage-anchor' },
+                ].map(pillar => (
+                  <section key={pillar.key} id={pillar.anchor} className="scroll-mt-24">
+                    <div className="flex items-center gap-4 mb-8 sm:mb-12">
+                      <div className="p-2.5 sm:p-3 rounded-xl sm:rounded-2xl text-white shadow-lg" style={{ backgroundColor: pillar.color }}>
+                        {React.cloneElement(pillar.icon as React.ReactElement<{ size?: number }>, { size: 20 })}
+                      </div>
+                      <h3 className="text-2xl sm:text-3xl md:text-4xl font-black tracking-tighter uppercase text-[#003882]">{pillar.label}</h3>
+                    </div>
+                    <div className="flex flex-col gap-6 sm:gap-10">
+                      {lessonStructure?.[pillar.key].map(section => (
+                        <div key={section.id} id={section.id} scroll-mt-28=""
+                          className={`bg-white rounded-[32px] sm:rounded-[40px] p-6 sm:p-8 md:p-12 shadow-sm border-t-[8px] sm:border-t-[12px] transition-all duration-700 ${activeReadingId === section.id ? 'scale-[1.02] ring-4 sm:ring-8 ring-[#EF4E92]/30 shadow-2xl bg-pink-50/10' : 'hover:shadow-xl'}`}
+                          style={{ borderTopColor: activeReadingId === section.id ? '#EF4E92' : pillar.color, transform: activeReadingId === section.id ? 'translateY(-4px)' : 'none' }}
+                        >
+                          <div className="flex items-center justify-between mb-6 sm:mb-8">
+                            <h4 className={`text-[9px] sm:text-[10px] font-black uppercase tracking-widest transition-colors ${activeReadingId === section.id ? 'text-[#EF4E92]' : 'text-slate-300'}`}>{section.title}</h4>
+                            <CheckCircle2 className={`transition-all duration-500 ${activeReadingId === section.id ? 'text-[#EF4E92] scale-125 opacity-100' : 'text-slate-100 opacity-50'}`} size={24} />
+                          </div>
+                          <p className="text-slate-700 text-base sm:text-xl md:text-2xl leading-relaxed font-medium whitespace-pre-wrap">{section.content}</p>
+                        </div>
+                      ))}
+                    </div>
+                  </section>
+                ))}
+              </div>
+
+              {/* Media Hub */}
+              <section id="media-hub" className="mt-24 sm:mt-40 scroll-mt-24">
+                <div className="flex items-center gap-3 mb-8 sm:mb-12">
+                  <div className="h-8 sm:h-10 w-1.5 sm:w-2 bg-slate-800 rounded-full" />
+                  <h3 className="text-2xl sm:text-3xl font-black text-[#003882] uppercase tracking-tighter">Media Hub</h3>
+                </div>
+                <div className="flex flex-col gap-6 sm:gap-10">
+                  {selectedLesson.videos?.map((vid, i) => (
+                    <div key={i} className="bg-slate-900 rounded-[32px] sm:rounded-[48px] overflow-hidden aspect-video shadow-2xl relative border-2 sm:border-4 border-white">
+                      {activeVideo?.url === vid.url ? (
+                        <iframe src={`https://www.youtube.com/embed/${vid.url.includes('v=') ? vid.url.split('v=')[1].split('&')[0] : vid.url.split('/').pop()}`} className="w-full h-full" allowFullScreen allow="autoplay" title={vid.title ?? 'Lesson Video'} />
+                      ) : (
+                        <div className="w-full h-full flex flex-col items-center justify-center p-6 sm:p-8 bg-slate-800">
+                          <button onClick={() => setActiveVideo(vid)} className="w-16 h-16 sm:w-24 sm:h-24 bg-white text-slate-900 rounded-full flex items-center justify-center hover:scale-110 active:scale-95 transition-all shadow-2xl">
+                            <Play fill="currentColor" size={24} className="sm:scale-125" />
+                          </button>
+                          <span className="text-white/60 font-black mt-6 sm:mt-8 uppercase text-[9px] sm:text-[11px] tracking-widest">{vid.title ?? 'Play Lesson Media'}</span>
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </section>
+
+              {/* Resources */}
+              <section id="resource-hub" className="mt-24 sm:mt-40 scroll-mt-24 pb-40 sm:pb-80">
+                <div className="flex items-center gap-3 mb-8 sm:mb-12">
+                  <div className="h-8 sm:h-10 w-1.5 sm:w-2 bg-[#003882] rounded-full" />
+                  <h3 className="text-2xl sm:text-3xl font-black text-[#003882] uppercase tracking-tighter">Resources</h3>
+                </div>
+                <div className="grid grid-cols-1 gap-4 sm:gap-6">
+                  {selectedLesson.attachments?.map((att, i) => (
+                    <div key={i} className="bg-white rounded-[24px] sm:rounded-[40px] p-4 sm:p-6 md:p-8 flex items-center justify-between border border-slate-100 shadow-sm hover:shadow-xl transition-all">
+                      <div className="min-w-0 flex-1">
+                        <h4 className="font-black text-slate-800 text-xs sm:text-base truncate pr-2">{att.name}</h4>
+                        <p className="text-[8px] sm:text-[9px] text-slate-400 font-bold uppercase tracking-widest mt-1">Ready to access</p>
+                      </div>
+                      <div className="flex gap-2 sm:gap-3 shrink-0 ml-4">
+                        <button onClick={() => setViewingResource(att)} className="p-3 sm:p-4 bg-slate-50 text-[#EF4E92] rounded-xl sm:rounded-2xl hover:bg-pink-50 transition-all active:scale-90 border border-pink-100 shadow-sm" title="View in App">
+                          <Eye size={20} />
+                        </button>
+                        <button onClick={() => window.open(getDownloadUrl(att.storage_path), '_blank')} className="p-3 sm:p-4 bg-blue-50 text-[#003882] rounded-xl sm:rounded-2xl hover:bg-blue-100 transition-all active:scale-90 border border-blue-100 shadow-sm" title="Download">
+                          <Download size={20} />
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </section>
+            </div>
+          </div>
+        )}
+      </main>
+    </div>
+  );
+};
+
+export default FaithPathwayTeacherPage;
