@@ -1062,3 +1062,83 @@ class DatabaseService {
 }
 
 export const db = new DatabaseService();
+
+// ============================================================
+// Excel Import functions
+// ============================================================
+
+export async function listAllAccessKeys(): Promise<string[]> {
+  const { data, error } = await supabase
+    .from('students')
+    .select('accessKey');
+  if (error) throw error;
+  return (data || []).map((r: any) => r.accessKey).filter(Boolean);
+}
+
+export async function createStudentForImport(payload: {
+  accessKey: string;
+  fullName: string;
+  ageGroup: string;
+  isGraduate: boolean;
+}): Promise<{ id: string }> {
+  const { data, error } = await supabase
+    .from('students')
+    .insert({
+      accessKey: payload.accessKey,
+      fullName: payload.fullName,
+      ageGroup: payload.ageGroup,
+      isEnrolled: true,
+      studentStatus: payload.isGraduate ? 'alumni' : 'active',
+    })
+    .select('id')
+    .single();
+  if (error) throw error;
+  return { id: data.id };
+}
+
+export async function upsertAttendanceForImport(rows: Array<{
+  studentId: string;
+  sessionDate: string;
+}>): Promise<void> {
+  if (rows.length === 0) return;
+  const payload = rows.map(r => ({
+    studentId: r.studentId,
+    sessionDate: r.sessionDate,
+    checkInTime: '09:00',
+    checkoutMode: 'MANUAL',
+    checkedInBy: 'EXCEL_IMPORT',
+    status: 'CLOSED',
+  }));
+  const { error } = await supabase
+    .from('attendance_sessions')
+    .upsert(payload, { onConflict: 'studentId,sessionDate' });
+  if (error) throw error;
+}
+
+export async function upsertPointsForImport(rows: Array<{
+  studentId: string;
+  entryDate: string;
+  points: number;
+}>): Promise<void> {
+  if (rows.length === 0) return;
+  const payload = rows.map(r => ({
+    studentId: r.studentId,
+    entryDate: r.entryDate,
+    category: 'EXCEL_IMPORT',
+    points: r.points,
+    recordedBy: 'EXCEL_IMPORT',
+    voided: false,
+  }));
+  const { error } = await supabase
+    .from('point_ledger')
+    .upsert(payload, { onConflict: 'studentId,entryDate,category' });
+  if (error) throw error;
+}
+
+export async function updateGraduateStatus(studentId: string): Promise<void> {
+  const { error } = await supabase
+    .from('students')
+    .update({ studentStatus: 'alumni' })
+    .eq('id', studentId);
+  if (error) throw error;
+}
