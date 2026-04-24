@@ -24,13 +24,17 @@ interface PlaylistItem {
   };
 }
 
+async function safeJson(res: Response): Promise<unknown> {
+  try { return await res.json(); } catch { return null; }
+}
+
 async function fetchChannelVideos(): Promise<YTVideo[]> {
   if (!API_KEY) throw new Error('VITE_GOOGLE_API_KEY is not configured');
   // Step 1: resolve channel handle → channel ID + uploads playlist
   const chRes = await fetch(
     `https://www.googleapis.com/youtube/v3/channels?part=contentDetails&forHandle=${CHANNEL_HANDLE}&key=${API_KEY}`
   );
-  const chData = await chRes.json();
+  const chData = await safeJson(chRes) as any;
   if (!chRes.ok) throw new Error(chData?.error?.message ?? `YouTube API error ${chRes.status}`);
   if (!chData.items?.length) throw new Error('Channel not found');
   const uploadsPlaylistId: string = chData.items[0].contentDetails.relatedPlaylists.uploads;
@@ -39,7 +43,7 @@ async function fetchChannelVideos(): Promise<YTVideo[]> {
   const plRes = await fetch(
     `https://www.googleapis.com/youtube/v3/playlistItems?part=snippet&playlistId=${uploadsPlaylistId}&maxResults=50&key=${API_KEY}`
   );
-  const plData = await plRes.json();
+  const plData = await safeJson(plRes) as any;
   if (!plRes.ok) throw new Error(plData?.error?.message ?? `YouTube API error ${plRes.status}`);
   if (!plData.items) return [];
 
@@ -82,7 +86,7 @@ const YouTubePicker: React.FC<YouTubePickerProps> = ({ onSelect, onClose }) => {
             <h2 className="font-black text-xl text-[#003882] uppercase tracking-tight">Browse @thebiggeststory</h2>
             <p className="text-xs text-slate-400 font-medium mt-0.5">Select a video to attach to this lesson</p>
           </div>
-          <button onClick={onClose} aria-label="Close" className="text-gray-300 hover:text-red-500 transition-colors">
+          <button onClick={onClose} aria-label="Close video picker" className="text-gray-300 hover:text-red-500 transition-colors">
             <X size={22} />
           </button>
         </div>
@@ -92,6 +96,7 @@ const YouTubePicker: React.FC<YouTubePickerProps> = ({ onSelect, onClose }) => {
           <div className="flex items-center gap-3 bg-gray-50 rounded-2xl px-4 py-3">
             <Search size={16} className="text-gray-400 shrink-0" />
             <input
+              aria-label="Search videos"
               className="flex-1 bg-transparent text-sm outline-none font-medium text-gray-700 placeholder:text-gray-400"
               placeholder="Search videos..."
               value={search}
