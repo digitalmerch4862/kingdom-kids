@@ -10,7 +10,9 @@
     "preview": "vite preview",
     "test": "vitest",
     "test:ui": "vitest --ui",
-    "coverage": "vitest --coverage"
+    "coverage": "vitest --coverage",
+    "fp:export": "npx tsx scripts/export-faith-pathway.ts",
+    "fp:import": "npx tsx scripts/import-faith-pathway.ts"
   },
   "dependencies": {
     "@google/genai": "^1.37.0",
@@ -33,6 +35,8 @@
     "jsdom": "^23.0.0",
     "typescript": "^5.2.0",
     "vite": "^5.0.0",
-    "vitest": "^1.0.0"
+    "vitest": "^1.0.0",
+    "dotenv": "^16.4.0",
+    "tsx": "^4.7.0"
   }
 }
