@@ -7,5 +7,8 @@ export interface StudentStatusInput {
 }
 
 export function categorize(s: StudentStatusInput, minStreak: number = 4): Bucket {
-  throw new Error('not implemented');
+  if (s.idNeedsReprint) return 'NEEDS_REPRINT';
+  if (s.idIssuedAt) return 'HAS_ID';
+  if (s.streak >= minStreak) return 'QUALIFIED';
+  return 'NOT_YET';
 }
