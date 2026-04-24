@@ -1,6 +1,10 @@
 /**
  * Faith Pathway — lesson CRUD, featured-lesson management, and progress tracking.
  * All calls use the existing kingdom-kids Supabase client (services/supabase.ts).
+ *
+ * Offline-cache namespace: if caching is added, prefix all localStorage keys
+ * with "kk_fp_" (e.g. "kk_fp_lesson_<id>") to avoid collisions with other
+ * kingdom-kids subsystems.
  */
 
 import { supabase } from './supabase';
