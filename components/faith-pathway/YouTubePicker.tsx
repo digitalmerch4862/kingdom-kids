@@ -1,8 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { X, Search, Play } from 'lucide-react';
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-const API_KEY = (import.meta as any).env.VITE_GOOGLE_API_KEY as string;
+const API_KEY = import.meta.env.VITE_GOOGLE_API_KEY;
 const CHANNEL_HANDLE = 'thebiggeststory';
 
 interface YTVideo {
@@ -17,12 +16,22 @@ interface YouTubePickerProps {
   onClose: () => void;
 }
 
+interface PlaylistItem {
+  snippet: {
+    title: string;
+    resourceId: { videoId: string };
+    thumbnails?: { medium?: { url: string }; default?: { url: string } };
+  };
+}
+
 async function fetchChannelVideos(): Promise<YTVideo[]> {
+  if (!API_KEY) throw new Error('VITE_GOOGLE_API_KEY is not configured');
   // Step 1: resolve channel handle → channel ID + uploads playlist
   const chRes = await fetch(
     `https://www.googleapis.com/youtube/v3/channels?part=contentDetails&forHandle=${CHANNEL_HANDLE}&key=${API_KEY}`
   );
   const chData = await chRes.json();
+  if (!chRes.ok) throw new Error(chData?.error?.message ?? `YouTube API error ${chRes.status}`);
   if (!chData.items?.length) throw new Error('Channel not found');
   const uploadsPlaylistId: string = chData.items[0].contentDetails.relatedPlaylists.uploads;
 
@@ -31,9 +40,10 @@ async function fetchChannelVideos(): Promise<YTVideo[]> {
     `https://www.googleapis.com/youtube/v3/playlistItems?part=snippet&playlistId=${uploadsPlaylistId}&maxResults=50&key=${API_KEY}`
   );
   const plData = await plRes.json();
+  if (!plRes.ok) throw new Error(plData?.error?.message ?? `YouTube API error ${plRes.status}`);
   if (!plData.items) return [];
 
-  return plData.items.map((item: any) => {
+  return plData.items.map((item: PlaylistItem) => {
     const snippet = item.snippet;
     const videoId: string = snippet.resourceId.videoId;
     return {
@@ -64,15 +74,15 @@ const YouTubePicker: React.FC<YouTubePickerProps> = ({ onSelect, onClose }) => {
     : videos;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
-      <div className="bg-white rounded-[40px] w-full max-w-3xl max-h-[85vh] flex flex-col shadow-2xl">
+    <div onClick={onClose} className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
+      <div onClick={e => e.stopPropagation()} className="bg-white rounded-[40px] w-full max-w-3xl max-h-[85vh] flex flex-col shadow-2xl">
         {/* Header */}
         <div className="flex items-center justify-between px-8 pt-8 pb-4 border-b border-gray-100">
           <div>
             <h2 className="font-black text-xl text-[#003882] uppercase tracking-tight">Browse @thebiggeststory</h2>
             <p className="text-xs text-slate-400 font-medium mt-0.5">Select a video to attach to this lesson</p>
           </div>
-          <button onClick={onClose} className="text-gray-300 hover:text-red-500 transition-colors">
+          <button onClick={onClose} aria-label="Close" className="text-gray-300 hover:text-red-500 transition-colors">
             <X size={22} />
           </button>
         </div>
