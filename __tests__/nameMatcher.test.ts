@@ -8,8 +8,8 @@ describe('levenshtein', () => {
   it('returns 1 for single substitution', () => {
     expect(levenshtein('abc', 'abd')).toBe(1);
   });
-  it('returns 2 for two edits', () => {
-    expect(levenshtein('Mathhew', 'Matthew')).toBe(2);
+  it('returns 1 for single substitution (Mathhew vs Matthew)', () => {
+    expect(levenshtein('Mathhew', 'Matthew')).toBe(1);
   });
   it('handles empty string', () => {
     expect(levenshtein('', 'abc')).toBe(3);
