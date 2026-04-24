@@ -9,11 +9,18 @@ export interface ParsedStudent {
 }
 
 export function mapAgeGroup(header: string): string {
-  throw new Error('not implemented');
+  const h = header.trim().toUpperCase();
+  if (h.includes('4-6') || h.includes('4 - 6')) return '3-6';
+  if (h.includes('7-9') || h.includes('7 - 9')) return '7-9';
+  if (h.includes('10-12') || h.includes('10 - 12')) return '10-12';
+  return 'General';
 }
 
 export function normalizeDate(excelDate: string, year: number): string {
-  throw new Error('not implemented');
+  const [m, d] = excelDate.split('/').map(n => parseInt(n, 10));
+  const mm = String(m).padStart(2, '0');
+  const dd = String(d).padStart(2, '0');
+  return `${year}-${mm}-${dd}`;
 }
 
 export function parseWorkbook(buffer: ArrayBuffer): ParsedStudent[] {
