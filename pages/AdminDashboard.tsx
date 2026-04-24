@@ -212,7 +212,8 @@ const AdminDashboard: React.FC<{ activity: ActivitySchedule | null }> = ({ activ
           { label: 'Register', path: '/admin/students', icon: '👤' },
           { label: 'Points', path: '/admin/points', icon: '⭐' },
           { label: 'Ask AI', path: '/admin/ask-ai', icon: '✨' },
-          { label: 'Excel Import', path: '/admin/import', icon: '📥' }
+          { label: 'Excel Import', path: '/admin/import', icon: '📥' },
+          { label: 'ID Issuance', path: '/admin/id-issuance', icon: '🪪' }
         ].map((a, i) => (
           <button
             key={i}

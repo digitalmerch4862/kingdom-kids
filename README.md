@@ -18,3 +18,6 @@ View your app in AI Studio: https://ai.studio/apps/drive/1Vg4BA_Y51tHDS1DKfF5NB4
 2. Set the `GEMINI_API_KEY` in [.env.local](.env.local) to your Gemini API key
 3. Run the app:
    `npm run dev`
+
+## ID Issuance Setup
+Run `supabase-migrations/2026-04-24-id-issuance-columns.sql` in Supabase SQL Editor before deploying.

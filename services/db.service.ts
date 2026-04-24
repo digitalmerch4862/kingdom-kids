@@ -1142,3 +1142,116 @@ export async function updateGraduateStatus(studentId: string): Promise<void> {
     .eq('id', studentId);
   if (error) throw error;
 }
+
+// ============================================================
+// ID Issuance functions
+// ============================================================
+
+import { computeConsecutiveStreak } from '../utils/sundayStreak';
+
+export interface StudentWithStreak {
+  id: string;
+  fullName: string;
+  ageGroup: string;
+  accessKey: string;
+  idIssuedAt: string | null;
+  idNeedsReprint: boolean;
+  idReprintCount: number;
+  idLastLostAt: string | null;
+  streak: number;
+  attendedDates: string[];
+}
+
+export async function getStudentsWithAttendanceStreak(from: Date = new Date()): Promise<StudentWithStreak[]> {
+  const { data: studs, error: sErr } = await supabase
+    .from('students')
+    .select('id, fullName, ageGroup, accessKey, id_issued_at, id_needs_reprint, id_reprint_count, id_last_lost_at')
+    .eq('studentStatus', 'active');
+  if (sErr) throw sErr;
+
+  const { data: sess, error: aErr } = await supabase
+    .from('attendance_sessions')
+    .select('studentId, sessionDate')
+    .eq('status', 'CLOSED');
+  if (aErr) throw aErr;
+
+  const byStudent = new Map<string, string[]>();
+  (sess || []).forEach((r: any) => {
+    const arr = byStudent.get(r.studentId) || [];
+    arr.push(r.sessionDate);
+    byStudent.set(r.studentId, arr);
+  });
+
+  return (studs || []).map((s: any) => {
+    const attendedDates = byStudent.get(s.id) || [];
+    return {
+      id: s.id,
+      fullName: s.fullName,
+      ageGroup: s.ageGroup,
+      accessKey: s.accessKey,
+      idIssuedAt: s.id_issued_at,
+      idNeedsReprint: s.id_needs_reprint || false,
+      idReprintCount: s.id_reprint_count || 0,
+      idLastLostAt: s.id_last_lost_at,
+      streak: computeConsecutiveStreak(attendedDates, from, 4),
+      attendedDates,
+    };
+  });
+}
+
+export async function setIdIssued(studentId: string): Promise<void> {
+  const { error } = await supabase
+    .from('students')
+    .update({
+      id_issued_at: new Date().toISOString(),
+      id_needs_reprint: false,
+    })
+    .eq('id', studentId);
+  if (error) throw error;
+  await logIdAudit('ID_ISSUED', studentId);
+}
+
+export async function markIdLost(studentId: string): Promise<void> {
+  const { data: current, error: fErr } = await supabase
+    .from('students')
+    .select('id_reprint_count')
+    .eq('id', studentId)
+    .single();
+  if (fErr) throw fErr;
+
+  const { error } = await supabase
+    .from('students')
+    .update({
+      id_needs_reprint: true,
+      id_last_lost_at: new Date().toISOString(),
+      id_reprint_count: (current?.id_reprint_count || 0) + 1,
+    })
+    .eq('id', studentId);
+  if (error) throw error;
+  await logIdAudit('ID_MARKED_LOST', studentId);
+}
+
+export async function completeReprint(studentId: string): Promise<void> {
+  const { error } = await supabase
+    .from('students')
+    .update({
+      id_needs_reprint: false,
+      id_issued_at: new Date().toISOString(),
+    })
+    .eq('id', studentId);
+  if (error) throw error;
+  await logIdAudit('ID_REPRINTED', studentId);
+}
+
+async function logIdAudit(eventType: string, studentId: string): Promise<void> {
+  try {
+    await supabase.from('audit_log').insert({
+      eventType,
+      actor: 'ADMIN',
+      entityId: studentId,
+      payload: {},
+    });
+  } catch (e) {
+    console.error('audit log failed', e);
+  }
+}
