@@ -154,7 +154,7 @@ const Sidebar: React.FC<SidebarProps> = ({ user, onLogout, isOpen, isDesktopOpen
     { label: 'FAIRNESS MONITOR', icon: Scale, path: '/admin/fairness' },
     { label: 'LEADERBOARD', icon: Trophy, path: '/leaderboard' },
     { label: 'FAITH LAND', icon: TreePine, path: '/side-quest' },
-    { label: 'FAITH PATHWAY', icon: BookOpen, path: '/admin/faith-pathway' },
+    { label: 'FAITH PATHWAY', icon: BookOpen, path: '/faith-pathway' },
   ];
 
   const parentItems: SidebarItem[] = [

@@ -31,6 +31,8 @@ import SideQuestPage from './pages/SideQuestPage';
 import AskAIPage from './pages/AskAIPage';
 import ExcelImportPage from './pages/ExcelImportPage';
 import IdIssuancePage from './pages/IdIssuancePage';
+import FaithPathwayTeacherPage from './pages/FaithPathwayTeacherPage';
+import FaithPathwayAdminPage from './pages/FaithPathwayAdminPage';
 import { canAccessAdminWorkspace, hasAskAIWorkspaceAccess, isRadUser } from './utils/permissions';
 
 const SESSION_KEY = 'km_session';
@@ -151,6 +153,17 @@ const App: React.FC = () => {
             !user ? <Navigate to="/login" replace /> : (isTeacherOrAdmin ? <AdminDashboard activity={activity} /> : <Navigate to="/portal" replace />)
           } />
 
+          {/* Faith Pathway — teacher view (full-screen immersive) */}
+          <Route path="/faith-pathway" element={
+             !user ? <Navigate to="/login" replace /> : (isTeacherOrAdmin ? <FaithPathwayTeacherPage /> : <Navigate to="/portal" replace />)
+          } />
+
+          {/* Faith Pathway — admin lesson editor */}
+          <Route path="/admin/faith-pathway/manage" element={
+             !user ? <Navigate to="/login" replace /> : (isAdmin ? <FaithPathwayAdminPage /> : <Navigate to="/admin" replace />)
+          } />
+
+          {/* Legacy route — keep the old page for backwards compat */}
           <Route path="/admin/faith-pathway" element={
              !user ? <Navigate to="/login" replace /> : (isTeacherOrAdmin ? <FaithPathwayPage /> : <Navigate to="/portal" replace />)
           } />
