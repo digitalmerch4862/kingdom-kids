@@ -17,7 +17,7 @@ const Layout: React.FC<LayoutProps> = ({ user, onLogout }) => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const location = useLocation();
 
-  const isFullscreenPage = location.pathname === '/admin/faith-pathway' || location.pathname === '/side-quest';
+  const isFullscreenPage = location.pathname === '/side-quest';
   const isGuest = user?.username.toUpperCase() === 'GUEST';
 
   const getHomePath = () => {
