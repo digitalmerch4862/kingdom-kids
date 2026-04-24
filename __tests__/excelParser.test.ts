@@ -32,3 +32,44 @@ describe('normalizeDate', () => {
     expect(normalizeDate('3/8', 2026)).toBe('2026-03-08');
   });
 });
+
+import fs from 'fs';
+import path from 'path';
+import { parseWorkbook } from '../utils/excelParser';
+
+describe('parseWorkbook', () => {
+  const fixturePath = path.resolve(__dirname, '../yearly kingdom kids 2026.xlsx');
+  const buffer = fs.readFileSync(fixturePath).buffer as ArrayBuffer;
+
+  it('returns array of parsed students', () => {
+    const result = parseWorkbook(buffer);
+    expect(Array.isArray(result)).toBe(true);
+    expect(result.length).toBeGreaterThan(0);
+  });
+
+  it('extracts student name in "LastName, FirstName" format', () => {
+    const result = parseWorkbook(buffer);
+    const student = result.find(s => s.name.includes('Abunio'));
+    expect(student).toBeDefined();
+    expect(student?.name).toBe('Abunio, Hailey');
+  });
+
+  it('skips section header rows (no comma in name)', () => {
+    const result = parseWorkbook(buffer);
+    const headerRow = result.find(s => s.name === '4-6 YRS OLD AND BELOW');
+    expect(headerRow).toBeUndefined();
+  });
+
+  it('attaches ageGroup from preceding header', () => {
+    const result = parseWorkbook(buffer);
+    const student = result.find(s => s.name === 'Abunio, Hailey');
+    expect(student?.ageGroup).toBe('3-6');
+  });
+
+  it('merges attendance and points from both sheets', () => {
+    const result = parseWorkbook(buffer);
+    const student = result.find(s => s.name === 'Agustin, Nasya Zoey S.');
+    const date = Object.keys(student!.dates).find(d => student!.dates[d].points === 10);
+    expect(date).toBeDefined();
+  });
+});
