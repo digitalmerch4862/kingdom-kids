@@ -28,6 +28,11 @@ export interface Student {
   currentRole?: string;
   batchYear?: string;
   isLegacy?: boolean;
+  // ID Issuance Fields
+  idIssuedAt?: string | null;      // ISO timestamp — when current card issued
+  idNeedsReprint?: boolean;        // true if lost, awaiting new card
+  idReprintCount?: number;         // lifetime reprint count
+  idLastLostAt?: string | null;    // ISO timestamp of last loss report
 }
 
 export interface FaceEmbedding {
