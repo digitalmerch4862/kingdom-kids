@@ -30,6 +30,7 @@ import DailyQuestPage from './pages/DailyQuestPage';
 import SideQuestPage from './pages/SideQuestPage';
 import AskAIPage from './pages/AskAIPage';
 import ExcelImportPage from './pages/ExcelImportPage';
+import IdIssuancePage from './pages/IdIssuancePage';
 import { canAccessAdminWorkspace, hasAskAIWorkspaceAccess, isRadUser } from './utils/permissions';
 
 const SESSION_KEY = 'km_session';
@@ -168,6 +169,10 @@ const App: React.FC = () => {
 
           <Route path="/admin/import" element={
              !user ? <Navigate to="/login" replace /> : (isAdmin ? <ExcelImportPage /> : <Navigate to="/admin" replace />)
+          } />
+
+          <Route path="/admin/id-issuance" element={
+             !user ? <Navigate to="/login" replace /> : (isAdmin ? <IdIssuancePage /> : <Navigate to="/admin" replace />)
           } />
 
           <Route path="/admin/students" element={
