@@ -11,8 +11,6 @@ import type {
   Lesson, LessonStatus, LessonContentStructure, LessonSubSection,
   LessonActivity, LessonVideo, LessonAttachment
 } from '../types';
-import YouTubePicker from '../components/faith-pathway/YouTubePicker';
-import DrivePicker from '../components/faith-pathway/DrivePicker';
 
 // ── helpers ──────────────────────────────────────────────────────────────────
 
@@ -121,8 +119,6 @@ const FaithPathwayAdminPage: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [sortOrder, setSortOrder] = useState<'updated' | 'alpha_asc' | 'alpha_desc'>('alpha_asc');
   const [isSortMenuOpen, setIsSortMenuOpen] = useState(false);
-  const [showYouTubePicker, setShowYouTubePicker] = useState(false);
-  const [showDrivePicker, setShowDrivePicker] = useState(false);
 
   const fetchLessons = async () => {
     try {
@@ -456,10 +452,10 @@ const FaithPathwayAdminPage: React.FC = () => {
                 <SectionHeader title="Videos & Media" />
                 <div className="flex flex-wrap gap-3">
                   <button onClick={() => setVideos(v => [...v, { title: '', url: '', provider: 'youtube' }])} className="bg-[#003882] text-white px-6 py-2.5 rounded-full text-[10px] font-black uppercase tracking-widest shadow-lg">+ ADD VIDEO</button>
-                  <button onClick={() => setShowYouTubePicker(true)} className="bg-red-500 text-white px-6 py-2.5 rounded-full text-[10px] font-black uppercase tracking-widest shadow-lg flex items-center gap-2">
+                  <a href="https://www.thebiggeststory.com/printables/" target="_blank" rel="noopener noreferrer" className="bg-red-500 text-white px-6 py-2.5 rounded-full text-[10px] font-black uppercase tracking-widest shadow-lg flex items-center gap-2">
                     <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="currentColor"><path d="M23.5 6.19a3.02 3.02 0 0 0-2.12-2.14C19.54 3.5 12 3.5 12 3.5s-7.54 0-9.38.55A3.02 3.02 0 0 0 .5 6.19C0 8.04 0 12 0 12s0 3.96.5 5.81a3.02 3.02 0 0 0 2.12 2.14C4.46 20.5 12 20.5 12 20.5s7.54 0 9.38-.55a3.02 3.02 0 0 0 2.12-2.14C24 15.96 24 12 24 12s0-3.96-.5-5.81zM9.75 15.02V8.98L15.5 12l-5.75 3.02z"/></svg>
                     BROWSE CHANNEL
-                  </button>
+                  </a>
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                   {videos.map((vid, idx) => (
@@ -479,10 +475,14 @@ const FaithPathwayAdminPage: React.FC = () => {
                 <SectionHeader title="Resources & Downloads" />
                 <div className="flex flex-wrap gap-3">
                   <button onClick={() => setAttachments(a => [...a, { name: '', storage_path: '' }])} className="bg-[#EF4E92] text-white px-6 py-2.5 rounded-full text-[10px] font-black uppercase tracking-widest shadow-lg">+ ADD RESOURCE</button>
-                  <button onClick={() => setShowDrivePicker(true)} className="bg-[#0F9D58] text-white px-6 py-2.5 rounded-full text-[10px] font-black uppercase tracking-widest shadow-lg flex items-center gap-2">
+                  <a href="https://drive.google.com/drive/folders/1YM_d97MsRVlNXJGJzVrEEucwtXhPIMQh?usp=sharing" target="_blank" rel="noopener noreferrer" className="bg-[#0F9D58] text-white px-6 py-2.5 rounded-full text-[10px] font-black uppercase tracking-widest shadow-lg flex items-center gap-2">
                     <svg className="w-3.5 h-3.5" viewBox="0 0 87.3 78" fill="currentColor"><path d="M6.6 66.85l3.85 6.65c.8 1.4 1.95 2.5 3.3 3.3L27.5 53H0c0 1.55.4 3.1 1.2 4.5l5.4 9.35z" fill="#0066da"/><path d="M43.65 25L29.9 1.2C28.55.4 27 0 25.45 0c-1.55 0-3.1.4-4.5 1.2L3.5 31.5h27.1L43.65 25z" fill="#00ac47"/><path d="M73.55 76.8c1.35-.8 2.5-1.9 3.3-3.3l1.6-2.75 7.65-13.25c.8-1.4 1.2-2.95 1.2-4.5H60.1l5.8 11.6 7.65 12.2z" fill="#ea4335"/><path d="M43.65 25L57.4 1.2C56.05.4 54.5 0 52.95 0H34.35c-1.55 0-3.1.4-4.45 1.2L43.65 25z" fill="#00832d"/><path d="M60.1 53H27.5L13.75 76.8c1.35.8 2.9 1.2 4.45 1.2h50.9c1.55 0 3.1-.4 4.45-1.2L60.1 53z" fill="#2684fc"/><path d="M73.4 26.5l-8.55-14.8c-.8-1.35-1.95-2.5-3.3-3.3L43.65 25l16.45 28H87.2c0-1.55-.4-3.1-1.2-4.5L73.4 26.5z" fill="#ffba00"/></svg>
                     BROWSE PRINTABLES
-                  </button>
+                  </a>
+                  <a href="https://drive.google.com/drive/folders/15cobG2RAd3pr68yCr8hhjLnNKQ_KamUt" target="_blank" rel="noopener noreferrer" className="bg-purple-600 text-white px-6 py-2.5 rounded-full text-[10px] font-black uppercase tracking-widest shadow-lg flex items-center gap-2">
+                    <svg className="w-3.5 h-3.5" viewBox="0 0 87.3 78" fill="currentColor"><path d="M6.6 66.85l3.85 6.65c.8 1.4 1.95 2.5 3.3 3.3L27.5 53H0c0 1.55.4 3.1 1.2 4.5l5.4 9.35z" fill="#fff"/><path d="M43.65 25L29.9 1.2C28.55.4 27 0 25.45 0c-1.55 0-3.1.4-4.5 1.2L3.5 31.5h27.1L43.65 25z" fill="#fff"/><path d="M73.55 76.8c1.35-.8 2.5-1.9 3.3-3.3l1.6-2.75 7.65-13.25c.8-1.4 1.2-2.95 1.2-4.5H60.1l5.8 11.6 7.65 12.2z" fill="#fff"/><path d="M43.65 25L57.4 1.2C56.05.4 54.5 0 52.95 0H34.35c-1.55 0-3.1.4-4.45 1.2L43.65 25z" fill="#fff"/><path d="M60.1 53H27.5L13.75 76.8c1.35.8 2.9 1.2 4.45 1.2h50.9c1.55 0 3.1-.4 4.45-1.2L60.1 53z" fill="#fff"/><path d="M73.4 26.5l-8.55-14.8c-.8-1.35-1.95-2.5-3.3-3.3L43.65 25l16.45 28H87.2c0-1.55-.4-3.1-1.2-4.5L73.4 26.5z" fill="#fff"/></svg>
+                    OTHER RESOURCES
+                  </a>
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                   {attachments.map((att, idx) => (
@@ -500,24 +500,6 @@ const FaithPathwayAdminPage: React.FC = () => {
           )}
         </div>
       </div>
-      {showYouTubePicker && (
-        <YouTubePicker
-          onSelect={video => {
-            setVideos(v => [...v, { title: video.title, url: video.url, provider: video.provider }]);
-            setShowYouTubePicker(false);
-          }}
-          onClose={() => setShowYouTubePicker(false)}
-        />
-      )}
-      {showDrivePicker && (
-        <DrivePicker
-          onSelect={file => {
-            setAttachments(a => [...a, { name: file.name, storage_path: file.storage_path }]);
-            setShowDrivePicker(false);
-          }}
-          onClose={() => setShowDrivePicker(false)}
-        />
-      )}
     </div>
   );
 };
