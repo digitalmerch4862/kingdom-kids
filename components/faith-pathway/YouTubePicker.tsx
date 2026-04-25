@@ -1,81 +1,65 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { X, Search, Play } from 'lucide-react';
+import React, { useState } from 'react';
+import { X, Plus, ExternalLink } from 'lucide-react';
 
-const API_KEY = import.meta.env.VITE_GOOGLE_API_KEY;
-const CHANNEL_HANDLE = 'thebiggeststory';
-
-interface YTVideo {
-  videoId: string;
-  title: string;
-  thumbnail: string;
-  url: string;
-}
+const CHANNEL_URL = 'https://www.youtube.com/@thebiggeststory/videos';
 
 interface YouTubePickerProps {
   onSelect: (video: { title: string; url: string; provider: 'youtube' }) => void;
   onClose: () => void;
 }
 
-interface PlaylistItem {
-  snippet: {
-    title: string;
-    resourceId: { videoId: string };
-    thumbnails?: { medium?: { url: string }; default?: { url: string } };
-  };
+function extractVideoId(url: string): string | null {
+  try {
+    const u = new URL(url);
+    if (u.hostname.includes('youtu.be')) return u.pathname.slice(1);
+    if (u.hostname.includes('youtube.com')) {
+      return u.searchParams.get('v') ?? u.pathname.split('/').pop() ?? null;
+    }
+  } catch { /* ignore */ }
+  return null;
 }
 
-async function safeJson(res: Response): Promise<unknown> {
-  try { return await res.json(); } catch { return null; }
-}
-
-async function fetchChannelVideos(): Promise<YTVideo[]> {
-  if (!API_KEY) throw new Error('VITE_GOOGLE_API_KEY is not configured');
-  // Step 1: resolve channel handle → channel ID + uploads playlist
-  const chRes = await fetch(
-    `https://www.googleapis.com/youtube/v3/channels?part=contentDetails&forHandle=${CHANNEL_HANDLE}&key=${API_KEY}`
-  );
-  const chData = await safeJson(chRes) as any;
-  if (!chRes.ok) throw new Error(chData?.error?.message ?? `YouTube API error ${chRes.status}`);
-  if (!chData.items?.length) throw new Error('Channel not found');
-  const uploadsPlaylistId: string = chData.items[0].contentDetails.relatedPlaylists.uploads;
-
-  // Step 2: list up to 50 videos from uploads playlist
-  const plRes = await fetch(
-    `https://www.googleapis.com/youtube/v3/playlistItems?part=snippet&playlistId=${uploadsPlaylistId}&maxResults=50&key=${API_KEY}`
-  );
-  const plData = await safeJson(plRes) as any;
-  if (!plRes.ok) throw new Error(plData?.error?.message ?? `YouTube API error ${plRes.status}`);
-  if (!plData.items) return [];
-
-  return plData.items.map((item: PlaylistItem) => {
-    const snippet = item.snippet;
-    const videoId: string = snippet.resourceId.videoId;
-    return {
-      videoId,
-      title: snippet.title as string,
-      thumbnail: snippet.thumbnails?.medium?.url ?? snippet.thumbnails?.default?.url ?? '',
-      url: `https://www.youtube.com/watch?v=${videoId}`,
-    };
-  });
+async function fetchTitle(url: string): Promise<string> {
+  const res = await fetch(`https://www.youtube.com/oembed?url=${encodeURIComponent(url)}&format=json`);
+  if (!res.ok) throw new Error('Could not fetch video info. Check the URL.');
+  const data = await res.json();
+  return data.title as string;
 }
 
 const YouTubePicker: React.FC<YouTubePickerProps> = ({ onSelect, onClose }) => {
-  const [videos, setVideos] = useState<YTVideo[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [url, setUrl] = useState('');
+  const [title, setTitle] = useState('');
+  const [fetching, setFetching] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [search, setSearch] = useState('');
-  const allVideos = useRef<YTVideo[]>([]);
+  const [showEmbed, setShowEmbed] = useState(true);
 
-  useEffect(() => {
-    fetchChannelVideos()
-      .then(v => { allVideos.current = v; setVideos(v); })
-      .catch(e => setError(e.message))
-      .finally(() => setLoading(false));
-  }, []);
+  const handleUrlChange = async (val: string) => {
+    setUrl(val);
+    setTitle('');
+    setError(null);
+    const id = extractVideoId(val.trim());
+    if (!id) return;
+    setFetching(true);
+    try {
+      const t = await fetchTitle(val.trim());
+      setTitle(t);
+    } catch (e: any) {
+      setError(e.message);
+    } finally {
+      setFetching(false);
+    }
+  };
 
-  const filtered = search.trim()
-    ? allVideos.current.filter(v => v.title.toLowerCase().includes(search.toLowerCase()))
-    : videos;
+  const handleAdd = () => {
+    if (!url.trim() || !title) return;
+    onSelect({ title, url: url.trim(), provider: 'youtube' });
+    onClose();
+  };
+
+  const thumbnail = (() => {
+    const id = extractVideoId(url);
+    return id ? `https://img.youtube.com/vi/${id}/hqdefault.jpg` : null;
+  })();
 
   return (
     <div onClick={onClose} className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
@@ -83,62 +67,98 @@ const YouTubePicker: React.FC<YouTubePickerProps> = ({ onSelect, onClose }) => {
         role="dialog"
         aria-modal="true"
         aria-labelledby="youtube-picker-title"
-        className="bg-white rounded-[40px] w-full max-w-3xl max-h-[85vh] flex flex-col shadow-2xl"
+        className="bg-white rounded-[40px] w-full max-w-3xl max-h-[90vh] flex flex-col shadow-2xl"
         onClick={e => e.stopPropagation()}
       >
         {/* Header */}
         <div className="flex items-center justify-between px-8 pt-8 pb-4 border-b border-gray-100">
           <div>
-            <h2 id="youtube-picker-title" className="font-black text-xl text-[#003882] uppercase tracking-tight">Browse @thebiggeststory</h2>
-            <p className="text-xs text-slate-400 font-medium mt-0.5">Select a video to attach to this lesson</p>
+            <h2 id="youtube-picker-title" className="font-black text-xl text-[#003882] uppercase tracking-tight">Add YouTube Video</h2>
+            <p className="text-xs text-slate-400 font-medium mt-0.5">Browse the channel, copy a video URL, paste it below</p>
           </div>
           <button onClick={onClose} aria-label="Close video picker" className="text-gray-300 hover:text-red-500 transition-colors">
             <X size={22} />
           </button>
         </div>
 
-        {/* Search */}
-        <div className="px-8 py-4 border-b border-gray-50">
-          <div className="flex items-center gap-3 bg-gray-50 rounded-2xl px-4 py-3">
-            <Search size={16} className="text-gray-400 shrink-0" />
-            <input
-              aria-label="Search videos"
-              className="flex-1 bg-transparent text-sm outline-none font-medium text-gray-700 placeholder:text-gray-400"
-              placeholder="Search videos..."
-              value={search}
-              onChange={e => setSearch(e.target.value)}
-            />
-          </div>
+        {/* Channel browse toggle */}
+        <div className="px-8 py-3 border-b border-gray-50 flex items-center gap-3">
+          <button
+            onClick={() => setShowEmbed(v => !v)}
+            className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-[#003882] hover:text-blue-800 transition-colors"
+          >
+            <ExternalLink size={13} />
+            {showEmbed ? 'HIDE CHANNEL BROWSER' : 'BROWSE @thebiggeststory'}
+          </button>
+          <a
+            href={CHANNEL_URL}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-[10px] font-bold text-gray-400 hover:text-gray-600 transition-colors"
+          >
+            Open in new tab ↗
+          </a>
         </div>
 
-        {/* List */}
-        <div className="flex-1 overflow-y-auto px-8 py-6 space-y-3">
-          {loading && (
-            <div className="flex justify-center py-12">
-              <div className="w-8 h-8 border-4 border-[#003882] border-t-transparent rounded-full animate-spin" />
+        {/* Channel iframe */}
+        {showEmbed && (
+          <div className="px-8 py-4 border-b border-gray-100">
+            <iframe
+              src={`https://www.youtube.com/embed?listType=user_uploads&list=thebiggeststory`}
+              title="@thebiggeststory channel"
+              className="w-full rounded-2xl border border-gray-100"
+              style={{ height: 260 }}
+              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope"
+            />
+            <p className="text-[10px] text-gray-400 font-medium mt-2 text-center">
+              Find a video → copy its URL from YouTube → paste below
+            </p>
+          </div>
+        )}
+
+        {/* URL input */}
+        <div className="px-8 py-6 space-y-4">
+          <div className="space-y-2">
+            <label className="text-[10px] font-black uppercase tracking-widest text-gray-500">YouTube Video URL</label>
+            <input
+              aria-label="YouTube video URL"
+              className="w-full bg-gray-50 rounded-2xl px-5 py-4 text-sm font-medium text-blue-600 outline-none focus:ring-2 focus:ring-[#003882]/20 transition-all"
+              placeholder="https://www.youtube.com/watch?v=..."
+              value={url}
+              onChange={e => handleUrlChange(e.target.value)}
+            />
+          </div>
+
+          {/* Preview */}
+          {fetching && (
+            <div className="flex items-center gap-3 text-xs text-gray-400 font-medium">
+              <div className="w-4 h-4 border-2 border-[#003882] border-t-transparent rounded-full animate-spin" />
+              Fetching video info...
             </div>
           )}
+
           {error && (
-            <div className="p-4 bg-red-50 border border-red-200 rounded-2xl text-red-700 text-xs font-bold">{error}</div>
+            <div className="p-3 bg-red-50 border border-red-200 rounded-2xl text-red-700 text-xs font-bold">{error}</div>
           )}
-          {!loading && !error && filtered.length === 0 && (
-            <p className="text-center text-sm text-gray-400 font-medium py-12">No videos found</p>
-          )}
-          {filtered.map(v => (
-            <button
-              key={v.videoId}
-              onClick={() => onSelect({ title: v.title, url: v.url, provider: 'youtube' })}
-              className="w-full flex items-center gap-4 p-4 rounded-2xl hover:bg-blue-50 transition-colors text-left group"
-            >
-              <div className="relative shrink-0">
-                <img src={v.thumbnail} alt={v.title} className="w-28 h-16 object-cover rounded-xl" />
-                <div className="absolute inset-0 flex items-center justify-center bg-black/20 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity">
-                  <Play size={20} className="text-white fill-white" />
-                </div>
+
+          {thumbnail && title && (
+            <div className="flex items-center gap-4 p-4 bg-blue-50 rounded-2xl">
+              <img src={thumbnail} alt={title} className="w-24 h-14 object-cover rounded-xl shrink-0" />
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-black text-gray-800 line-clamp-2 leading-snug">{title}</p>
+                <p className="text-[10px] text-gray-400 font-medium mt-1">Ready to add</p>
               </div>
-              <span className="text-sm font-bold text-gray-800 line-clamp-2 leading-snug">{v.title}</span>
-            </button>
-          ))}
+            </div>
+          )}
+
+          <button
+            onClick={handleAdd}
+            disabled={!title || fetching}
+            className="w-full h-12 bg-[#003882] text-white rounded-2xl font-black uppercase tracking-widest text-[10px] flex items-center justify-center gap-2 disabled:opacity-40 hover:bg-[#003882]/90 transition-all"
+          >
+            <Plus size={14} />
+            ADD VIDEO TO LESSON
+          </button>
         </div>
       </div>
     </div>
