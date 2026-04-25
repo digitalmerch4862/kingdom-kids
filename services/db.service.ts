@@ -1119,13 +1119,16 @@ export async function upsertPointsForImport(rows: Array<{
   studentId: string;
   entryDate: string;
   points: number;
+  category?: string;
+  notes?: string;
 }>): Promise<void> {
   if (rows.length === 0) return;
   const payload = rows.map(r => ({
     studentId: r.studentId,
     entryDate: r.entryDate,
-    category: 'EXCEL_IMPORT',
+    category: r.category ?? 'Manual Points',
     points: r.points,
+    notes: r.notes ?? 'MASS UPLOAD POINTS',
     recordedBy: 'EXCEL_IMPORT',
     voided: false,
   }));
