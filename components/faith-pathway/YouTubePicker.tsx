@@ -79,11 +79,17 @@ const YouTubePicker: React.FC<YouTubePickerProps> = ({ onSelect, onClose }) => {
 
   return (
     <div onClick={onClose} className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
-      <div onClick={e => e.stopPropagation()} className="bg-white rounded-[40px] w-full max-w-3xl max-h-[85vh] flex flex-col shadow-2xl">
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="youtube-picker-title"
+        className="bg-white rounded-[40px] w-full max-w-3xl max-h-[85vh] flex flex-col shadow-2xl"
+        onClick={e => e.stopPropagation()}
+      >
         {/* Header */}
         <div className="flex items-center justify-between px-8 pt-8 pb-4 border-b border-gray-100">
           <div>
-            <h2 className="font-black text-xl text-[#003882] uppercase tracking-tight">Browse @thebiggeststory</h2>
+            <h2 id="youtube-picker-title" className="font-black text-xl text-[#003882] uppercase tracking-tight">Browse @thebiggeststory</h2>
             <p className="text-xs text-slate-400 font-medium mt-0.5">Select a video to attach to this lesson</p>
           </div>
           <button onClick={onClose} aria-label="Close video picker" className="text-gray-300 hover:text-red-500 transition-colors">

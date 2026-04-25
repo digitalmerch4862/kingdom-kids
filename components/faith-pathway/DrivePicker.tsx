@@ -61,13 +61,16 @@ const DrivePicker: React.FC<DrivePickerProps> = ({ onSelect, onClose }) => {
       onClick={onClose}
     >
       <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="drive-picker-title"
         className="bg-white rounded-[40px] w-full max-w-2xl max-h-[85vh] flex flex-col shadow-2xl"
         onClick={e => e.stopPropagation()}
       >
         {/* Header */}
         <div className="flex items-center justify-between px-8 pt-8 pb-4 border-b border-gray-100">
           <div>
-            <h2 className="font-black text-xl text-[#EF4E92] uppercase tracking-tight">Browse Printables</h2>
+            <h2 id="drive-picker-title" className="font-black text-xl text-[#EF4E92] uppercase tracking-tight">Browse Printables</h2>
             <p className="text-xs text-slate-400 font-medium mt-0.5">Select a file to attach to this lesson</p>
           </div>
           <button
