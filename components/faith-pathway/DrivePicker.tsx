@@ -112,7 +112,7 @@ const DrivePicker: React.FC<DrivePickerProps> = ({ onSelect, onClose }) => {
           {filtered.map(f => (
             <button
               key={f.id}
-              onClick={() => { onSelect({ name: f.name, storage_path: f.webViewLink }); onClose(); }}
+              onClick={() => onSelect({ name: f.name, storage_path: f.webViewLink })}
               className="w-full flex items-center gap-4 px-5 py-4 rounded-2xl hover:bg-pink-50 transition-colors text-left"
             >
               <span className="shrink-0">{getMimeIcon(f.mimeType)}</span>

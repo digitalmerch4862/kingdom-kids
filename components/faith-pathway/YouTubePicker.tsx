@@ -127,7 +127,7 @@ const YouTubePicker: React.FC<YouTubePickerProps> = ({ onSelect, onClose }) => {
           {filtered.map(v => (
             <button
               key={v.videoId}
-              onClick={() => { onSelect({ title: v.title, url: v.url, provider: 'youtube' }); onClose(); }}
+              onClick={() => onSelect({ title: v.title, url: v.url, provider: 'youtube' })}
               className="w-full flex items-center gap-4 p-4 rounded-2xl hover:bg-blue-50 transition-colors text-left group"
             >
               <div className="relative shrink-0">
