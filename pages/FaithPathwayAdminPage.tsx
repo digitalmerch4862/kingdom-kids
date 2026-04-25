@@ -502,13 +502,19 @@ const FaithPathwayAdminPage: React.FC = () => {
       </div>
       {showYouTubePicker && (
         <YouTubePicker
-          onSelect={video => setVideos(v => [...v, { title: video.title, url: video.url, provider: video.provider }])}
+          onSelect={video => {
+            setVideos(v => [...v, { title: video.title, url: video.url, provider: video.provider }]);
+            setShowYouTubePicker(false);
+          }}
           onClose={() => setShowYouTubePicker(false)}
         />
       )}
       {showDrivePicker && (
         <DrivePicker
-          onSelect={file => setAttachments(a => [...a, { name: file.name, storage_path: file.storage_path }])}
+          onSelect={file => {
+            setAttachments(a => [...a, { name: file.name, storage_path: file.storage_path }]);
+            setShowDrivePicker(false);
+          }}
           onClose={() => setShowDrivePicker(false)}
         />
       )}
